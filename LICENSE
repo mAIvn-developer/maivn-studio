@@ -1,0 +1,32 @@
+Business Source License 1.1
+
+Licensor:  mAIvn, LLC
+Licensed Work:  mAIvn Studio
+Change Date:  2030-03-11
+Change License:  Apache License, Version 2.0
+
+For the full BSL 1.1 license terms, see:
+https://mariadb.com/bsl11/
+
+Additional Use Grant:
+
+You may use the Licensed Work for any purpose, including production use,
+EXCEPT you may not:
+
+  1. Offer the Licensed Work as a commercial hosted service to third
+     parties (i.e., operate it as a managed developer-tool platform).
+
+  2. Redistribute, sublicense, or resell the Licensed Work or any
+     modified version of it as a standalone product.
+
+You MAY use the Licensed Work internally within your organization
+and for developing applications that interact with mAIvn services.
+
+On the Change Date above, or the fourth anniversary of the first
+publicly available distribution of a specific version of the
+Licensed Work under this License, whichever comes first, the
+Licensor hereby grants you rights under the terms of the Change
+License, and the rights granted under the Business Source License
+will terminate.
+
+Copyright 2024-2026 mAIvn, LLC. All Rights Reserved.

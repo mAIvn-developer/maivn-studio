@@ -1,0 +1,30 @@
+from __future__ import annotations
+
+from maivn_studio.config.loader import find_config_file, load_config
+
+
+def test_find_config_file_uses_start_path(tmp_path, monkeypatch) -> None:
+    config_path = tmp_path / "maivn_studio.json"
+    config_path.write_text('{"studio": {"port": 9999}}', encoding="utf-8")
+
+    other_dir = tmp_path / "other"
+    other_dir.mkdir()
+    monkeypatch.chdir(other_dir)
+
+    assert find_config_file(tmp_path) == config_path
+
+
+def test_find_config_file_does_not_use_hyphen_name(tmp_path, monkeypatch) -> None:
+    (tmp_path / "maivn-studio.json").write_text("{}", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    assert find_config_file() is None
+
+
+def test_load_config_from_file(tmp_path) -> None:
+    config_path = tmp_path / "maivn_studio.json"
+    config_path.write_text('{"studio": {"port": 9001}}', encoding="utf-8")
+
+    config = load_config(config_path)
+
+    assert config.studio.port == 9001

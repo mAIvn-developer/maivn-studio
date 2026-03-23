@@ -1,0 +1,299 @@
+<script lang="ts">
+  import type { Message } from "$lib/types";
+  import { Clock } from "lucide-svelte";
+  import MarkdownContent from "../markdown/MarkdownContent.svelte";
+  import { copyMessageCardContent, copyMessageCardStructuredOutput } from "./message-card-copy";
+  import MessageCardActionControls from "./MessageCardActionControls.svelte";
+  import MessageCardSessionDetails from "./MessageCardSessionDetails.svelte";
+  import MessageCardStructuredOutput from "./MessageCardStructuredOutput.svelte";
+
+  interface Props {
+    message: Message;
+    structuredOutput?: unknown;
+    autoShowStructuredOutput?: boolean;
+    autoShowSessionDetails?: boolean;
+  }
+
+  let {
+    message,
+    structuredOutput,
+    autoShowStructuredOutput = false,
+    autoShowSessionDetails = false,
+  }: Props = $props();
+
+  let showRawContent = $state(false);
+  let showStructuredOutput = $state(false);
+  let copied = $state(false);
+  let copiedStructured = $state(false);
+
+  const isUser = $derived(message.role === "user");
+  const isAssistant = $derived(message.role === "assistant");
+  const isStatus = $derived(message.messageType === "status");
+
+  const hasStructuredContent = $derived(() => {
+    if (!isAssistant) return false;
+    return message.content.length > 500 || message.content.includes("```");
+  });
+
+  const hasStructuredOutput = $derived(structuredOutput !== undefined && structuredOutput !== null);
+
+  // Check if this message has session details (stats from SDK invocation)
+  const hasSessionDetails = $derived(
+    message.sessionDetails?.duration_ms !== undefined ||
+      message.sessionDetails?.token_usage !== undefined,
+  );
+
+  let showSessionDetails = $state(false);
+
+  $effect(() => {
+    if (autoShowStructuredOutput && hasStructuredOutput) {
+      showStructuredOutput = true;
+    }
+  });
+
+  $effect(() => {
+    if (autoShowSessionDetails && hasSessionDetails) {
+      showSessionDetails = true;
+    }
+  });
+
+  const hasFooterActions = $derived(
+    () => isAssistant && (hasStructuredContent() || hasStructuredOutput || hasSessionDetails),
+  );
+
+  // Format duration as seconds with 1 decimal
+  function formatDuration(ms: number): string {
+    return (ms / 1000).toFixed(1) + "s";
+  }
+
+  // Format token count with commas
+  function formatTokens(count: number): string {
+    return count.toLocaleString();
+  }
+
+  async function copyContent() {
+    const success = await copyMessageCardContent(message.content);
+    if (success) {
+      copied = true;
+      setTimeout(() => (copied = false), 2000);
+    }
+  }
+
+  async function copyStructuredOutput() {
+    if (!hasStructuredOutput) return;
+    const success = await copyMessageCardStructuredOutput(structuredOutput);
+    if (success) {
+      copiedStructured = true;
+      setTimeout(() => (copiedStructured = false), 2000);
+    }
+  }
+</script>
+
+<div class="flex animate-in" class:justify-end={isUser}>
+  <div
+    class="message-card group relative max-w-[85%] rounded-2xl overflow-hidden transition-all duration-200"
+    class:user-message={isUser}
+    class:assistant-message={isAssistant}
+    class:status-message={isStatus}
+  >
+    <!-- Subtle gradient overlay for depth -->
+    <div
+      class="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none"
+    ></div>
+
+    <!-- Header -->
+    <div
+      class="relative flex items-center justify-between px-4 py-2.5 border-b header-border"
+      class:user-header={isUser}
+      class:assistant-header={isAssistant}
+      class:status-header={isStatus}
+    >
+      <div class="flex items-center gap-2.5">
+        <!-- Avatar with brand colors -->
+        <div
+          class="avatar flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold shadow-inner"
+          class:user-avatar={isUser}
+          class:assistant-avatar={isAssistant}
+          class:status-avatar={isStatus}
+        >
+          {isUser ? "U" : "AI"}
+        </div>
+        <span class="text-sm font-medium">
+          {isUser ? "You" : "Assistant"}
+        </span>
+
+        <!-- Message type badge for non-human user messages -->
+        {#if message.messageType !== "human" && isUser}
+          <span
+            class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide
+                   {message.messageType === 'redacted'
+              ? 'bg-[var(--color-warning)]/20 text-[var(--color-warning)]'
+              : ''}
+                   {message.messageType === 'system'
+              ? 'bg-[var(--color-tertiary)]/20 text-[var(--color-tertiary)]'
+              : ''}"
+          >
+            {message.messageType}
+          </span>
+        {/if}
+
+        {#if isUser && message.metadata?.queuedForNextTurn}
+          <span
+            class="inline-flex items-center gap-1 rounded-full bg-[var(--color-tertiary)]/15
+                   px-2 py-0.5 text-[10px] font-semibold text-[var(--color-tertiary)]"
+          >
+            <Clock size={10} strokeWidth={2} />
+            Queued for next turn
+          </span>
+        {/if}
+
+        {#if isStatus}
+          <span
+            class="inline-flex items-center gap-1 rounded-full border border-[var(--color-outline-variant)]/70
+                   bg-[var(--color-surface-variant)]/45 px-2 py-0.5 text-[10px] font-semibold uppercase
+                   tracking-wide text-[var(--color-text-secondary)]"
+          >
+            Status Update
+          </span>
+        {/if}
+      </div>
+
+      <div class="flex items-center gap-2">
+        <MessageCardActionControls
+          {copied}
+          hasStructuredContent={hasStructuredContent()}
+          {hasStructuredOutput}
+          {hasSessionDetails}
+          {isAssistant}
+          {showRawContent}
+          {showStructuredOutput}
+          {showSessionDetails}
+          onCopyContent={copyContent}
+          onToggleRawContent={() => (showRawContent = !showRawContent)}
+          onToggleStructuredOutput={() => (showStructuredOutput = !showStructuredOutput)}
+          onToggleSessionDetails={() => (showSessionDetails = !showSessionDetails)}
+        />
+
+        <span class="text-[10px] text-[var(--color-text-tertiary)] tabular-nums">
+          {new Date(message.timestamp).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </span>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="relative px-4 py-3">
+      {#if isAssistant}
+        {#if showRawContent}
+          <pre
+            class="whitespace-pre-wrap text-sm font-mono overflow-x-auto text-[var(--color-text-secondary)]">{message.content}</pre>
+        {:else}
+          <MarkdownContent content={message.content} />
+        {/if}
+      {:else}
+        <div class="whitespace-pre-wrap text-[var(--color-text-secondary)]">
+          {message.content}
+        </div>
+      {/if}
+    </div>
+
+    <!-- Footer actions (duplicate of header toggles for long messages) -->
+    {#if hasFooterActions()}
+      <div
+        class="flex items-center justify-end gap-2 px-4 py-2 border-t border-[var(--color-outline-variant)]/40 bg-black/5"
+      >
+        <div class="flex items-center gap-2">
+          <MessageCardActionControls
+            {copied}
+            hasStructuredContent={hasStructuredContent()}
+            {hasStructuredOutput}
+            {hasSessionDetails}
+            {isAssistant}
+            {showRawContent}
+            {showStructuredOutput}
+            {showSessionDetails}
+            onCopyContent={copyContent}
+            onToggleRawContent={() => (showRawContent = !showRawContent)}
+            onToggleStructuredOutput={() => (showStructuredOutput = !showStructuredOutput)}
+            onToggleSessionDetails={() => (showSessionDetails = !showSessionDetails)}
+          />
+        </div>
+      </div>
+    {/if}
+
+    <!-- Structured Output Section (collapsible) -->
+    {#if isAssistant && hasStructuredOutput && showStructuredOutput}
+      <MessageCardStructuredOutput
+        {structuredOutput}
+        {copiedStructured}
+        onCopyStructuredOutput={copyStructuredOutput}
+      />
+    {/if}
+
+    <!-- Session Details Section (collapsible) - stats from SDK invocation -->
+    {#if isAssistant && hasSessionDetails && showSessionDetails}
+      <MessageCardSessionDetails {message} {formatDuration} {formatTokens} />
+    {/if}
+  </div>
+</div>
+
+<style>
+  .message-card {
+    background-color: var(--color-bg-secondary);
+    border: 1px solid var(--color-outline-variant);
+  }
+
+  /* User messages - more subtle/dull styling */
+  .user-message {
+    background-color: var(--color-bg-tertiary);
+    border-color: var(--color-outline-variant);
+  }
+
+  /* AI/Assistant messages - muted tertiary accent */
+  .assistant-message {
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-tertiary-container) 80%, var(--color-bg-secondary)) 0%,
+      color-mix(in srgb, var(--color-tertiary) 20%, var(--color-bg-secondary)) 100%
+    );
+    border-color: color-mix(in srgb, var(--color-tertiary) 30%, transparent);
+  }
+
+  .status-message {
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-surface-variant) 72%, var(--color-bg-secondary)) 0%,
+      color-mix(in srgb, var(--color-tertiary) 10%, var(--color-bg-secondary)) 100%
+    );
+    border-color: color-mix(in srgb, var(--color-tertiary) 16%, var(--color-outline-variant));
+  }
+
+  .user-header {
+    border-color: var(--color-outline-variant);
+  }
+
+  .assistant-header {
+    border-color: color-mix(in srgb, var(--color-tertiary) 18%, transparent);
+  }
+
+  .status-header {
+    border-color: color-mix(in srgb, var(--color-outline-variant) 78%, transparent);
+  }
+
+  .user-avatar {
+    background-color: rgba(177, 197, 255, 0.15);
+    color: var(--color-text-secondary);
+  }
+
+  .assistant-avatar {
+    background-color: color-mix(in srgb, var(--color-tertiary) 25%, transparent);
+    color: var(--color-tertiary);
+  }
+
+  .status-avatar {
+    background-color: color-mix(in srgb, var(--color-surface-variant) 88%, transparent);
+    color: var(--color-text-secondary);
+  }
+</style>
