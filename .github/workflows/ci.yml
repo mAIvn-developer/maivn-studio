@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: maivn-studio-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Check out maivn
+        uses: actions/checkout@v4
+        with:
+          path: .deps/libraries/maivn
+          repository: ${{ vars.MAIVN_REPO || format('{0}/maivn', github.repository_owner) }}
+          ref: ${{ vars.MAIVN_REF || 'main' }}
+          token: ${{ secrets.MAIVN_GITHUB_SUBMODULE_TOKEN || github.token }}
+
+      - name: Check out maivn-shared
+        uses: actions/checkout@v4
+        with:
+          path: .deps/libraries/maivn-shared
+          repository: ${{ vars.MAIVN_SHARED_REPO || format('{0}/maivn-shared', github.repository_owner) }}
+          ref: ${{ vars.MAIVN_SHARED_REF || 'main' }}
+          token: ${{ secrets.MAIVN_GITHUB_SUBMODULE_TOKEN || github.token }}
+
+      - name: Inject local source overrides
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          pyproject = Path("pyproject.toml")
+          text = pyproject.read_text(encoding="utf-8")
+          marker = (
+              "\n[tool.uv.sources]\n"
+              "maivn = { path = \".deps/libraries/maivn\", editable = true }\n"
+              "maivn-shared = { path = \".deps/libraries/maivn-shared\", editable = true }\n"
+          )
+          if "[tool.uv.sources]" not in text:
+              pyproject.write_text(text.rstrip() + marker, encoding="utf-8")
+          PY
+
+      - name: Sync environment
+        run: uv sync --frozen
+
+      - name: Validate OSS license report
+        run: uv run --no-sync python scripts/oss_license_audit.py --check
+
+      - name: Ruff
+        run: uv run --no-sync ruff check .
+
+      - name: Pyright
+        run: uv run --no-sync pyright
+
+      - name: Pytest
+        run: uv run --no-sync pytest
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend bundle
+        working-directory: frontend
+        run: npm run build
+
+      - name: Build wheel
+        run: uv build --wheel
+
+      - name: Validate wheel contents
+        run: uv run --no-sync python scripts/check_wheel_contents.py dist/*.whl

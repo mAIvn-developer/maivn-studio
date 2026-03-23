@@ -1,0 +1,18 @@
+{
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "**/.venv",
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.pytest_cache",
+    "frontend",
+    ".claude"
+  ],
+  "executionEnvironments": [
+    {
+      "root": "."
+    }
+  ]
+}
