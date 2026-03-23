@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches:
+      - master
       - main
   workflow_dispatch:
 
@@ -39,7 +40,7 @@ jobs:
         with:
           path: .deps/libraries/maivn
           repository: ${{ vars.MAIVN_REPO || format('{0}/maivn', github.repository_owner) }}
-          ref: ${{ vars.MAIVN_REF || 'main' }}
+          ref: ${{ vars.MAIVN_REF || 'master' }}
           token: ${{ secrets.MAIVN_GITHUB_SUBMODULE_TOKEN || github.token }}
 
       - name: Check out maivn-shared
@@ -47,7 +48,7 @@ jobs:
         with:
           path: .deps/libraries/maivn-shared
           repository: ${{ vars.MAIVN_SHARED_REPO || format('{0}/maivn-shared', github.repository_owner) }}
-          ref: ${{ vars.MAIVN_SHARED_REF || 'main' }}
+          ref: ${{ vars.MAIVN_SHARED_REF || 'master' }}
           token: ${{ secrets.MAIVN_GITHUB_SUBMODULE_TOKEN || github.token }}
 
       - name: Inject local source overrides

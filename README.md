@@ -15,7 +15,7 @@ Local developer studio for discovering demos, running sessions, and debugging ag
 For end users or SDK consumers:
 
 ```bash
-pip install maivn-studio
+pip install "maivn[studio]"
 maivn studio
 ```
 
