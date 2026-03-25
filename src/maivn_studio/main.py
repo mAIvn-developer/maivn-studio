@@ -26,6 +26,11 @@ def setup_logging(debug: bool = False) -> None:
 
 def main() -> None:
     """Start the MAIVN Studio server."""
+    from dotenv import find_dotenv, load_dotenv
+
+    # Load .env from CWD first, then walk up to find any parent .env
+    load_dotenv(find_dotenv(usecwd=True))
+
     parser = argparse.ArgumentParser(description="MAIVN Studio - Demo UI/UX Tool")
     parser.add_argument(
         "--config",
