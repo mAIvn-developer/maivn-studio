@@ -2,6 +2,10 @@
   import { ChevronRight } from "lucide-svelte";
   // Self-import for recursive rendering
   import KeyValueDisplay from "./KeyValueDisplay.svelte";
+  import {
+    highlightPrivateData,
+    containsPrivateDataPlaceholders,
+  } from "./markdown/markdown-parser";
 
   interface Props {
     data: unknown;
@@ -193,9 +197,17 @@
                   {entry.isIndex ? `[${entry.key}]` : entry.key}
                 </span>
                 <span class="text-[var(--color-text-tertiary)]">:</span>
-                <span class="font-mono break-all {typeColors[getDataType(entry.value)]}">
-                  {formatPrimitive(entry.value)}
-                </span>
+                {#if containsPrivateDataPlaceholders(formatPrimitive(entry.value))}
+                  <!-- eslint-disable svelte/no-at-html-tags -->
+                  <span class="font-mono break-all"
+                    >{@html highlightPrivateData(formatPrimitive(entry.value))}</span
+                  >
+                  <!-- eslint-enable svelte/no-at-html-tags -->
+                {:else}
+                  <span class="font-mono break-all {typeColors[getDataType(entry.value)]}"
+                    >{formatPrimitive(entry.value)}</span
+                  >
+                {/if}
               </div>
             {/if}
           </div>

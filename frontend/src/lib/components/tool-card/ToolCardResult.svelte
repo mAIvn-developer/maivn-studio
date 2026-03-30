@@ -1,5 +1,9 @@
 <script lang="ts">
   import KeyValueDisplay from "../KeyValueDisplay.svelte";
+  import {
+    highlightPrivateData,
+    containsPrivateDataPlaceholders,
+  } from "../markdown/markdown-parser";
   import MarkdownContent from "../markdown/MarkdownContent.svelte";
   import type { ToolStatusDisplayConfig } from "./tool-card-display";
   import { formatToolValue } from "./tool-card-display";
@@ -29,10 +33,17 @@
       <MarkdownContent content={result} />
     </div>
   {:else}
-    <pre
-      class="text-xs font-mono text-[var(--color-text-secondary)] whitespace-pre-wrap break-all max-h-60 overflow-y-auto">{formatToolValue(
-        result,
-        false,
-      )}</pre>
+    {@const formatted = formatToolValue(result, false)}
+    {#if containsPrivateDataPlaceholders(formatted)}
+      <!-- eslint-disable svelte/no-at-html-tags -->
+      <pre
+        class="text-xs font-mono text-[var(--color-text-secondary)] whitespace-pre-wrap break-all max-h-60 overflow-y-auto">{@html highlightPrivateData(
+          formatted,
+        )}</pre>
+      <!-- eslint-enable svelte/no-at-html-tags -->
+    {:else}
+      <pre
+        class="text-xs font-mono text-[var(--color-text-secondary)] whitespace-pre-wrap break-all max-h-60 overflow-y-auto">{formatted}</pre>
+    {/if}
   {/if}
 </div>

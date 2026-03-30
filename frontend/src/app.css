@@ -132,6 +132,20 @@ pre,
   font-family: "JetBrains Mono", "SF Mono", "Fira Code", "Consolas", monospace;
 }
 
+/* Private Data Redaction Badges — global so they render in any context */
+.private-data-badge {
+  display: inline;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+  font-size: 0.8em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 /* Custom Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 8px;
