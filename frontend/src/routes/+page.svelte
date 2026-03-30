@@ -60,6 +60,7 @@
 
   // Structured output state (lifted from ChatPanel for cross-component sharing)
   let structuredOutputConfig = $state<StructuredOutputConfig>({ enabled: false });
+  let selectedVariant = $state<string | undefined>(undefined);
   const availableModelTools = $derived<ModelToolOption[]>(
     demos.selectedDemo?.tools
       ? demos.selectedDemo.tools.map((tool) => ({
@@ -189,6 +190,18 @@
     return getCollapsedDemoLabelHelper(name);
   }
 
+  function refreshSelectedDemoDetails(): void {
+    if (demos.selectedDemoId) {
+      void demos.selectDemo(demos.selectedDemoId, selectedVariant);
+    }
+  }
+
+  function handleSelectedVariantChange(variant: string | undefined): void {
+    selectedVariant = variant;
+    session.setPrivateData({});
+    refreshSelectedDemoDetails();
+  }
+
   const { loadSavedPrompts, handleSavePrompt } = createPromptActions({
     getSelectedDemo: () => demos.selectedDemo,
     getMessageType: () => session.messageType,
@@ -245,7 +258,8 @@
   } = createStudioSessionActions({
     getSelectedDemo: () => demos.selectedDemo,
     selectDemo: (demoId) => {
-      demos.selectDemo(demoId);
+      selectedVariant = undefined;
+      void demos.selectDemo(demoId);
     },
     addRecentDemo,
     resetSession: () => {
@@ -355,7 +369,7 @@
           {:else}
             <DemoList
               demos={demos.byCategory}
-              selectedId={demos.selectedDemo?.id}
+              selectedId={demos.selectedDemoId ?? demos.selectedDemo?.id}
               onSelect={handleSelectDemo}
               onScanRepo={openDiscovery}
             />
@@ -366,7 +380,7 @@
           connecting={demos.connecting}
           loading={demos.loading}
           error={demos.error}
-          selectedDemoId={demos.selectedDemo?.id}
+          selectedDemoId={demos.selectedDemoId ?? demos.selectedDemo?.id}
           selectedDemoName={demos.selectedDemo?.name}
           recentDemos={recentDemoObjects}
           onOpenCommandPalette={() => (commandPaletteOpen = true)}
@@ -406,6 +420,7 @@
             queuedMessageCount={session.queuedMessageCount}
             hasActiveSession={session.hasActiveSession}
             messageType={session.messageType}
+            bind:selectedVariant
             {structuredOutputConfig}
             {savedPrompts}
             showToolArgs={session.filters.showToolArgs}
@@ -420,6 +435,7 @@
             onStart={handleStart}
             onCancel={() => session.cancel()}
             onMessageTypeChange={handleMessageTypeChange}
+            onSelectedVariantChange={handleSelectedVariantChange}
             onStructuredOutputChange={handleStructuredOutputChange}
             onSavePrompt={handleSavePrompt}
             onSubmitInterrupt={session.submitInterrupt}
@@ -461,6 +477,7 @@
                 accumulatedStats={session.accumulatedStats}
                 privateDataSchema={demos.selectedDemo?.privateDataSchema ?? []}
                 privateData={session.privateData}
+                privateDataDefaults={demos.selectedDemo?.privateDataDefaults ?? {}}
                 hasActiveSession={session.hasActiveSession}
                 agents={demos.selectedDemo?.agents ?? []}
                 swarms={demos.selectedDemo?.swarms ?? []}
@@ -476,9 +493,7 @@
                 memoryConfig={session.memoryConfig}
                 onFilterChange={session.setFilters}
                 onPrivateDataChange={handlePrivateDataChange}
-                onDemoRefresh={() => {
-                  if (demos.selectedDemo) demos.selectDemo(demos.selectedDemo.id);
-                }}
+                onDemoRefresh={refreshSelectedDemoDetails}
                 onInvocationChange={session.setInvocationConfig}
                 onStructuredOutputChange={handleStructuredOutputChange}
                 onInterruptStyleChange={session.setInterruptStyle}

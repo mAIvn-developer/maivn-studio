@@ -30,6 +30,7 @@ def apply_private_data(
     """
     # Merge user-provided values with defaults (user values take precedence)
     default_private_data = get_default_private_data()
+    sanitized_user_private_data: dict[str, Any] = {}
     if user_private_data:
         sanitized_user_private_data = dict(user_private_data)
         if "log_path" in sanitized_user_private_data and not is_valid_log_path(
@@ -37,6 +38,8 @@ def apply_private_data(
         ):
             sanitized_user_private_data.pop("log_path", None)
         default_private_data.update(sanitized_user_private_data)
+
+    explicit_private_data = sanitized_user_private_data if user_private_data else {}
 
     scopes: list[Any] = []
     scopes.extend(loaded.agents)
@@ -53,6 +56,16 @@ def apply_private_data(
         if scope_id in seen:
             continue
         seen.add(scope_id)
+
+        applied_keys = _apply_explicit_private_data(scope, explicit_private_data)
+        if applied_keys:
+            scope_name = getattr(scope, "name", scope.__class__.__name__)
+            logger.info(
+                "Applied explicit private_data to %s: %s",
+                scope_name,
+                ", ".join(applied_keys),
+            )
+
         missing = _fill_missing_private_data(scope, default_private_data)
         if missing:
             scope_name = getattr(scope, "name", scope.__class__.__name__)
@@ -61,6 +74,29 @@ def apply_private_data(
                 scope_name,
                 ", ".join(missing),
             )
+
+
+def _apply_explicit_private_data(
+    scope: Any,
+    private_data: dict[str, Any],
+) -> list[str]:
+    """Apply explicit session private_data to a scope even without DataDependency declarations."""
+    if not private_data:
+        return []
+
+    current_private_data = dict(getattr(scope, "private_data", {}) or {})
+    applied_keys: list[str] = []
+
+    for key, value in private_data.items():
+        if current_private_data.get(key) == value:
+            continue
+        current_private_data[key] = value
+        applied_keys.append(key)
+
+    if applied_keys:
+        scope.private_data = current_private_data
+
+    return sorted(applied_keys)
 
 
 def _fill_missing_private_data(

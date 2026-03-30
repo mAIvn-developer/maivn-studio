@@ -94,8 +94,13 @@ export async function fetchDemo(id: string): Promise<DemoDetails> {
   } as DemoDetails;
 }
 
-export async function fetchDemoFullDetails(id: string): Promise<DemoDetails> {
-  const res = await fetch(`${API_BASE}/demos/${id}/details`);
+export async function fetchDemoFullDetails(id: string, variant?: string): Promise<DemoDetails> {
+  const params = new URLSearchParams();
+  if (variant) {
+    params.set("variant", variant);
+  }
+  const suffix = params.size > 0 ? `?${params.toString()}` : "";
+  const res = await fetch(`${API_BASE}/demos/${id}/details${suffix}`);
   if (!res.ok) throw new Error(`Failed to fetch demo details ${id}`);
   return res.json();
 }

@@ -9,6 +9,7 @@
     selectedVariant?: string | undefined;
     localSystemMessage?: string;
     variants: Array<[string, DemoDetails["variants"][string]]>;
+    onSelectedVariantChange?: (variant: string | undefined) => void;
   }
 
   let {
@@ -18,7 +19,14 @@
     selectedVariant = $bindable<string | undefined>(undefined),
     localSystemMessage = $bindable(""),
     variants,
+    onSelectedVariantChange,
   }: Props = $props();
+
+  function handleVariantChange(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value || undefined;
+    selectedVariant = value;
+    onSelectedVariantChange?.(selectedVariant);
+  }
 </script>
 
 {#if !hasActiveSession && hasDemo}
@@ -54,12 +62,13 @@
             >
             <select
               id="variant-select"
-              bind:value={selectedVariant}
+              value={selectedVariant ?? ""}
+              onchange={handleVariantChange}
               class="flex-1 rounded-lg border border-[var(--color-outline-variant)] bg-[var(--color-bg-tertiary)]
                    px-2.5 py-1.5 text-xs text-[var(--color-text)]
                    focus:outline-none focus:border-[var(--color-tertiary)]/50"
             >
-              <option value={undefined}>Default</option>
+              <option value="">Default</option>
               {#each variants as [id, variant]}
                 <option value={id}>{id} - {variant.description}</option>
               {/each}

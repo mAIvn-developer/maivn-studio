@@ -42,6 +42,7 @@
     accumulatedStats?: AccumulatedStats;
     privateDataSchema?: PrivateDataField[];
     privateData?: Record<string, unknown>;
+    privateDataDefaults?: Record<string, unknown>;
     hasActiveSession?: boolean;
     agents?: AgentInfo[];
     swarms?: SwarmInfo[];
@@ -71,6 +72,7 @@
     accumulatedStats,
     privateDataSchema = [],
     privateData = {},
+    privateDataDefaults = {},
     hasActiveSession = false,
     agents = [],
     swarms = [],
@@ -178,6 +180,7 @@
       <ConfigTab
         {privateDataSchema}
         {privateData}
+        {privateDataDefaults}
         {hasActiveSession}
         {agents}
         {swarms}

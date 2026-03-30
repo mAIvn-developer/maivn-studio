@@ -37,6 +37,7 @@
     selectedVariant?: string | undefined;
     localSystemMessage?: string;
     showSystemInput?: boolean;
+    onSelectedVariantChange?: (variant: string | undefined) => void;
     onSubmit: (event: Event) => void | Promise<void>;
     onMessageTypeChange: (type: SendableMessageType) => void;
     onSavePrompt?: () => void;
@@ -72,6 +73,7 @@
     selectedVariant = $bindable<string | undefined>(undefined),
     localSystemMessage = $bindable(""),
     showSystemInput = $bindable(false),
+    onSelectedVariantChange,
     onSubmit,
     onMessageTypeChange,
     onSavePrompt,
@@ -141,6 +143,7 @@
       bind:selectedVariant
       bind:localSystemMessage
       {variants}
+      {onSelectedVariantChange}
     />
 
     <div

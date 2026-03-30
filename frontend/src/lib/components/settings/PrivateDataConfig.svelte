@@ -5,22 +5,39 @@
   interface Props {
     schema: PrivateDataField[];
     values: Record<string, unknown>;
+    fallbackValues?: Record<string, unknown>;
     onchange?: (values: Record<string, unknown>) => void;
     disabled?: boolean;
   }
 
-  let { schema, values = {}, onchange, disabled = false }: Props = $props();
+  let { schema, values = {}, fallbackValues = {}, onchange, disabled = false }: Props = $props();
 
   let isExpanded = $state(true);
 
+  function getResolvedValue(
+    key: string,
+    defaultValue?: string | number | boolean,
+  ): string | number | boolean | unknown {
+    if (values[key] !== undefined) return values[key];
+    if (fallbackValues[key] !== undefined) return fallbackValues[key];
+    return defaultValue;
+  }
+
   // Count filled fields
   const filledCount = $derived(() => {
-    return Object.values(values).filter((v) => v !== undefined && v !== "").length;
+    return schema.filter((field) => {
+      const value = getResolvedValue(field.key, field.default_value);
+      return value !== undefined && value !== "";
+    }).length;
   });
 
   // Initialize values from schema defaults
   $effect(() => {
-    if (schema.length > 0 && Object.keys(values).length === 0) {
+    if (
+      schema.length > 0 &&
+      Object.keys(values).length === 0 &&
+      Object.keys(fallbackValues).length === 0
+    ) {
       const defaultValues: Record<string, unknown> = {};
       for (const field of schema) {
         if (field.default_value !== undefined) {
@@ -39,9 +56,8 @@
   }
 
   function getFieldValue(key: string, default_value?: string | number | boolean): string {
-    const val = values[key];
+    const val = getResolvedValue(key, default_value);
     if (val !== undefined) return String(val);
-    if (default_value !== undefined) return String(default_value);
     return "";
   }
 </script>
@@ -121,7 +137,8 @@
                   <input
                     id="private-data-{field.key}"
                     type="checkbox"
-                    checked={values[field.key] === true || values[field.key] === "true"}
+                    checked={getResolvedValue(field.key, field.default_value) === true ||
+                      getResolvedValue(field.key, field.default_value) === "true"}
                     onchange={(e) =>
                       handleFieldChange(field.key, (e.target as HTMLInputElement).checked)}
                     {disabled}
@@ -139,7 +156,7 @@
                   ></div>
                 </div>
                 <span class="text-xs text-[var(--color-text-secondary)]">
-                  {values[field.key] ? "Enabled" : "Disabled"}
+                  {getResolvedValue(field.key, field.default_value) ? "Enabled" : "Disabled"}
                 </span>
               </label>
             {:else}

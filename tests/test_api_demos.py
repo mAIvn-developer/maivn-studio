@@ -14,6 +14,7 @@ from maivn_studio.config.models import (
     DemoConfig,
     DemoVariant,
     DiscoveryConfig,
+    PrivateDataField,
     StudioConfig,
     StudioSettings,
 )
@@ -45,6 +46,14 @@ class _Agent:
         return [_Tool()]
 
 
+class _AgentNoPrivateDeps:
+    name = "demo_agent"
+    description = "Demo agent"
+
+    def list_tools(self):
+        return []
+
+
 class _Swarm:
     name = "demo_swarm"
 
@@ -66,10 +75,30 @@ class _Loaded:
         return None
 
 
+class _LoadedNoPrivateSchema:
+    def __init__(self) -> None:
+        self.agents = [_AgentNoPrivateDeps()]
+        self.swarms = []
+        self.prompts = [_Prompt(name="Prompt", content="Hello")]
+        self.default_invocation = None
+
+    def get_agent(self, name: str):
+        for agent in self.agents:
+            if getattr(agent, "name", None) == name:
+                return agent
+        return None
+
+
 class _Loader:
     def load(self, _demo, force_reload: bool = False, variant: str | None = None):
         _ = force_reload, variant
         return _Loaded()
+
+
+class _LoaderNoPrivateSchema:
+    def load(self, _demo, force_reload: bool = False, variant: str | None = None):
+        _ = force_reload, variant
+        return _LoadedNoPrivateSchema()
 
 
 class _LoadedInvalidVariant:
@@ -351,6 +380,117 @@ def test_demo_details_uses_default_variant_when_loading(monkeypatch, tmp_path) -
         assert detail_resp.status_code == 200
 
     assert loader.variants == ["fast"]
+
+
+def test_demo_details_uses_requested_variant_and_merges_private_data_defaults(
+    monkeypatch, tmp_path
+) -> None:
+    demo = DemoConfig(
+        id="demo-1",
+        name="Demo One",
+        description="Demo description",
+        module="demos.demo_one",
+        category="examples",
+        tags=["agent"],
+        private_data={"customer_name": "Acme Health", "region": "us"},
+        variants={
+            "with-private-data": DemoVariant(
+                args=[],
+                description="Variant with private data",
+                private_data={"customer_name": "Umbra Labs", "case_id": "CASE-42"},
+            )
+        },
+    )
+    config = StudioConfig(
+        studio=StudioSettings(debug=False),
+        discovery=DiscoveryConfig(paths=[], exclude=[]),
+        demos=[demo],
+    )
+
+    app = create_app(config=config, base_path=tmp_path)
+
+    import maivn_studio.api.routes.demos.routes as demos_routes
+
+    loader = _VariantCapturingLoader()
+    monkeypatch.setattr(demos_routes, "get_demo_loader", lambda: loader)
+
+    with TestClient(app) as client:
+        detail_resp = client.get("/api/demos/demo-1/details?variant=with-private-data")
+        assert detail_resp.status_code == 200
+
+    assert loader.variants == ["with-private-data"]
+    assert detail_resp.json()["privateDataDefaults"] == {
+        "customer_name": "Umbra Labs",
+        "region": "us",
+        "case_id": "CASE-42",
+    }
+    schema_by_key = {field["key"]: field for field in detail_resp.json()["privateDataSchema"]}
+    assert schema_by_key["customer_name"]["default_value"] == "Umbra Labs"
+    assert schema_by_key["region"]["default_value"] == "us"
+    assert schema_by_key["case_id"]["default_value"] == "CASE-42"
+
+
+def test_demo_details_builds_schema_from_configured_private_data_when_loader_has_none(
+    monkeypatch, tmp_path
+) -> None:
+    demo = DemoConfig(
+        id="demo-1",
+        name="Demo One",
+        description="Demo description",
+        module="demos.demo_one",
+        category="examples",
+        tags=["agent"],
+        variants={
+            "with-private-data": DemoVariant(
+                args=[],
+                description="Variant with private data",
+                private_data={
+                    "email": "studio-think-private@maivn.dev",
+                    "secret_token": "THINK-PRIVATE-TOKEN-7302",
+                    "case_id": "THINK-CASE-7302",
+                },
+            )
+        },
+    )
+    config = StudioConfig(
+        studio=StudioSettings(debug=False),
+        discovery=DiscoveryConfig(paths=[], exclude=[]),
+        demos=[demo],
+    )
+
+    app = create_app(config=config, base_path=tmp_path)
+
+    import maivn_studio.api.routes.demos.routes as demos_routes
+
+    monkeypatch.setattr(demos_routes, "get_demo_loader", lambda: _LoaderNoPrivateSchema())
+
+    with TestClient(app) as client:
+        detail_resp = client.get("/api/demos/demo-1/details?variant=with-private-data")
+        assert detail_resp.status_code == 200
+
+    schema_by_key = {field["key"]: field for field in detail_resp.json()["privateDataSchema"]}
+    assert schema_by_key["email"]["default_value"] == "studio-think-private@maivn.dev"
+    assert schema_by_key["email"]["type"] == "string"
+    assert schema_by_key["secret_token"]["default_value"] == "THINK-PRIVATE-TOKEN-7302"
+    assert schema_by_key["case_id"]["default_value"] == "THINK-CASE-7302"
+
+
+def test_merge_private_data_schema_keeps_string_type_when_default_is_none() -> None:
+    from maivn_studio.api.routes.demos.routes import _merge_private_data_schema
+
+    merged = _merge_private_data_schema(
+        [
+            PrivateDataField(
+                key="api_key",
+                type="",
+                default_value=None,
+            )
+        ],
+        {},
+    )
+
+    assert merged[0].default_value is None
+    assert merged[0].type == "string"
 
 
 def test_demo_details_includes_default_invocation_targeted_tools_and_metadata(

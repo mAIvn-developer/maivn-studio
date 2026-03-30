@@ -66,13 +66,20 @@ async def create_session(request: CreateSessionRequest) -> SessionResponse:
         )
 
     resolved_variant = _resolve_demo_variant(demo, request.variant)
+    variant_private_data = None
+    if resolved_variant is not None:
+        variant_private_data = demo.variants[resolved_variant].private_data
 
     manager = get_session_manager()
     session = await manager.create_session(
         demo_config=demo,
         variant=resolved_variant,
         thread_id=request.thread_id,
-        private_data=_merge_private_data(demo.private_data, request.private_data),
+        private_data=_merge_private_data(
+            demo.private_data,
+            variant_private_data,
+            request.private_data,
+        ),
     )
 
     create_event_bridge(session.session_id)

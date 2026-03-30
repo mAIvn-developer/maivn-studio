@@ -7,6 +7,7 @@ import type { PrivateDataField } from "./config";
 export interface DemoVariant {
   args: string[];
   description: string;
+  private_data?: Record<string, string | number | boolean>;
 }
 
 export interface Demo {
@@ -26,6 +27,7 @@ export interface DemoDetails extends Demo {
   tools: ToolInfo[];
   prompts: PromptInfo[];
   privateDataSchema: PrivateDataField[];
+  privateDataDefaults?: Record<string, string | number | boolean>;
   defaultInvocation?: Partial<InvocationConfig>;
   runtime_tool_count?: number;
 }
