@@ -68,7 +68,7 @@ def run_export(project_root: Path, project_name: str, *extra_args: str) -> list[
     command = [
         "uv",
         "export",
-        "--locked",
+        "--frozen",
         "--package",
         project_name,
         "--format",
@@ -90,7 +90,7 @@ def run_export(project_root: Path, project_name: str, *extra_args: str) -> list[
 
 def parse_requirement_names(lines: list[str]) -> dict[str, str]:
     packages: dict[str, str] = {}
-    environment = cast(dict[str, str], default_environment())
+    environment = canonical_audit_environment()
     for raw_line in lines:
         line = raw_line.strip()
         if not line or line.startswith("#") or line.startswith("-e "):
@@ -112,6 +112,21 @@ def parse_requirement_names(lines: list[str]) -> dict[str, str]:
             continue
         packages[canonical_name] = line
     return packages
+
+
+def canonical_audit_environment() -> dict[str, str]:
+    environment = cast(dict[str, str], default_environment())
+    environment.update(
+        {
+            "os_name": "posix",
+            "sys_platform": "linux",
+            "platform_system": "Linux",
+            "platform_machine": "x86_64",
+            "platform_release": "audit-canonical",
+            "platform_version": "audit-canonical",
+        }
+    )
+    return environment
 
 
 def distribution_index() -> dict[str, metadata.Distribution]:
