@@ -91,14 +91,12 @@ def _serialize_attachments(
 
 
 def _merge_private_data(
-    demo_private_data: dict[str, Any] | None,
-    request_private_data: dict[str, Any] | None,
+    *private_data_sources: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     merged_private_data: dict[str, Any] = {}
-    if demo_private_data:
-        merged_private_data.update(demo_private_data)
-    if request_private_data:
-        merged_private_data.update(request_private_data)
+    for source in private_data_sources:
+        if source:
+            merged_private_data.update(source)
 
     log_path_value = merged_private_data.get("log_path")
     if isinstance(log_path_value, str) and (

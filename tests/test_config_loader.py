@@ -28,3 +28,23 @@ def test_load_config_from_file(tmp_path) -> None:
     config = load_config(config_path)
 
     assert config.studio.port == 9001
+
+
+def test_load_config_variant_private_data(tmp_path) -> None:
+    config_path = tmp_path / "maivn_studio.json"
+    config_path.write_text(
+        (
+            '{"demos":[{"id":"demo-1","name":"Demo One","module":"demos.demo_one",'
+            '"variants":{"with-private-data":{"description":"Variant","private_data":'
+            '{"secret_token":"tok-123","email":"demo@example.com"}}}}]}'
+        ),
+        encoding="utf-8",
+    )
+
+    config = load_config(config_path)
+
+    variant = config.demos[0].variants["with-private-data"]
+    assert variant.private_data == {
+        "secret_token": "tok-123",
+        "email": "demo@example.com",
+    }

@@ -105,6 +105,45 @@ class TestApplyPrivateData:
         assert agent.private_data["email"] == "a@b.com"
 
     @patch("maivn_studio.services.session_manager.private_data.get_default_private_data")
+    def test_applies_explicit_private_data_without_declared_dependencies(
+        self, mock_defaults: MagicMock
+    ) -> None:
+        mock_defaults.return_value = {"secret_token": "default-token"}
+        agent = _make_scope(tools=[])
+        loaded = _make_loaded(agents=[agent])
+
+        apply_private_data(
+            loaded,
+            user_private_data={
+                "email": "studio-repl-private@maivn.dev",
+                "dataset_id": "REPL-DATASET-5914",
+            },
+        )
+
+        assert agent.private_data["email"] == "studio-repl-private@maivn.dev"
+        assert agent.private_data["dataset_id"] == "REPL-DATASET-5914"
+        assert "secret_token" not in agent.private_data
+
+    @patch("maivn_studio.services.session_manager.private_data.get_default_private_data")
+    def test_explicit_private_data_overrides_existing_scope_values(
+        self, mock_defaults: MagicMock
+    ) -> None:
+        mock_defaults.return_value = {"secret_token": "default-token"}
+        agent = _make_scope(
+            tools=[],
+            private_data={"email": "existing@example.com", "secret_token": "embedded-token"},
+        )
+        loaded = _make_loaded(agents=[agent])
+
+        apply_private_data(
+            loaded,
+            user_private_data={"email": "studio-think-private@maivn.dev"},
+        )
+
+        assert agent.private_data["email"] == "studio-think-private@maivn.dev"
+        assert agent.private_data["secret_token"] == "embedded-token"
+
+    @patch("maivn_studio.services.session_manager.private_data.get_default_private_data")
     def test_includes_swarm_member_agents(self, mock_defaults: MagicMock) -> None:
         mock_defaults.return_value = {"api_key": "key123"}
         member = _make_scope(name="member_agent", tools=[_make_tool(["api_key"])])

@@ -140,6 +140,7 @@ class DemoFullDetailsResponse(BaseModel):
     tools: list[ToolInfo] = Field(default_factory=list)
     prompts: list[PromptInfo] = Field(default_factory=list)
     privateDataSchema: list[PrivateDataField] = Field(default_factory=list)
+    privateDataDefaults: dict[str, str | int | bool] = Field(default_factory=dict)
     defaultInvocation: dict[str, Any] | None = None
     runtime_tool_count: int = 0
 

@@ -267,6 +267,35 @@ class TestLoad:
             with pytest.raises(ImportError, match="not found"):
                 loader.load(config)
 
+    def test_load_variant_rebuilds_prompts_after_configure_variant(self) -> None:
+        module = _make_module(
+            {
+                "DEMO_PROMPTS": [{"name": "Default", "content": "generic prompt"}],
+            }
+        )
+
+        def _configure_variant(variant: str | None) -> None:
+            if variant == "with-private-data":
+                module.DEMO_PROMPTS = [
+                    {
+                        "name": "Private Prompt",
+                        "content": "email studio-think-private@maivn.dev",
+                    }
+                ]
+            else:
+                module.DEMO_PROMPTS = [{"name": "Default", "content": "generic prompt"}]
+
+        module.configure_variant = _configure_variant
+
+        config = _make_config()
+        loader = DemoLoader()
+
+        with patch("importlib.import_module", return_value=module):
+            loaded = loader.load(config, variant="with-private-data")
+
+        assert len(loaded.prompts) == 1
+        assert loaded.prompts[0].content == "email studio-think-private@maivn.dev"
+
 
 # MARK: get and unload
 

@@ -12,6 +12,7 @@ class DemoVariant(BaseModel):
 
     args: list[str] = Field(default_factory=list)
     description: str = ""
+    private_data: dict[str, str | int | bool] = Field(default_factory=dict)
 
 
 class DemoConfig(BaseModel):

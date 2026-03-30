@@ -21,6 +21,7 @@
   interface Props {
     privateDataSchema?: PrivateDataField[];
     privateData?: Record<string, unknown>;
+    privateDataDefaults?: Record<string, unknown>;
     hasActiveSession?: boolean;
     agents?: AgentInfo[];
     swarms?: SwarmInfo[];
@@ -42,6 +43,7 @@
   let {
     privateDataSchema = [],
     privateData = {},
+    privateDataDefaults = {},
     hasActiveSession = false,
     agents = [],
     swarms = [],
@@ -99,6 +101,7 @@
       <PrivateDataConfig
         schema={privateDataSchema}
         values={privateData}
+        fallbackValues={privateDataDefaults}
         onchange={onPrivateDataChange}
         disabled={hasActiveSession}
       />

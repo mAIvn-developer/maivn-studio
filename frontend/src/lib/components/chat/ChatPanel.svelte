@@ -25,6 +25,7 @@
     scrollContainerToBottom,
     shouldShowScrollToBottom,
   } from "./chat-scroll";
+  import { getDefaultPromptContent, shouldReplaceComposerDraft } from "./prompt-sync";
   import ChatEmptyState from "./ChatEmptyState.svelte";
   import ChatExchangeList from "./ChatExchangeList.svelte";
   import ChatComposer from "./composer/ChatComposer.svelte";
@@ -43,6 +44,7 @@
     // for message submission and writes it when a prompt auto-selects a tool.
     structuredOutputConfig: StructuredOutputConfig;
     onStructuredOutputChange: (config: StructuredOutputConfig) => void;
+    selectedVariant?: string | undefined;
     showToolArgs?: boolean;
     expandAllCards?: boolean;
     richResultDisplay?: boolean;
@@ -71,6 +73,7 @@
     ) => void | Promise<void>;
     onCancel?: () => void;
     onMessageTypeChange: (type: SendableMessageType) => void;
+    onSelectedVariantChange?: (variant: string | undefined) => void;
     onSavePrompt?: (content: string) => void;
     // Interrupt handlers
     onSubmitInterrupt?: (interruptId: string, value: string) => void;
@@ -90,6 +93,7 @@
     // Structured output (UI in ConfigTab; used here for submit + prompt auto-select)
     structuredOutputConfig,
     onStructuredOutputChange,
+    selectedVariant = $bindable<string | undefined>(undefined),
     showToolArgs = true,
     expandAllCards = false,
     richResultDisplay = true,
@@ -104,6 +108,7 @@
     onStart,
     onCancel,
     onMessageTypeChange,
+    onSelectedVariantChange,
     onSavePrompt,
     // Interrupt handlers
     onSubmitInterrupt,
@@ -111,12 +116,12 @@
   }: Props = $props();
 
   let inputValue = $state("");
-  let selectedVariant = $state<string | undefined>(undefined);
   let localSystemMessage = $state("");
   let showSystemInput = $state(false);
   let chatContainer: HTMLDivElement;
   let showScrollToBottom = $state(false);
   const SCROLL_BOTTOM_THRESHOLD = 4;
+  let pendingVariantPromptSync = $state<{ seed: string; promptSignature: string } | null>(null);
 
   let pendingAttachments = $state<PendingAttachment[]>([]);
 
@@ -219,6 +224,7 @@
     }
     // Auto-select variant when prompt specifies one, otherwise reset to default
     selectedVariant = promptVariant || undefined;
+    onSelectedVariantChange?.(selectedVariant);
   }
 
   function handleSavePrompt() {
@@ -236,6 +242,9 @@
 
   const variants = $derived(demo ? Object.entries(demo.variants) : []);
   const prompts = $derived(demo?.prompts || []);
+  const promptSignature = $derived(
+    prompts.map((prompt) => `${prompt.id}:${prompt.content}`).join("\u0001"),
+  );
   const pendingAttachmentViews = $derived(
     pendingAttachments.map((attachment) => ({
       id: attachment.id,
@@ -273,6 +282,41 @@
           item.type === "interrupt_card" && (item.data as InterruptData).status === "waiting",
       ),
   );
+
+  $effect(() => {
+    const pendingSync = pendingVariantPromptSync;
+    const currentPromptSignature = promptSignature;
+    if (
+      !pendingSync ||
+      hasActiveSession ||
+      currentPromptSignature === pendingSync.promptSignature
+    ) {
+      return;
+    }
+
+    pendingVariantPromptSync = null;
+    if (inputValue.trim() !== pendingSync.seed) {
+      return;
+    }
+
+    const nextDefaultPrompt = getDefaultPromptContent(prompts);
+    if (!nextDefaultPrompt) {
+      return;
+    }
+
+    inputValue = nextDefaultPrompt;
+  });
+
+  function handleSelectedVariantChange(variant: string | undefined): void {
+    pendingVariantPromptSync = shouldReplaceComposerDraft(inputValue, prompts)
+      ? {
+          seed: inputValue.trim(),
+          promptSignature,
+        }
+      : null;
+    selectedVariant = variant;
+    onSelectedVariantChange?.(variant);
+  }
 </script>
 
 <div class="flex h-full flex-col" role="region" aria-label="Chat">
@@ -355,6 +399,7 @@
     bind:selectedVariant
     bind:localSystemMessage
     bind:showSystemInput
+    onSelectedVariantChange={handleSelectedVariantChange}
     onSubmit={handleSubmit}
     {onMessageTypeChange}
     onSavePrompt={inputValue.trim() ? handleSavePrompt : undefined}

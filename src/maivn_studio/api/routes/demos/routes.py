@@ -6,7 +6,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from maivn_studio.config.models import DemoConfig
+from maivn_studio.config.models import DemoConfig, PrivateDataField
 from maivn_studio.discovery.registry import get_registry
 from maivn_studio.services.demo_loader.loader import get_demo_loader
 
@@ -55,6 +55,68 @@ def _resolve_demo_variant(demo: DemoConfig, requested_variant: str | None = None
         sorted(demo.variants.keys()),
     )
     return None
+
+
+def _build_private_data_defaults(
+    demo: DemoConfig, resolved_variant: str | None
+) -> dict[str, str | int | bool]:
+    """Build the effective private data defaults for a demo details view."""
+    defaults = dict(demo.private_data)
+    if resolved_variant:
+        defaults.update(demo.variants[resolved_variant].private_data)
+    return defaults
+
+
+def _infer_private_data_type(value: str | int | bool) -> str:
+    """Infer the Studio field type for a configured private data value."""
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, int):
+        return "number"
+    return "string"
+
+
+def _merge_private_data_schema(
+    schema: list[PrivateDataField], defaults: dict[str, str | int | bool]
+) -> list[PrivateDataField]:
+    """Overlay configured defaults onto extracted schema and add missing keys."""
+    merged: list[PrivateDataField] = []
+    schema_by_key = {field.key: field for field in schema}
+
+    for field in schema:
+        configured_default = defaults.get(field.key, field.default_value)
+        resolved_type = field.type
+        if not resolved_type:
+            resolved_type = (
+                _infer_private_data_type(configured_default)
+                if configured_default is not None
+                else "string"
+            )
+        merged.append(
+            field.model_copy(
+                update={
+                    "default_value": configured_default,
+                    "type": resolved_type,
+                }
+            )
+        )
+
+    for key in sorted(defaults):
+        if key in schema_by_key:
+            continue
+        default_value = defaults[key]
+        merged.append(
+            PrivateDataField(
+                key=key,
+                label=key.replace("_", " ").title(),
+                type=_infer_private_data_type(default_value),
+                required=False,
+                default_value=default_value,
+                description=f"Configured private data value for {key}",
+            )
+        )
+
+    return merged
 
 
 # MARK: Read Routes
@@ -123,11 +185,14 @@ async def get_demo(demo_id: str) -> DemoDetailResponse:
 
 
 @router.get("/{demo_id}/details", response_model=DemoFullDetailsResponse)
-async def get_demo_full_details(demo_id: str) -> DemoFullDetailsResponse:
+async def get_demo_full_details(
+    demo_id: str, variant: str | None = None
+) -> DemoFullDetailsResponse:
     """Get full details for a demo including private data schema.
 
     Args:
         demo_id: The demo ID.
+        variant: Optional demo variant to load.
 
     Returns:
         Full demo details.
@@ -143,7 +208,8 @@ async def get_demo_full_details(demo_id: str) -> DemoFullDetailsResponse:
 
     # Load the demo to get full details
     loader = get_demo_loader()
-    loaded = loader.load(demo, variant=_resolve_demo_variant(demo))
+    resolved_variant = _resolve_demo_variant(demo, variant)
+    loaded = loader.load(demo, variant=resolved_variant)
 
     # Build agents list
     agents: list[AgentInfo] = []
@@ -214,7 +280,11 @@ async def get_demo_full_details(demo_id: str) -> DemoFullDetailsResponse:
     # Extract private data schema
     from maivn_studio.private_data import extract_private_data_schema
 
-    private_data_schema = extract_private_data_schema(loaded)
+    private_data_defaults = _build_private_data_defaults(demo, resolved_variant)
+    private_data_schema = _merge_private_data_schema(
+        extract_private_data_schema(loaded),
+        private_data_defaults,
+    )
 
     return DemoFullDetailsResponse(
         id=demo.id,
@@ -230,6 +300,7 @@ async def get_demo_full_details(demo_id: str) -> DemoFullDetailsResponse:
         tools=tools,
         prompts=prompts,
         privateDataSchema=private_data_schema,
+        privateDataDefaults=private_data_defaults,
         defaultInvocation=loaded.default_invocation,
         runtime_tool_count=calculate_demo_runtime_tool_count(agents, swarms),
     )

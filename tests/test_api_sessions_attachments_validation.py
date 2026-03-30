@@ -254,3 +254,51 @@ async def test_create_session_uses_default_variant_when_request_omits_variant(
     assert exc_info.value.detail == "stop after create"
     assert manager.create_kwargs is not None
     assert manager.create_kwargs["variant"] == "newsletter"
+
+
+@pytest.mark.asyncio
+async def test_create_session_merges_variant_private_data(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    demo = DemoConfig(
+        id="demo-1",
+        name="Demo One",
+        module="demos.demo_one",
+        private_data={"shared_key": "demo-default", "shared_override": "demo-value"},
+        variants={
+            "with-private-data": DemoVariant(
+                args=[],
+                description="Private data variant",
+                private_data={
+                    "shared_override": "variant-value",
+                    "secret_token": "variant-token",
+                },
+            )
+        },
+    )
+    manager = _CapturingCreateManager()
+
+    monkeypatch.setattr(sessions_writes, "get_registry", lambda: _DummyRegistry(demo))
+    monkeypatch.setattr(sessions_writes, "get_session_manager", lambda: manager)
+    monkeypatch.setattr(sessions_writes, "create_event_bridge", lambda _session_id: None)
+
+    request = sessions_models.CreateSessionRequest(
+        demo_id="demo-1",
+        message="hello",
+        variant="with-private-data",
+        private_data={"shared_override": "request-value", "request_only": "user-value"},
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await sessions_writes.create_session(request)
+
+    assert exc_info.value.status_code == 422
+    assert exc_info.value.detail == "stop after create"
+    assert manager.create_kwargs is not None
+    assert manager.create_kwargs["variant"] == "with-private-data"
+    assert manager.create_kwargs["private_data"] == {
+        "shared_key": "demo-default",
+        "shared_override": "request-value",
+        "secret_token": "variant-token",
+        "request_only": "user-value",
+    }

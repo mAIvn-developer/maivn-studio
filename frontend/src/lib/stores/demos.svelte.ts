@@ -5,10 +5,12 @@ import type { Demo, DemoDetails } from "$lib/types";
 let demos = $state<Demo[]>([]);
 let byCategory = $state<Record<string, Demo[]>>({});
 let selectedDemo = $state<DemoDetails | null>(null);
+let selectedDemoId = $state<string | null>(null);
 let loading = $state(false);
 let error = $state<string | null>(null);
 let connecting = $state(false);
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
+let demoRequestToken = 0;
 
 function isNetworkError(e: unknown): boolean {
   if (e instanceof TypeError && e.message.includes("fetch")) return true;
@@ -41,20 +43,35 @@ export function useDemos() {
     }
   }
 
-  async function selectDemo(id: string) {
+  async function selectDemo(id: string, variant?: string) {
     loading = true;
     error = null;
-    selectedDemo = null;
+    selectedDemoId = id;
+    const requestToken = ++demoRequestToken;
+    if (selectedDemo?.id !== id) {
+      selectedDemo = null;
+    }
     try {
-      selectedDemo = await fetchDemoFullDetails(id);
+      const loaded = await fetchDemoFullDetails(id, variant);
+      if (requestToken !== demoRequestToken) {
+        return;
+      }
+      selectedDemo = loaded;
     } catch (e) {
+      if (requestToken !== demoRequestToken) {
+        return;
+      }
       error = e instanceof Error ? e.message : "Failed to load demo details";
     } finally {
-      loading = false;
+      if (requestToken === demoRequestToken) {
+        loading = false;
+      }
     }
   }
 
   function clearSelection() {
+    demoRequestToken += 1;
+    selectedDemoId = null;
     selectedDemo = null;
   }
 
@@ -75,6 +92,9 @@ export function useDemos() {
     },
     get selectedDemo() {
       return selectedDemo;
+    },
+    get selectedDemoId() {
+      return selectedDemoId;
     },
     get loading() {
       return loading;

@@ -132,6 +132,15 @@ describe("fetchDemoFullDetails", () => {
     expect(fetch).toHaveBeenCalledWith("/api/demos/d1/details");
   });
 
+  it("passes the selected variant in the details query string", async () => {
+    const details = { id: "d1", name: "Demo 1", agents: [], tools: [] };
+    mockFetchOk(details);
+
+    await fetchDemoFullDetails("d1", "with-private-data");
+
+    expect(fetch).toHaveBeenCalledWith("/api/demos/d1/details?variant=with-private-data");
+  });
+
   it("throws on non-ok response", async () => {
     mockFetchError(500);
     await expect(fetchDemoFullDetails("d1")).rejects.toThrow("Failed to fetch demo details d1");
