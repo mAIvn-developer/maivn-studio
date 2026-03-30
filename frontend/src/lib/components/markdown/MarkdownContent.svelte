@@ -343,6 +343,9 @@
     color: var(--color-text-tertiary);
   }
 
+  /* Private data badge styles are in app.css (global) so they
+     render correctly in <pre>, tool cards, and other non-markdown contexts. */
+
   .markdown-content :global(a) {
     color: var(--md-accent);
     text-decoration: underline;

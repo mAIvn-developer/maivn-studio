@@ -1,6 +1,10 @@
 <script lang="ts">
   import type { Message } from "$lib/types";
   import { Clock } from "lucide-svelte";
+  import {
+    highlightPrivateData,
+    containsPrivateDataPlaceholders,
+  } from "../markdown/markdown-parser";
   import MarkdownContent from "../markdown/MarkdownContent.svelte";
   import { copyMessageCardContent, copyMessageCardStructuredOutput } from "./message-card-copy";
   import MessageCardActionControls from "./MessageCardActionControls.svelte";
@@ -192,6 +196,12 @@
         {:else}
           <MarkdownContent content={message.content} />
         {/if}
+      {:else if containsPrivateDataPlaceholders(message.content)}
+        <!-- eslint-disable svelte/no-at-html-tags -->
+        <div class="whitespace-pre-wrap text-[var(--color-text-secondary)]">
+          {@html highlightPrivateData(message.content)}
+        </div>
+        <!-- eslint-enable svelte/no-at-html-tags -->
       {:else}
         <div class="whitespace-pre-wrap text-[var(--color-text-secondary)]">
           {message.content}

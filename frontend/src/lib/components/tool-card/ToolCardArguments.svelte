@@ -1,4 +1,8 @@
 <script lang="ts">
+  import {
+    highlightPrivateData,
+    containsPrivateDataPlaceholders,
+  } from "../markdown/markdown-parser";
   import MarkdownContent from "../markdown/MarkdownContent.svelte";
   import { formatToolValue, isToolValueTruncated } from "./tool-card-display";
 
@@ -32,13 +36,22 @@
                 <MarkdownContent content={String(value)} />
               </div>
             {:else}
-              <pre
-                class="font-mono text-[var(--color-text)] whitespace-pre-wrap break-all"
-                class:max-h-24={!isArgExpanded}
-                class:overflow-hidden={!isArgExpanded}>{formatToolValue(
-                  value,
-                  !isArgExpanded,
-                )}</pre>
+              {@const formatted = formatToolValue(value, !isArgExpanded)}
+              {#if containsPrivateDataPlaceholders(formatted)}
+                <!-- eslint-disable svelte/no-at-html-tags -->
+                <pre
+                  class="font-mono text-[var(--color-text)] whitespace-pre-wrap break-all"
+                  class:max-h-24={!isArgExpanded}
+                  class:overflow-hidden={!isArgExpanded}>{@html highlightPrivateData(
+                    formatted,
+                  )}</pre>
+                <!-- eslint-enable svelte/no-at-html-tags -->
+              {:else}
+                <pre
+                  class="font-mono text-[var(--color-text)] whitespace-pre-wrap break-all"
+                  class:max-h-24={!isArgExpanded}
+                  class:overflow-hidden={!isArgExpanded}>{formatted}</pre>
+              {/if}
             {/if}
             {#if isTruncated}
               <button

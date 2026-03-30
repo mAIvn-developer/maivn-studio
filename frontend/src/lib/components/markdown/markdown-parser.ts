@@ -2,6 +2,28 @@ export function escapeHtml(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+const PRIVATE_DATA_BADGE = '<span class="private-data-badge">\u{1F6E1} $1</span>';
+
+const PRIVATE_DATA_RE = /\{_\{(?:&quot;)?([^}"]+?)(?:&quot;)?\}_\}/g;
+const PRIVATE_DATA_RAW_RE = /\{_\{"?([^}"]+?)"?\}_\}/;
+
+/**
+ * Replace {_{key}_} redaction placeholders with inline shield badges.
+ * Works on plain text (no prior HTML escaping required).
+ * Returns an HTML string safe for {@html ...}.
+ */
+export function highlightPrivateData(text: string): string {
+  if (!text || !text.includes("{_{")) return escapeHtml(text);
+  return escapeHtml(text).replace(PRIVATE_DATA_RE, PRIVATE_DATA_BADGE);
+}
+
+/**
+ * Check whether text contains any {_{key}_} redaction placeholders.
+ */
+export function containsPrivateDataPlaceholders(text: string): boolean {
+  return typeof text === "string" && PRIVATE_DATA_RAW_RE.test(text);
+}
+
 export function decodeHtml(text: string): string {
   return text
     .replace(/&quot;/g, '"')
@@ -237,8 +259,18 @@ function formatMarkdownText(text: string): string {
 
   let html = escapeHtml(text).replace(/\n{2,}/g, "\n\n");
 
+  // Extract inline code to placeholders BEFORE emphasis parsing
   html = html.replace(/`([^`]+)`/g, (_match, code: string) => {
     return createPlaceholder(`<code>${code}</code>`, inlineCodePlaceholders);
+  });
+
+  // Extract {_{key}_} private data placeholders BEFORE emphasis parsing
+  // so underscores inside them don't get consumed by italic/bold rules
+  html = html.replace(/\{_\{(?:&quot;)?([^}"]+?)(?:&quot;)?\}_\}/g, (_match, key: string) => {
+    return createPlaceholder(
+      `<span class="private-data-badge">\u{1F6E1} ${key}</span>`,
+      inlineCodePlaceholders,
+    );
   });
 
   html = renderTables(html);
