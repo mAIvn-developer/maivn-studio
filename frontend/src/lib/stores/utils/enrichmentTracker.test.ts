@@ -38,6 +38,15 @@ describe("constants", () => {
     expect(MEMORY_PHASE_SCOPE_MAP["memory_indexing"]).toBe("__memory:index__");
     expect(MEMORY_PHASE_SCOPE_MAP["memory_indexed"]).toBe("__memory:index__");
     expect(MEMORY_PHASE_SCOPE_MAP["memory_graph_extracting"]).toBe("__memory:index__");
+
+    // Redaction phases each get their own persistent scope so the chip is not
+    // overwritten by later execution-phase chips.
+    expect(MEMORY_PHASE_SCOPE_MAP["message_redaction_applied"]).toBe(
+      "__redaction:session_start__",
+    );
+    expect(MEMORY_PHASE_SCOPE_MAP["tool_result_redaction_applied"]).toBe(
+      "__redaction:tool_results__",
+    );
   });
 
   it("PERSISTENT_MEMORY_PHASES contains all keys from MEMORY_PHASE_SCOPE_MAP", () => {
@@ -71,6 +80,13 @@ describe("constants", () => {
     expect(ENRICHMENT_PHASE_LABELS["complete"]).toBe("Complete");
     expect(ENRICHMENT_PHASE_LABELS["completed"]).toBe("Complete");
     expect(ENRICHMENT_PHASE_LABELS["failed"]).toBe("Failed");
+  });
+
+  it("ENRICHMENT_PHASE_LABELS has labels for redaction phases", () => {
+    expect(ENRICHMENT_PHASE_LABELS["message_redaction_applied"]).toBe("Input redaction applied.");
+    expect(ENRICHMENT_PHASE_LABELS["tool_result_redaction_applied"]).toBe(
+      "Tool-result redaction applied.",
+    );
   });
 });
 

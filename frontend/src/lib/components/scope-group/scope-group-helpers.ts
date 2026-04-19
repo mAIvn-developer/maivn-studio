@@ -75,6 +75,7 @@ const ENRICHMENT_PHASE_LABELS: Record<string, string> = {
   resource_extracted: "Resource extraction complete.",
   redaction_previewed: "Redaction preview completed.",
   message_redaction_applied: "Input redaction applied.",
+  tool_result_redaction_applied: "Tool-result redaction applied.",
   complete: "Complete",
   completed: "Complete",
   failed: "Failed",
