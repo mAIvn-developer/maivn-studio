@@ -55,7 +55,11 @@ export function isMemoryPhaseChip(chip: PhaseChipData): boolean {
   if (normalizedPhase.startsWith("memory_")) {
     return true;
   }
-  if (normalizedPhase.startsWith("redaction_") || normalizedPhase === "message_redaction_applied") {
+  if (
+    normalizedPhase.startsWith("redaction_") ||
+    normalizedPhase === "message_redaction_applied" ||
+    normalizedPhase === "tool_result_redaction_applied"
+  ) {
     return true;
   }
   return chip.memory !== undefined || chip.redaction !== undefined;

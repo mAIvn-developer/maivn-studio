@@ -24,6 +24,7 @@ export const MEMORY_PHASE_SCOPE_MAP: Record<string, string> = {
   memory_graph_extracting: "__memory:index__",
   redaction_previewed: "__redaction:preview__",
   message_redaction_applied: "__redaction:session_start__",
+  tool_result_redaction_applied: "__redaction:tool_results__",
 };
 
 export const PERSISTENT_MEMORY_PHASES = new Set<string>(Object.keys(MEMORY_PHASE_SCOPE_MAP));
@@ -77,6 +78,7 @@ export const ENRICHMENT_PHASE_LABELS: Record<string, string> = {
   resource_extracted: "Resource extraction complete.",
   redaction_previewed: "Redaction preview completed.",
   message_redaction_applied: "Input redaction applied.",
+  tool_result_redaction_applied: "Tool-result redaction applied.",
   complete: "Complete",
   completed: "Complete",
   failed: "Failed",
