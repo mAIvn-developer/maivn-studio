@@ -41,9 +41,7 @@ describe("constants", () => {
 
     // Redaction phases each get their own persistent scope so the chip is not
     // overwritten by later execution-phase chips.
-    expect(MEMORY_PHASE_SCOPE_MAP["message_redaction_applied"]).toBe(
-      "__redaction:session_start__",
-    );
+    expect(MEMORY_PHASE_SCOPE_MAP["message_redaction_applied"]).toBe("__redaction:session_start__");
     expect(MEMORY_PHASE_SCOPE_MAP["tool_result_redaction_applied"]).toBe(
       "__redaction:tool_results__",
     );
