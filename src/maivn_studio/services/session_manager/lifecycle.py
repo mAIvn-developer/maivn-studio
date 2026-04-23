@@ -20,41 +20,37 @@ from .private_data import apply_private_data
 # MARK: Resource Cleanup
 
 
-def close_scope_resources(scope: Any) -> None:
-    """Close an executor/agent/swarm scope if it exposes cleanup APIs."""
-    close_fn = getattr(scope, "close", None)
-    if callable(close_fn):
-        try:
-            close_fn()
-        except Exception:
-            pass
-        return
-
-    close_mcp_servers = getattr(scope, "close_mcp_servers", None)
-    if callable(close_mcp_servers):
-        try:
-            close_mcp_servers()
-        except Exception:
-            pass
-
-
 def release_loaded_demo(session: StudioSession) -> None:
-    """Release resources associated with a loaded demo."""
-    loaded = session._loaded_demo
-    if loaded is None:
+    """Drop the session's reference to its loaded demo.
+
+    Historically this also called ``close()`` on the demo's executor /
+    agents / swarms. That broke demos whose ``Agent`` is a module-level
+    singleton in a submodule - e.g. ``demos/projects/email_project/
+    agent.py`` exporting ``agent = Agent(...)`` that the leaf demo
+    module picks up via ``from .agent import agent``. On the next
+    session, ``DemoLoader`` calls ``importlib.reload`` on the LEAF
+    module only; the submodule stays cached, so ``loaded.agents`` on
+    the new run resolves back to the SAME (now-closed) ``Agent``
+    instance. The first tool dispatch then raised
+    ``cannot schedule new futures after shutdown`` because the
+    ``BackgroundExecutor`` attached to that shared Agent had already
+    been torn down by the previous session's cleanup.
+
+    Fix: the ``DemoLoader`` does not create the Agent / Swarm objects -
+    it discovers module-level globals via ``dir()`` - so Studio must
+    not close them. Their lifecycle belongs to the demo authors
+    (typically "live for the process lifetime"). If a demo truly does
+    need per-run cleanup, GC will handle it when the reloaded module
+    replaces the global and the old instance becomes unreachable
+    (Agent.__del__ -> close()).
+
+    Defense-in-depth at the SDK layer:
+    ``libraries/maivn/.../background_executor.py`` now revives a shut-
+    down pool on the next ``submit()``, so a previous version's
+    ``close()`` can no longer brick a cached Agent.
+    """
+    if session._loaded_demo is None:
         return
-
-    seen: set[int] = set()
-    scopes = [loaded.executor, *loaded.agents, *loaded.swarms]
-    for scope in scopes:
-        if scope is None:
-            continue
-        scope_id = id(scope)
-        if scope_id in seen:
-            continue
-        seen.add(scope_id)
-        close_scope_resources(scope)
-
     session._loaded_demo = None
 
 
