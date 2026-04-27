@@ -20,6 +20,45 @@ from .private_data import apply_private_data
 # MARK: Resource Cleanup
 
 
+def close_loaded_demo_resources(session: StudioSession) -> None:
+    """Close loaded demo executors during process-level shutdown."""
+    loaded_demo = session._loaded_demo
+    if loaded_demo is None:
+        return
+
+    seen: set[int] = set()
+    for resource in _iter_loaded_demo_resources(loaded_demo):
+        resource_id = id(resource)
+        if resource_id in seen:
+            continue
+        seen.add(resource_id)
+
+        close = getattr(resource, "close", None)
+        if not callable(close):
+            continue
+        try:
+            close()
+        except Exception:
+            pass
+
+
+def _iter_loaded_demo_resources(loaded_demo: Any) -> list[Any]:
+    resources: list[Any] = []
+    executor = getattr(loaded_demo, "executor", None)
+    if executor is not None:
+        resources.append(executor)
+
+    swarms = list(getattr(loaded_demo, "swarms", []) or [])
+    agents = list(getattr(loaded_demo, "agents", []) or [])
+    resources.extend(swarms)
+    resources.extend(agents)
+
+    for swarm in swarms:
+        resources.extend(list(getattr(swarm, "agents", []) or []))
+
+    return resources
+
+
 def release_loaded_demo(session: StudioSession) -> None:
     """Drop the session's reference to its loaded demo.
 
@@ -69,6 +108,7 @@ async def shutdown_sessions(sessions: list[StudioSession]) -> None:
         session._task = None
 
     for session in sessions:
+        close_loaded_demo_resources(session)
         release_loaded_demo(session)
 
     for session in sessions:

@@ -1,4 +1,4 @@
-# MAIVN Studio Security Sweep
+# mAIvn Studio Security Sweep
 
 Date: 2026-03-22
 Repo: `apps/maivn-studio`
@@ -37,7 +37,7 @@ Branch: `codex/deploy-readiness-maivn-studio`
 
 ## Residual Risk and Deployment Guidance
 
-MAIVN Studio is a local developer tool, not a multi-tenant network service.
+mAIvn Studio is a local developer tool, not a multi-tenant network service.
 
 - It dynamically loads demo modules from the current project by design.
 - That means running Studio against an untrusted repository is equivalent to executing untrusted local code.
