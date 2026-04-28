@@ -7,7 +7,7 @@ import binascii
 from typing import Any
 
 from maivn_shared import MemoryConfig
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # MARK: Invocation Models
 
@@ -33,6 +33,73 @@ class InvocationConfig(BaseModel):
     metadata: dict[str, Any] | None = None
     memory_config: MemoryConfig | None = None
     allow_private_in_system_tools: bool | None = None
+
+
+class BatchInvocationRowRequest(BaseModel):
+    """One row in a Studio batch matrix."""
+
+    id: str | None = None
+    label: str | None = None
+    message: str
+    variant: str | None = None
+    model: str | None = None
+    reasoning: str | None = None
+    system_message: str | None = None
+    targeted_tools: list[str] | None = None
+
+    @field_validator("label", "variant", "model", "reasoning", "system_message", mode="before")
+    @classmethod
+    def _normalize_optional_text(cls, value: Any) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            return value
+        stripped = value.strip()
+        return stripped or None
+
+    @field_validator("message")
+    @classmethod
+    def _normalize_message(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("batch row message is required")
+        return stripped
+
+    @field_validator("targeted_tools")
+    @classmethod
+    def _normalize_targeted_tools(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        tools = [item.strip() for item in value if item.strip()]
+        return tools or None
+
+
+class BatchInvocationRequest(BaseModel):
+    """Batch execution configuration for one Studio turn."""
+
+    enabled: bool = False
+    messages: list[str] = Field(default_factory=list)
+    rows: list[BatchInvocationRowRequest] = Field(default_factory=list)
+    max_concurrency: int | None = None
+    async_mode: bool = True
+
+    @field_validator("messages")
+    @classmethod
+    def _normalize_messages(cls, value: list[str]) -> list[str]:
+        return [item.strip() for item in value if item.strip()]
+
+    @field_validator("max_concurrency")
+    @classmethod
+    def _validate_max_concurrency(cls, value: int | None) -> int | None:
+        if value is not None and value < 1:
+            raise ValueError("max_concurrency must be greater than 0")
+        return value
+
+    @model_validator(mode="after")
+    def _validate_enabled_messages(self) -> BatchInvocationRequest:
+        if self.enabled and not self.messages and not self.rows:
+            raise ValueError("batch requires at least one message or row when enabled")
+        return self
 
 
 # MARK: Attachment Models
@@ -82,6 +149,7 @@ class CreateSessionRequest(BaseModel):
     private_data: dict[str, Any] | None = None
     structured_output: StructuredOutputRequest | None = None
     invocation: InvocationConfig | None = None
+    batch: BatchInvocationRequest | None = None
 
 
 class SendMessageRequest(BaseModel):
@@ -92,6 +160,7 @@ class SendMessageRequest(BaseModel):
     attachments: list[MessageAttachmentPayload] | None = None
     structured_output: StructuredOutputRequest | None = None
     invocation: InvocationConfig | None = None
+    batch: BatchInvocationRequest | None = None
 
 
 class SubmitInterruptRequest(BaseModel):

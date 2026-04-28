@@ -67,4 +67,15 @@ describe("api_client connectToEvents", () => {
       eventId: "payload-id",
     });
   });
+
+  it("subscribes to batch lifecycle events", () => {
+    const { MockEventSource, listeners } = makeMockEventSource();
+    vi.stubGlobal("EventSource", MockEventSource);
+
+    connectToEvents("s1", vi.fn());
+
+    expect(Object.keys(listeners)).toEqual(
+      expect.arrayContaining(["batch_start", "batch_item_complete", "batch_complete"]),
+    );
+  });
 });

@@ -6,6 +6,7 @@ import {
   finalizeStreamingAssistantMessage,
   handleAssistantChunk,
 } from "./assistant-events";
+import { handleBatchComplete, handleBatchItemComplete, handleBatchStart } from "./batch-events";
 import { handleEnrichment } from "./enrichment-events";
 import { handleInterruptRequired } from "./interrupt-events";
 import { handleSessionStart } from "./session-lifecycle-events";
@@ -87,6 +88,21 @@ function processNormalizedEvent(
 
     case "agent_assignment": {
       handleAgentAssignment(ctx, eventData);
+      break;
+    }
+
+    case "batch_start": {
+      handleBatchStart(ctx, eventData);
+      break;
+    }
+
+    case "batch_item_complete": {
+      handleBatchItemComplete(ctx, eventData);
+      break;
+    }
+
+    case "batch_complete": {
+      handleBatchComplete(ctx, eventData);
       break;
     }
 

@@ -57,6 +57,25 @@ export interface InvocationConfig {
   allow_private_in_system_tools?: boolean;
 }
 
+export interface BatchInvocationConfig {
+  enabled: boolean;
+  messages?: string[];
+  rows?: BatchInvocationRow[];
+  max_concurrency?: number;
+  async_mode?: boolean;
+}
+
+export interface BatchInvocationRow {
+  id?: string;
+  label?: string;
+  message: string;
+  variant?: string;
+  model?: InvocationConfig["model"];
+  reasoning?: InvocationConfig["reasoning"];
+  system_message?: string;
+  targeted_tools?: string[];
+}
+
 // MARK: Structured Output Types
 
 export interface StructuredOutputConfig {

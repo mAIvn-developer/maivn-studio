@@ -22,6 +22,7 @@
   import { useDemos } from "$lib/stores/demos.svelte";
   import { useSession } from "$lib/stores/session/index.svelte";
   import type {
+    BatchInvocationConfig,
     Demo,
     ModelToolOption,
     RepoScanItem,
@@ -268,8 +269,14 @@
     startSession: (demoId, message, options) => {
       session.startSession(demoId, message, options);
     },
-    sendMessage: (message, messageType, structuredOutput, attachments) => {
-      session.send(message, messageType, structuredOutput, attachments);
+    sendMessage: (
+      message,
+      messageType,
+      structuredOutput,
+      attachments,
+      batch?: BatchInvocationConfig,
+    ) => {
+      session.send(message, messageType, structuredOutput, attachments, batch);
     },
     setMessageType: (type) => {
       session.setMessageType(type);

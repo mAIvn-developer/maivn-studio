@@ -91,8 +91,11 @@ export function handleTurnCompleteOrFinal(
   const queuedMessageCount =
     typeof eventData.queued_message_count === "number" ? eventData.queued_message_count : 0;
   const orphanedPendingAssistantText = helpers.consumePendingAssistantChunks(ctx);
+  const isBatchTurn = asRecord(eventData.batch) !== undefined;
 
-  if (hasStreamingAssistant) {
+  if (isBatchTurn && !response && !orphanedPendingAssistantText) {
+    // The batch result card owns the visible output for grouped executions.
+  } else if (hasStreamingAssistant) {
     const targetItemId = streamingAssistantItemId;
     ctx.setChatFlowItems(
       ctx.getChatFlowItems().map((item) => {

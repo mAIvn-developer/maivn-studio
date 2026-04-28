@@ -1,4 +1,5 @@
 import type {
+  BatchInvocationConfig,
   Demo,
   MessageAttachmentPayload,
   SendableMessageType,
@@ -19,6 +20,7 @@ interface CreateStudioSessionActionsParams {
       attachments?: MessageAttachmentPayload[];
       systemMessage?: string;
       structuredOutput?: StructuredOutputConfig;
+      batch?: BatchInvocationConfig;
     },
   ) => void;
   sendMessage: (
@@ -26,6 +28,7 @@ interface CreateStudioSessionActionsParams {
     messageType?: SendableMessageType,
     structuredOutput?: StructuredOutputConfig,
     attachments?: MessageAttachmentPayload[],
+    batch?: BatchInvocationConfig,
   ) => void;
   setMessageType: (type: SendableMessageType) => void;
   setPrivateData: (data: Record<string, unknown>) => void;
@@ -52,6 +55,7 @@ export function createStudioSessionActions(params: CreateStudioSessionActionsPar
       attachments?: MessageAttachmentPayload[];
       systemMessage?: string;
       structuredOutput?: StructuredOutputConfig;
+      batch?: BatchInvocationConfig;
     },
   ) {
     const selectedDemo = params.getSelectedDemo();
@@ -64,8 +68,9 @@ export function createStudioSessionActions(params: CreateStudioSessionActionsPar
     messageType?: SendableMessageType,
     structuredOutput?: StructuredOutputConfig,
     attachments?: MessageAttachmentPayload[],
+    batch?: BatchInvocationConfig,
   ) {
-    params.sendMessage(message, messageType, structuredOutput, attachments);
+    params.sendMessage(message, messageType, structuredOutput, attachments, batch);
   }
 
   function handleMessageTypeChange(type: SendableMessageType) {

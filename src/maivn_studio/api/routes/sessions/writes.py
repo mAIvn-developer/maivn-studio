@@ -9,6 +9,7 @@ from maivn_studio.services.event_bridge import create_event_bridge
 from maivn_studio.services.session_manager.manager import get_session_manager
 
 from .helpers import (
+    _build_batch_config,
     _build_invocation_kwargs,
     _build_structured_output_config,
     _get_session_or_404,
@@ -86,6 +87,12 @@ async def create_session(request: CreateSessionRequest) -> SessionResponse:
 
     structured_output_config = _build_structured_output_config(request.structured_output)
     invocation_kwargs = _build_invocation_kwargs(request.invocation)
+    attachments = _serialize_attachments(request.attachments)
+    batch_config = _build_batch_config(
+        request.batch,
+        message_type=request.message_type,
+        attachments=attachments,
+    )
 
     try:
         await manager.start_session(
@@ -93,9 +100,10 @@ async def create_session(request: CreateSessionRequest) -> SessionResponse:
             request.message,
             message_type=request.message_type,
             system_message=request.system_message,
-            attachments=_serialize_attachments(request.attachments),
+            attachments=attachments,
             structured_output=structured_output_config,
             invocation_kwargs=invocation_kwargs or None,
+            batch_config=batch_config,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -120,15 +128,22 @@ async def send_message(session_id: str, request: SendMessageRequest) -> SessionR
 
     structured_output_config = _build_structured_output_config(request.structured_output)
     invocation_kwargs = _build_invocation_kwargs(request.invocation)
+    attachments = _serialize_attachments(request.attachments)
+    batch_config = _build_batch_config(
+        request.batch,
+        message_type=request.message_type,
+        attachments=attachments,
+    )
 
     try:
         await manager.send_message(
             session,
             request.message,
             message_type=request.message_type,
-            attachments=_serialize_attachments(request.attachments),
+            attachments=attachments,
             structured_output=structured_output_config,
             invocation_kwargs=invocation_kwargs or None,
+            batch_config=batch_config,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

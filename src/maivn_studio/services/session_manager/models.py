@@ -63,6 +63,7 @@ class QueuedMessage:
     attachments: list[dict[str, Any]] | None = None
     structured_output: dict[str, Any] | None = None
     invocation_kwargs: dict[str, Any] | None = None
+    batch_config: dict[str, Any] | None = None
 
 
 # MARK: Session Status

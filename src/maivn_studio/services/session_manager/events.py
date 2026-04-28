@@ -19,6 +19,7 @@ async def emit_session_start_event(
 ) -> None:
     """Emit a session_start SSE event with queue telemetry."""
     structured_output_config = session.metadata.get("structured_output")
+    batch_config = session.metadata.get("batch_config")
     await manager._emit_event(
         session,
         "session_start",
@@ -28,6 +29,7 @@ async def emit_session_start_event(
             "executor_type": executor_type,
             "executor_name": executor.name,
             "structured_output": structured_output_config is not None,
+            "batch": isinstance(batch_config, dict),
             "queued_message_count": session.queued_message_count,
             "consumed_queued_message_count": consumed_queued_message_count,
         },

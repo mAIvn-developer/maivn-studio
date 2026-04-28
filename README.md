@@ -7,6 +7,7 @@ Local developer studio for discovering demos, running sessions, and debugging ag
 - Demo discovery from configured repository paths
 - Rich demo introspection (agents, swarms, tools, prompts, private data schema)
 - Multi-turn session APIs
+- Batch Matrix and async-batch session execution with grouped result cards
 - Real-time Server-Sent Events stream for execution visibility
 - Runtime patching for demos, agents, and swarms
 

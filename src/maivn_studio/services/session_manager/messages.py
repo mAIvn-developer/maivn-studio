@@ -24,6 +24,7 @@ def apply_turn_configuration(
     *,
     structured_output: dict[str, Any] | None,
     invocation_kwargs: dict[str, Any] | None,
+    batch_config: dict[str, Any] | None = None,
 ) -> None:
     """Set or clear per-turn structured output and invocation kwargs in session metadata."""
     if structured_output:
@@ -35,6 +36,11 @@ def apply_turn_configuration(
         session.metadata["invocation_kwargs"] = invocation_kwargs
     else:
         session.metadata.pop("invocation_kwargs", None)
+
+    if batch_config:
+        session.metadata["batch_config"] = batch_config
+    else:
+        session.metadata.pop("batch_config", None)
 
 
 def resolve_structured_output_metadata_fallback(
@@ -72,6 +78,7 @@ def enqueue_message(
     attachments: list[dict[str, Any]] | None,
     structured_output: dict[str, Any] | None,
     invocation_kwargs: dict[str, Any] | None,
+    batch_config: dict[str, Any] | None,
 ) -> None:
     """Append a message to the session's queue for deferred delivery."""
     session.queued_messages.append(
@@ -81,6 +88,7 @@ def enqueue_message(
             attachments=attachments,
             structured_output=structured_output,
             invocation_kwargs=invocation_kwargs,
+            batch_config=batch_config,
         )
     )
 
@@ -89,15 +97,16 @@ def consume_queued_messages(
     session: StudioSession,
     *,
     create_message_fn: Callable[..., BaseMessage],
-) -> tuple[int, dict[str, Any] | None, dict[str, Any] | None]:
+) -> tuple[int, dict[str, Any] | None, dict[str, Any] | None, dict[str, Any] | None]:
     """Drain queued messages into the session message history."""
     queued_messages = list(session.queued_messages)
     if not queued_messages:
-        return 0, None, None
+        return 0, None, None, None
 
     session.queued_messages.clear()
     next_structured_output: dict[str, Any] | None = None
     next_invocation_kwargs: dict[str, Any] | None = None
+    next_batch_config: dict[str, Any] | None = None
 
     for queued in queued_messages:
         session.messages.append(
@@ -109,8 +118,9 @@ def consume_queued_messages(
         )
         next_structured_output = queued.structured_output
         next_invocation_kwargs = queued.invocation_kwargs
+        next_batch_config = queued.batch_config
 
-    return len(queued_messages), next_structured_output, next_invocation_kwargs
+    return len(queued_messages), next_structured_output, next_invocation_kwargs, next_batch_config
 
 
 # MARK: Message Construction

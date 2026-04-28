@@ -9,16 +9,19 @@ from unittest.mock import MagicMock
 
 import pytest
 from fastapi import HTTPException
+from fastapi.routing import APIRoute
 
 from maivn_studio.api.routes.sessions import models as sessions_models
 from maivn_studio.api.routes.sessions import reads as sessions_reads
 from maivn_studio.api.routes.sessions import routes as sessions_routes
 from maivn_studio.api.routes.sessions import writes as sessions_writes
 from maivn_studio.api.routes.sessions.helpers import (
+    _build_batch_config,
     _build_invocation_kwargs,
     _build_structured_output_config,
 )
 from maivn_studio.api.routes.sessions.models import (
+    BatchInvocationRequest,
     InvocationConfig,
     StructuredOutputRequest,
 )
@@ -145,6 +148,89 @@ class TestBuildInvocationKwargs:
         assert result["targeted_tools"] == ["t1"]
         assert result["metadata"] == {"m": 1}
         assert result["allow_private_in_system_tools"] is False
+
+
+# MARK: Helpers - _build_batch_config
+
+
+class TestBuildBatchConfig:
+    def test_returns_none_when_none_or_disabled(self) -> None:
+        assert _build_batch_config(None, message_type="human", attachments=None) is None
+        assert (
+            _build_batch_config(
+                BatchInvocationRequest(enabled=False),
+                message_type="human",
+                attachments=None,
+            )
+            is None
+        )
+
+    def test_returns_config_when_enabled(self) -> None:
+        attachments = [{"name": "sample.txt", "content_base64": "YWJj"}]
+        result = _build_batch_config(
+            BatchInvocationRequest(
+                enabled=True,
+                messages=["alpha", "beta"],
+                max_concurrency=2,
+                async_mode=False,
+            ),
+            message_type="redacted",
+            attachments=attachments,
+        )
+        assert result == {
+            "messages": ["alpha", "beta"],
+            "rows": [],
+            "max_concurrency": 2,
+            "async_mode": False,
+            "message_type": "redacted",
+            "attachments": attachments,
+        }
+
+    def test_batch_request_strips_empty_messages(self) -> None:
+        request = BatchInvocationRequest(
+            enabled=True,
+            messages=[" alpha ", "", " beta "],
+        )
+        assert request.messages == ["alpha", "beta"]
+
+    def test_returns_matrix_rows_when_enabled(self) -> None:
+        result = _build_batch_config(
+            BatchInvocationRequest(
+                enabled=True,
+                rows=[
+                    {
+                        "label": " A ",
+                        "message": " alpha ",
+                        "variant": "agent-sync",
+                        "model": "fast",
+                        "reasoning": "low",
+                        "targeted_tools": [" lookup ", ""],
+                        "system_message": " terse ",
+                    }
+                ],
+            ),
+            message_type="human",
+            attachments=None,
+        )
+
+        assert result == {
+            "messages": ["alpha"],
+            "rows": [
+                {
+                    "label": "A",
+                    "message": "alpha",
+                    "variant": "agent-sync",
+                    "model": "fast",
+                    "reasoning": "low",
+                    "system_message": "terse",
+                    "targeted_tools": ["lookup"],
+                }
+            ],
+            "max_concurrency": None,
+            "async_mode": True,
+            "message_type": "human",
+            "attachments": None,
+        }
 
 
 # MARK: Fake Models
@@ -667,7 +753,7 @@ class TestSessionRouterRegistration:
         registered_routes = {
             (route.path, tuple(sorted(route.methods)))
             for route in sessions_routes.router.routes
-            if getattr(route, "methods", None)
+            if isinstance(route, APIRoute)
         }
 
         assert ("/api/sessions", ("GET",)) in registered_routes
@@ -679,7 +765,7 @@ class TestSessionRouterRegistration:
         registered_routes = [
             (route.path, tuple(sorted(route.methods)))
             for route in sessions_routes.router.routes
-            if getattr(route, "methods", None)
+            if isinstance(route, APIRoute)
         ]
 
         assert len(registered_routes) == len(set(registered_routes))

@@ -71,11 +71,13 @@ class SessionManager:
         *,
         structured_output: dict[str, Any] | None,
         invocation_kwargs: dict[str, Any] | None,
+        batch_config: dict[str, Any] | None = None,
     ) -> None:
         apply_turn_configuration(
             session,
             structured_output=structured_output,
             invocation_kwargs=invocation_kwargs,
+            batch_config=batch_config,
         )
 
     @staticmethod
@@ -149,6 +151,7 @@ class SessionManager:
         attachments: list[dict[str, Any]] | None,
         structured_output: dict[str, Any] | None,
         invocation_kwargs: dict[str, Any] | None,
+        batch_config: dict[str, Any] | None,
     ) -> None:
         enqueue_message(
             session,
@@ -157,17 +160,21 @@ class SessionManager:
             attachments=attachments,
             structured_output=structured_output,
             invocation_kwargs=invocation_kwargs,
+            batch_config=batch_config,
         )
 
     def _consume_queued_messages(self, session: StudioSession) -> int:
-        count, next_structured_output, next_invocation_kwargs = consume_queued_messages(
-            session,
-            create_message_fn=self._create_message,
+        count, next_structured_output, next_invocation_kwargs, next_batch_config = (
+            consume_queued_messages(
+                session,
+                create_message_fn=self._create_message,
+            )
         )
         self._apply_turn_configuration(
             session,
             structured_output=next_structured_output,
             invocation_kwargs=next_invocation_kwargs,
+            batch_config=next_batch_config,
         )
         return count
 
@@ -230,6 +237,7 @@ class SessionManager:
         attachments: list[dict[str, Any]] | None = None,
         structured_output: dict[str, Any] | None = None,
         invocation_kwargs: dict[str, Any] | None = None,
+        batch_config: dict[str, Any] | None = None,
     ) -> None:
         """Start executing a session with an initial message.
 
@@ -241,6 +249,7 @@ class SessionManager:
             attachments: Optional message attachments for multimodal ingestion.
             structured_output: Optional structured output configuration.
             invocation_kwargs: Optional SDK invocation parameters (model, reasoning, etc.).
+            batch_config: Optional batch execution parameters for this turn.
         """
         await start_session_execution(
             self,
@@ -251,6 +260,7 @@ class SessionManager:
             attachments=attachments,
             structured_output=structured_output,
             invocation_kwargs=invocation_kwargs,
+            batch_config=batch_config,
         )
         logger.info("Started session %s", session.session_id)
 
@@ -262,6 +272,7 @@ class SessionManager:
         attachments: list[dict[str, Any]] | None = None,
         structured_output: dict[str, Any] | None = None,
         invocation_kwargs: dict[str, Any] | None = None,
+        batch_config: dict[str, Any] | None = None,
     ) -> None:
         """Send a follow-up message for multi-turn conversation.
 
@@ -272,6 +283,7 @@ class SessionManager:
             attachments: Optional message attachments for multimodal ingestion.
             structured_output: Optional structured output configuration.
             invocation_kwargs: Optional SDK invocation parameters (model, reasoning, etc.).
+            batch_config: Optional batch execution parameters for this turn.
         """
         await send_followup_message(
             self,
@@ -281,6 +293,7 @@ class SessionManager:
             attachments=attachments,
             structured_output=structured_output,
             invocation_kwargs=invocation_kwargs,
+            batch_config=batch_config,
         )
         logger.info("Continuing session %s with new message", session.session_id)
 

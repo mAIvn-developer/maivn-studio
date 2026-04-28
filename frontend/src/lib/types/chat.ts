@@ -1,10 +1,16 @@
 import type { Message } from "./messages";
+import type { TokenUsage } from "./session";
 import type { InterruptData } from "./interrupts";
 import type { ExtractedSkillSummary, ExtractedInsightSummary } from "./memory";
 
 // MARK: Chat Flow Types
 
-export type ChatFlowItemType = "message" | "tool_card" | "interrupt_card" | "phase_chip";
+export type ChatFlowItemType =
+  | "message"
+  | "tool_card"
+  | "interrupt_card"
+  | "phase_chip"
+  | "batch_result";
 
 export interface MemoryActivityData {
   mode?: string;
@@ -74,7 +80,43 @@ export interface ChatFlowItem {
   id: string;
   type: ChatFlowItemType;
   timestamp: string;
-  data: Message | ToolCard | InterruptData | PhaseChipData;
+  data: Message | ToolCard | InterruptData | PhaseChipData | BatchResult;
+}
+
+// MARK: Batch Result Types
+
+export type BatchResultStatus = "running" | "completed" | "failed";
+export type BatchResultItemStatus = "pending" | "completed" | "failed";
+
+export interface BatchResultItem {
+  index: number;
+  label?: string;
+  input: string;
+  status: BatchResultItemStatus;
+  variant?: string;
+  model?: string;
+  reasoning?: string;
+  responses?: string[];
+  response?: string;
+  result?: unknown;
+  error?: string;
+  duration_ms?: number;
+  token_usage?: TokenUsage;
+}
+
+export interface BatchResult {
+  batchId: string;
+  mode: "batch" | "abatch";
+  status: BatchResultStatus;
+  itemCount: number;
+  maxConcurrency?: number;
+  asyncMode: boolean;
+  startedAt: string;
+  completedAt?: string;
+  duration_ms?: number;
+  token_usage?: TokenUsage;
+  error?: string;
+  items: BatchResultItem[];
 }
 
 // MARK: Tool Card Types
