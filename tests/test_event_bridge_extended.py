@@ -10,7 +10,6 @@ import pytest
 
 from maivn_studio.services.event_bridge import (
     EventBridge,
-    StudioEventBridge,
     UIEvent,
     _bridges,
     _safe_json_dumps,
@@ -18,6 +17,21 @@ from maivn_studio.services.event_bridge import (
     get_event_bridge,
     remove_event_bridge,
 )
+
+
+def StudioEventBridge(session_id: str) -> EventBridge:  # noqa: N802
+    """Test factory matching Studio's bridge configuration.
+
+    Studio's `create_event_bridge()` uses the registry; tests prefer to
+    construct bridges in isolation, so we mirror Studio's flags here
+    without going through the registry.
+    """
+    return EventBridge(
+        session_id,
+        audience="internal",
+        dedupe_status_messages=True,
+    )
+
 
 # MARK: Fixtures
 

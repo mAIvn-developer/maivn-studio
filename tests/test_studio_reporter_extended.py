@@ -13,8 +13,18 @@ from maivn._internal.utils.reporting.terminal_reporter.event_router.reporter imp
     EventRouterReporter,
 )
 
-from maivn_studio.services.event_bridge import EventBridge, StudioEventBridge
+from maivn_studio.services.event_bridge import EventBridge
 from maivn_studio.services.studio_reporter.reporter import StudioReporter
+
+
+def StudioEventBridge(session_id: str) -> EventBridge:  # noqa: N802
+    """Test factory matching Studio's runtime bridge configuration."""
+    return EventBridge(
+        session_id,
+        audience="internal",
+        dedupe_status_messages=True,
+    )
+
 
 # MARK: Helpers
 

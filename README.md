@@ -55,7 +55,7 @@ If you launch Studio without a config file, the default URL is
 - `docs/authoring-and-debugging.md`
 - `../../libraries/maivn/docs/guides/maivn-studio.md`
 - `../../libraries/maivn/docs/api/events.md`
-- `../../libraries/maivn/docs/guides/frontend-event-bridges.md`
+- `../../libraries/maivn/docs/guides/frontend-events.md`
 
 Studio's backend event stream is built on the shared `maivn.events.EventBridge` contract. Known mAIvn event families are standardized in the shared bridge layer, so Studio inherits canonical packet shapes and stable tool/assignment/scope identities from the SDK. Replay ownership is explicit in the session execution path, Studio keeps any legacy/raw frontend compatibility parsing at the SSE ingress boundary, and the remaining app-specific dedupe is limited to overlapping logical deliveries such as repeated interrupts or repeated identical status messages within a turn.
 
