@@ -39,6 +39,7 @@ interface CreateSessionStoreApiParams {
       systemMessage?: string;
       privateData?: Record<string, unknown>;
       structuredOutput?: import("$lib/types").StructuredOutputConfig;
+      batch?: import("$lib/types").BatchInvocationConfig;
     },
   ) => Promise<void>;
   send: (
@@ -46,6 +47,7 @@ interface CreateSessionStoreApiParams {
     messageType?: SendableMessageType,
     structuredOutput?: import("$lib/types").StructuredOutputConfig,
     attachments?: import("$lib/types").MessageAttachmentPayload[],
+    batch?: import("$lib/types").BatchInvocationConfig,
   ) => Promise<void>;
   end: () => Promise<void>;
   cancel: () => Promise<void>;

@@ -1,5 +1,6 @@
 import { createSession, sendMessage } from "$lib/api_client/sessions";
 import type {
+  BatchInvocationConfig,
   InvocationConfig,
   MemoryConfig,
   MessageAttachmentPayload,
@@ -36,6 +37,7 @@ export function createStartSession(
       systemMessage?: string;
       privateData?: Record<string, unknown>;
       structuredOutput?: StructuredOutputConfig;
+      batch?: BatchInvocationConfig;
     },
   ) {
     ctx.setLoading(true);
@@ -65,6 +67,7 @@ export function createStartSession(
         structuredOutput: options?.structuredOutput,
         systemMessage: options?.systemMessage,
         invocation: effectiveInvocation,
+        batch: options?.batch,
       });
 
       ctx.setSession(session);
@@ -97,6 +100,7 @@ export function createSend(
     msgType?: SendableMessageType,
     structuredOutput?: StructuredOutputConfig,
     attachments?: MessageAttachmentPayload[],
+    batch?: BatchInvocationConfig,
   ) {
     const session = ctx.getSession();
     if (!session || (!session.can_send_message && !session.can_stage_message)) {
@@ -138,6 +142,7 @@ export function createSend(
         structuredOutput,
         effectiveInvocation,
         attachments,
+        batch,
       );
       ctx.setSession(updatedSession);
 

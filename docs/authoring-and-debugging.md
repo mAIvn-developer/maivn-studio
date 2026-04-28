@@ -34,6 +34,38 @@ This endpoint is the fastest way to confirm wiring issues before session executi
 > [!IMAGE]
 > Placeholder: Event stream panel showing tool start/end and interrupt events.
 
+## Batch Debugging
+
+Use composer Advanced settings to enable Batch before starting a session. Studio
+opens the Batch Matrix editor, where each row is one batch item. Rows support a
+prompt, label, variant, model, reasoning level, system message, and targeted
+tools. Studio sends those rows as `batch.rows` and renders a single grouped
+result card with a per-input switcher for running and completed items, including
+status, response, structured result, and token usage when available.
+
+For simple uniform batches, `batch.messages` is still accepted and Studio can
+call the demo executor with `batch()` or `abatch()` directly. If any matrix row
+uses row-level overrides, Studio runs row-specific invocations under the same
+batch concurrency cap so each item can use its selected variant or invocation
+settings.
+
+Set `Instances` above 1 to seed repeated rows from a single prompt. Set `Max
+concurrent` to cap how many of those items may run at once.
+
+In the batch result card, select two or more item checkboxes and switch to
+Compare to review markdown responses side by side. Structured outputs render as
+a field-level diff so stable, changed, and missing values are visible without
+opening raw JSON.
+
+The SSE stream includes:
+
+- `batch_start`: item count, concurrency, async mode, labels, prompts, and row metadata
+- `batch_item_complete`: one completed item payload per input, including row metadata
+- `batch_complete`: aggregate status, duration, token usage, and all item results
+
+Use `max_concurrency` to reproduce throttling behavior without changing demo
+code.
+
 ## Runtime Tweaks Without Restart
 
 Studio supports runtime patch operations:

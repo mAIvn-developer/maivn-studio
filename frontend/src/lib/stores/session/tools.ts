@@ -1,4 +1,11 @@
-import type { ChatFlowFilters, ChatFlowItem, EventSummary, Message, ToolCard } from "$lib/types";
+import type {
+  BatchResult,
+  ChatFlowFilters,
+  ChatFlowItem,
+  EventSummary,
+  Message,
+  ToolCard,
+} from "$lib/types";
 import type { AccumulatedStats } from "./types";
 
 function resolveAgentGroupKey(card: ToolCard): string | null {
@@ -122,7 +129,12 @@ export function filterChatFlowItems(
   filterOpts: ChatFlowFilters,
 ): ChatFlowItem[] {
   return items.filter((item) => {
-    if (filterOpts.itemType === "messages" && item.type !== "message") return false;
+    if (
+      filterOpts.itemType === "messages" &&
+      item.type !== "message" &&
+      item.type !== "batch_result"
+    )
+      return false;
     if (filterOpts.itemType === "tools" && item.type !== "tool_card") return false;
 
     if (item.type === "tool_card" && filterOpts.toolStatus !== "all") {
@@ -164,6 +176,22 @@ export function computeAccumulatedStats(items: ChatFlowItem[]): AccumulatedStats
           stats.cacheReadTokens += message.sessionDetails.token_usage.cache_read_tokens;
           stats.cacheCreationTokens += message.sessionDetails.token_usage.cache_creation_tokens;
         }
+      }
+    } else if (item.type === "batch_result") {
+      const batch = item.data as BatchResult;
+      if (batch.status === "completed" || batch.status === "failed") {
+        stats.sessionCount += batch.itemCount;
+      }
+      if (batch.duration_ms !== undefined) {
+        stats.totalDurationMs += batch.duration_ms;
+      }
+      if (batch.token_usage) {
+        stats.totalTokens += batch.token_usage.total_tokens;
+        stats.inputTokens += batch.token_usage.input_tokens;
+        stats.outputTokens += batch.token_usage.output_tokens;
+        stats.reasoningTokens += batch.token_usage.reasoning_tokens;
+        stats.cacheReadTokens += batch.token_usage.cache_read_tokens;
+        stats.cacheCreationTokens += batch.token_usage.cache_creation_tokens;
       }
     }
   }

@@ -1,5 +1,11 @@
 <script lang="ts">
-  import type { InterruptData, Message, PhaseChipData, ToolCard as ToolCardType } from "$lib/types";
+  import type {
+    BatchResult,
+    InterruptData,
+    Message,
+    PhaseChipData,
+    ToolCard as ToolCardType,
+  } from "$lib/types";
   import MessageCard from "../message/MessageCard.svelte";
   import {
     buildScopeGroups,
@@ -13,6 +19,7 @@
     hasAiTextResponse,
   } from "./exchange-structured-output";
   import ExchangeInlineInterrupts from "./ExchangeInlineInterrupts.svelte";
+  import ExchangeBatchResultCard from "./ExchangeBatchResultCard.svelte";
   import ExchangePhasePreamble from "./ExchangePhasePreamble.svelte";
   import ExchangeScopeGroupList from "./ExchangeScopeGroupList.svelte";
   import ExchangeStatusMessages from "./ExchangeStatusMessages.svelte";
@@ -24,6 +31,7 @@
     phaseChips?: PhaseChipData[];
     statusMessages?: Message[];
     interruptCards?: InterruptData[];
+    batchResults?: BatchResult[];
     aiMessage: Message | null;
     isLive?: boolean;
     showToolArgs?: boolean;
@@ -41,6 +49,7 @@
     phaseChips = [],
     statusMessages = [],
     interruptCards = [],
+    batchResults = [],
     aiMessage,
     isLive = false,
     showToolArgs = true,
@@ -109,6 +118,10 @@
   <ExchangeStatusMessages {statusMessages} />
 
   <ExchangeInlineInterrupts {interruptCards} {onSubmitInterrupt} {onCancelInterrupt} />
+
+  {#each batchResults as batch (batch.batchId)}
+    <ExchangeBatchResultCard {batch} {richResultDisplay} {showSessionDetails} />
+  {/each}
 
   <!-- AI Message (separate card) -->
   {#if aiMessage}

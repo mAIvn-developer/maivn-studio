@@ -10,7 +10,12 @@ from maivn_studio.config.loader import get_config_path, reload_config, set_confi
 from maivn_studio.discovery.registry import init_registry
 from maivn_studio.services.session_manager.manager import get_session_manager
 
-from .models import InvocationConfig, MessageAttachmentPayload, StructuredOutputRequest
+from .models import (
+    BatchInvocationRequest,
+    InvocationConfig,
+    MessageAttachmentPayload,
+    StructuredOutputRequest,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +85,30 @@ def _build_invocation_kwargs(invocation: InvocationConfig | None) -> dict[str, A
         kwargs["allow_private_in_system_tools"] = invocation.allow_private_in_system_tools
 
     return kwargs
+
+
+def _build_batch_config(
+    batch: BatchInvocationRequest | None,
+    *,
+    message_type: str,
+    attachments: list[dict[str, Any]] | None,
+) -> dict[str, Any] | None:
+    if batch is None or not batch.enabled:
+        return None
+
+    rows = [row.model_dump(exclude_none=True) for row in batch.rows]
+    messages = list(batch.messages)
+    if rows and not messages:
+        messages = [str(row["message"]) for row in rows]
+
+    return {
+        "messages": messages,
+        "rows": rows,
+        "max_concurrency": batch.max_concurrency,
+        "async_mode": batch.async_mode,
+        "message_type": message_type,
+        "attachments": attachments,
+    }
 
 
 def _serialize_attachments(

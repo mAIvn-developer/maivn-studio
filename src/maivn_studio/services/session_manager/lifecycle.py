@@ -159,6 +159,7 @@ async def start_session_execution(
     attachments: list[dict[str, Any]] | None,
     structured_output: dict[str, Any] | None,
     invocation_kwargs: dict[str, Any] | None,
+    batch_config: dict[str, Any] | None,
 ) -> None:
     """Load a demo, initialize the session state, and launch execution."""
     if session.status != SessionStatus.CREATED:
@@ -180,6 +181,7 @@ async def start_session_execution(
         session,
         structured_output=structured_output,
         invocation_kwargs=invocation_kwargs,
+        batch_config=batch_config,
     )
 
     if system_message:
@@ -203,6 +205,7 @@ async def send_followup_message(
     attachments: list[dict[str, Any]] | None,
     structured_output: dict[str, Any] | None,
     invocation_kwargs: dict[str, Any] | None,
+    batch_config: dict[str, Any] | None,
 ) -> None:
     """Queue or start a follow-up message for an existing session."""
     if session.can_stage_message:
@@ -213,6 +216,7 @@ async def send_followup_message(
             attachments=attachments,
             structured_output=structured_output,
             invocation_kwargs=invocation_kwargs,
+            batch_config=batch_config,
         )
         return
 
@@ -225,6 +229,7 @@ async def send_followup_message(
         session,
         structured_output=structured_output,
         invocation_kwargs=invocation_kwargs,
+        batch_config=batch_config,
     )
 
     session.messages.append(manager._create_message(message, message_type, attachments=attachments))

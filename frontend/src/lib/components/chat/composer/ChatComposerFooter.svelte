@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Send, Square } from "lucide-svelte";
+  import { Layers3, Send, Square } from "lucide-svelte";
 
   interface Props {
     hasDemo: boolean;
@@ -8,6 +8,8 @@
     canStageNext: boolean;
     loading: boolean;
     queueMode: boolean;
+    batchMode?: boolean;
+    batchItemCount?: number;
     canSubmitMessage: boolean;
     inputValue?: string;
     onKeyDown: (event: KeyboardEvent) => void;
@@ -25,6 +27,8 @@
     canStageNext,
     loading,
     queueMode,
+    batchMode = false,
+    batchItemCount = 0,
     canSubmitMessage,
     inputValue = $bindable(""),
     onKeyDown,
@@ -37,23 +41,30 @@
 </script>
 
 <div class="flex items-end gap-3 p-3">
-  <textarea
-    bind:value={inputValue}
-    placeholder={hasDemo ? "Type your message..." : "Select a demo first"}
-    disabled={!hasDemo ||
-      (hasActiveSession && !canSend && !canStageNext) ||
-      (loading && !queueMode)}
-    rows={1}
-    class="flex-1 bg-transparent resize-none placeholder-[var(--color-text-tertiary)]
-         focus:outline-none disabled:opacity-50 text-[var(--color-text)]
-         min-h-[24px] max-h-[200px] leading-relaxed"
-    style="field-sizing: content;"
-    onkeydown={onKeyDown}
-    onpaste={onPaste}
-    ondragover={onDragOver}
-    ondragleave={onDragLeave}
-    ondrop={onDrop}
-  ></textarea>
+  {#if batchMode && !hasActiveSession}
+    <div class="batch-summary" aria-live="polite">
+      <Layers3 size={16} />
+      <span>{batchItemCount} {batchItemCount === 1 ? "batch item" : "batch items"}</span>
+    </div>
+  {:else}
+    <textarea
+      bind:value={inputValue}
+      placeholder={hasDemo ? "Type your message..." : "Select a demo first"}
+      disabled={!hasDemo ||
+        (hasActiveSession && !canSend && !canStageNext) ||
+        (loading && !queueMode)}
+      rows={1}
+      class="flex-1 bg-transparent resize-none placeholder-[var(--color-text-tertiary)]
+           focus:outline-none disabled:opacity-50 text-[var(--color-text)]
+           min-h-[24px] max-h-[200px] leading-relaxed"
+      style="field-sizing: content;"
+      onkeydown={onKeyDown}
+      onpaste={onPaste}
+      ondragover={onDragOver}
+      ondragleave={onDragLeave}
+      ondrop={onDrop}
+    ></textarea>
+  {/if}
 
   {#if loading && onCancel && !queueMode}
     <button
@@ -97,3 +108,20 @@
     </button>
   {/if}
 </div>
+
+<style>
+  .batch-summary {
+    display: inline-flex;
+    flex: 1;
+    min-height: 2.5rem;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid var(--color-outline-variant);
+    border-radius: var(--radius-md);
+    padding: 0.55rem 0.75rem;
+    color: var(--color-text-secondary);
+    background: color-mix(in srgb, var(--color-bg-tertiary) 42%, transparent);
+    font-size: 0.8125rem;
+    font-weight: 650;
+  }
+</style>

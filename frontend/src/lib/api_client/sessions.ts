@@ -1,4 +1,5 @@
 import type {
+  BatchInvocationConfig,
   InvocationConfig,
   MessageAttachmentPayload,
   MessageType,
@@ -20,6 +21,7 @@ export async function createSession(
     structuredOutput?: StructuredOutputConfig;
     invocation?: InvocationConfig;
     systemMessage?: string;
+    batch?: BatchInvocationConfig;
   },
 ): Promise<Session> {
   const res = await fetch(`${API_BASE}/sessions`, {
@@ -36,6 +38,7 @@ export async function createSession(
       structured_output: buildStructuredOutputPayload(options?.structuredOutput),
       invocation: options?.invocation,
       system_message: options?.systemMessage,
+      batch: options?.batch,
     }),
   });
   if (!res.ok) {
@@ -57,6 +60,7 @@ export async function sendMessage(
   structuredOutput?: StructuredOutputConfig,
   invocation?: InvocationConfig,
   attachments?: MessageAttachmentPayload[],
+  batch?: BatchInvocationConfig,
 ): Promise<Session> {
   const res = await fetch(`${API_BASE}/sessions/${sessionId}/messages`, {
     method: "POST",
@@ -67,6 +71,7 @@ export async function sendMessage(
       attachments,
       structured_output: buildStructuredOutputPayload(structuredOutput),
       invocation,
+      batch,
     }),
   });
   if (!res.ok) {
@@ -156,6 +161,9 @@ export function connectToEvents(
     "progress_update",
     "status_message",
     "agent_assignment",
+    "batch_start",
+    "batch_item_complete",
+    "batch_complete",
     "turn_complete",
     "session_end",
     "interrupt_required",

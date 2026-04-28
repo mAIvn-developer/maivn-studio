@@ -1,4 +1,11 @@
-import type { ChatFlowItem, InterruptData, Message, PhaseChipData, ToolCard } from "$lib/types";
+import type {
+  BatchResult,
+  ChatFlowItem,
+  InterruptData,
+  Message,
+  PhaseChipData,
+  ToolCard,
+} from "$lib/types";
 
 export interface Exchange {
   humanMessage: Message;
@@ -6,6 +13,7 @@ export interface Exchange {
   interruptCards: InterruptData[];
   phaseChips: PhaseChipData[];
   statusMessages: Message[];
+  batchResults: BatchResult[];
   aiMessage: Message | null;
 }
 
@@ -31,6 +39,7 @@ export function buildExchanges(chatFlowItems: ChatFlowItem[]): Exchange[] {
           interruptCards: [],
           phaseChips: [],
           statusMessages: [],
+          batchResults: [],
           aiMessage: null,
         };
       } else if (message.role === "assistant") {
@@ -51,6 +60,7 @@ export function buildExchanges(chatFlowItems: ChatFlowItem[]): Exchange[] {
             interruptCards: [],
             phaseChips: [],
             statusMessages: [],
+            batchResults: [],
             aiMessage: message,
           });
         }
@@ -72,6 +82,12 @@ export function buildExchanges(chatFlowItems: ChatFlowItem[]): Exchange[] {
       const target = currentExchange ?? result[result.length - 1];
       if (target) {
         target.phaseChips.push(phaseChip);
+      }
+    } else if (item.type === "batch_result") {
+      const batchResult = item.data as BatchResult;
+      const target = currentExchange ?? result[result.length - 1];
+      if (target) {
+        target.batchResults.push(batchResult);
       }
     }
   }

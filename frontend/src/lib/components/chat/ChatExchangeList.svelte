@@ -48,6 +48,7 @@
       toolCards={exchange.toolCards}
       phaseChips={exchange.phaseChips}
       statusMessages={exchange.statusMessages}
+      batchResults={exchange.batchResults}
       interruptCards={interruptStyle === "inline" || interruptStyle === "hybrid"
         ? exchange.interruptCards
         : []}

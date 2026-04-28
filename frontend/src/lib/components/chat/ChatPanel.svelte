@@ -1,5 +1,7 @@
 <script lang="ts">
   import type {
+    BatchInvocationConfig,
+    BatchInvocationRow,
     ChatFlowItem,
     DemoDetails,
     InterruptData,
@@ -60,6 +62,7 @@
       messageType?: SendableMessageType,
       structuredOutput?: StructuredOutputConfig,
       attachments?: MessageAttachmentPayload[],
+      batch?: BatchInvocationConfig,
     ) => void | Promise<void>;
     onStart: (
       message: string,
@@ -69,6 +72,7 @@
         systemMessage?: string;
         structuredOutput?: StructuredOutputConfig;
         attachments?: MessageAttachmentPayload[];
+        batch?: BatchInvocationConfig;
       },
     ) => void | Promise<void>;
     onCancel?: () => void;
@@ -118,6 +122,12 @@
   let inputValue = $state("");
   let localSystemMessage = $state("");
   let showSystemInput = $state(false);
+  let batchMode = $state(false);
+  let batchRunsPerInput = $state(1);
+  let batchMaxConcurrency = $state(3);
+  let batchAsyncMode = $state(true);
+  let batchRows = $state<BatchInvocationRow[]>([]);
+  let wasBatchMode = $state(false);
   let chatContainer: HTMLDivElement;
   let showScrollToBottom = $state(false);
   const SCROLL_BOTTOM_THRESHOLD = 4;
@@ -157,9 +167,62 @@
     }
   });
 
+  $effect(() => {
+    if (!canUseBatchMode() && batchMode) {
+      batchMode = false;
+    }
+  });
+
+  $effect(() => {
+    if (batchMode && !wasBatchMode) {
+      const seededRows = inputValue
+        .split(/\r?\n/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((message) => ({
+          id: crypto.randomUUID(),
+          label: "",
+          message,
+        }));
+      if (seededRows.length > 0) {
+        batchRows = seededRows;
+      }
+      inputValue = "";
+    }
+    wasBatchMode = batchMode;
+  });
+
+  const runnableBatchRows = $derived(() =>
+    batchRows
+      .map((row) => ({
+        ...row,
+        label: row.label?.trim() || undefined,
+        message: row.message.trim(),
+        system_message: row.system_message?.trim() || undefined,
+        targeted_tools: row.targeted_tools?.map((tool) => tool.trim()).filter(Boolean),
+      }))
+      .filter((row) => row.message),
+  );
+  const effectiveBatchRows = $derived(() =>
+    runnableBatchRows().flatMap((row) =>
+      Array.from({ length: batchRunsPerInput }, (_, runIndex) => ({
+        ...row,
+        id: `${row.id ?? row.message}:${runIndex}`,
+        label:
+          batchRunsPerInput > 1 && row.label
+            ? `${row.label} ${runIndex + 1}`
+            : batchRunsPerInput > 1
+              ? `Run ${runIndex + 1}`
+              : row.label,
+      })),
+    ),
+  );
+  const canUseBatchMode = $derived(() => !hasActiveSession);
+
   // Determine if the current input can be sent
   const canSubmitMessage = $derived(() => {
-    if (!inputValue.trim() && pendingAttachments.length === 0) return false;
+    if (batchMode && !hasActiveSession && effectiveBatchRows().length === 0) return false;
+    if (!batchMode && !inputValue.trim() && pendingAttachments.length === 0) return false;
     if (loading && !(hasActiveSession && !canSend && canStageNext)) return false;
     return true;
   });
@@ -168,14 +231,46 @@
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
-    if ((!inputValue.trim() && pendingAttachments.length === 0) || (loading && !queueMode())) {
+    if (
+      (!batchMode && !inputValue.trim() && pendingAttachments.length === 0) ||
+      (batchMode && !hasActiveSession && effectiveBatchRows().length === 0) ||
+      (loading && !queueMode())
+    ) {
       return;
     }
     if (hasActiveSession && !canSend && !canStageNext) return;
 
     const outputConfig = structuredOutputConfig.enabled ? structuredOutputConfig : undefined;
-    const message = inputValue.trim();
+    const activeBatchRows = batchMode && !hasActiveSession ? effectiveBatchRows() : [];
+    const message =
+      activeBatchRows.length > 0
+        ? activeBatchRows
+            .map((row, index) => `${index + 1}. ${row.label ? `${row.label}: ` : ""}${row.message}`)
+            .join("\n")
+        : inputValue.trim();
     const attachments = await buildAttachmentPayloads(pendingAttachments);
+    const batchConfig: BatchInvocationConfig | undefined =
+      activeBatchRows.length > 0
+        ? {
+            enabled: true,
+            messages: activeBatchRows.map((row) => row.message),
+            rows: activeBatchRows.map((row) => ({
+              id: row.id,
+              label: row.label,
+              message: row.message,
+              variant: row.variant,
+              model: row.model,
+              reasoning: row.reasoning,
+              system_message: row.system_message,
+              targeted_tools:
+                row.targeted_tools && row.targeted_tools.length > 0
+                  ? row.targeted_tools
+                  : undefined,
+            })),
+            max_concurrency: batchMaxConcurrency,
+            async_mode: batchAsyncMode,
+          }
+        : undefined;
 
     try {
       if (!hasActiveSession) {
@@ -185,6 +280,7 @@
           systemMessage: localSystemMessage.trim() || undefined,
           structuredOutput: outputConfig,
           attachments,
+          batch: batchConfig,
         });
         localSystemMessage = ""; // Reset system message after starting
       } else if (canSend || canStageNext) {
@@ -206,6 +302,17 @@
     promptVariant?: string,
   ) {
     inputValue = content;
+    if (batchMode && !hasActiveSession) {
+      batchRows = [
+        {
+          id: crypto.randomUUID(),
+          label: "",
+          message: content,
+          variant: promptVariant || undefined,
+        },
+      ];
+      inputValue = "";
+    }
     // Auto-select structured output when prompt specifies one
     if (structuredOutputTool) {
       onStructuredOutputChange({
@@ -234,6 +341,9 @@
   }
 
   function handleKeyDown(e: KeyboardEvent) {
+    if (batchMode && !hasActiveSession && e.key === "Enter" && !(e.ctrlKey || e.metaKey)) {
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
@@ -391,14 +501,21 @@
     discoveredPrompts={prompts}
     {savedPrompts}
     {variants}
+    demoTools={demo?.tools ?? []}
     pendingAttachments={pendingAttachmentViews}
     {formatAttachmentSize}
     canSubmitMessage={canSubmitMessage()}
     queueMode={queueMode()}
+    batchItemCount={effectiveBatchRows().length}
     bind:inputValue
     bind:selectedVariant
     bind:localSystemMessage
     bind:showSystemInput
+    bind:batchMode
+    bind:batchRunsPerInput
+    bind:batchMaxConcurrency
+    bind:batchAsyncMode
+    bind:batchRows
     onSelectedVariantChange={handleSelectedVariantChange}
     onSubmit={handleSubmit}
     {onMessageTypeChange}

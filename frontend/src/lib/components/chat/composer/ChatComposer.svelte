@@ -1,5 +1,10 @@
 <script lang="ts">
-  import type { DemoDetails, SavedPrompt, SendableMessageType } from "$lib/types";
+  import type {
+    BatchInvocationRow,
+    DemoDetails,
+    SavedPrompt,
+    SendableMessageType,
+  } from "$lib/types";
   import {
     extractFilesFromClipboardEvent,
     extractFilesFromDropEvent,
@@ -29,10 +34,17 @@
     discoveredPrompts: DemoDetails["prompts"];
     savedPrompts: SavedPrompt[];
     variants: Array<[string, DemoDetails["variants"][string]]>;
+    demoTools?: DemoDetails["tools"];
     pendingAttachments: PendingAttachmentView[];
     formatAttachmentSize: (bytes: number) => string;
     canSubmitMessage: boolean;
     queueMode: boolean;
+    batchMode?: boolean;
+    batchRunsPerInput?: number;
+    batchMaxConcurrency?: number;
+    batchAsyncMode?: boolean;
+    batchItemCount?: number;
+    batchRows?: BatchInvocationRow[];
     inputValue?: string;
     selectedVariant?: string | undefined;
     localSystemMessage?: string;
@@ -65,10 +77,17 @@
     discoveredPrompts,
     savedPrompts,
     variants,
+    demoTools = [],
     pendingAttachments,
     formatAttachmentSize,
     canSubmitMessage,
     queueMode,
+    batchMode = $bindable(false),
+    batchRunsPerInput = $bindable(1),
+    batchMaxConcurrency = $bindable(3),
+    batchAsyncMode = $bindable(true),
+    batchItemCount = 0,
+    batchRows = $bindable<BatchInvocationRow[]>([]),
     inputValue = $bindable(""),
     selectedVariant = $bindable<string | undefined>(undefined),
     localSystemMessage = $bindable(""),
@@ -142,6 +161,13 @@
       bind:showSystemInput
       bind:selectedVariant
       bind:localSystemMessage
+      bind:batchMode
+      bind:batchRunsPerInput
+      bind:batchMaxConcurrency
+      bind:batchAsyncMode
+      bind:batchRows
+      {batchItemCount}
+      {demoTools}
       {variants}
       {onSelectedVariantChange}
     />
@@ -201,6 +227,8 @@
         {canStageNext}
         {loading}
         {queueMode}
+        {batchMode}
+        {batchItemCount}
         {canSubmitMessage}
         bind:inputValue
         {onKeyDown}
@@ -214,10 +242,19 @@
 
     <div class="mt-2 flex justify-end">
       <span class="text-xs text-[var(--color-text-tertiary)]">
-        Press <kbd class="px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] font-mono text-[10px]"
-          >Enter</kbd
-        >
-        to {queueMode ? "queue for next turn" : "send"}
+        {#if batchMode && !hasActiveSession}
+          Press
+          <kbd class="px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] font-mono text-[10px]"
+            >Ctrl+Enter</kbd
+          >
+          to send batch
+        {:else}
+          Press
+          <kbd class="px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] font-mono text-[10px]"
+            >Enter</kbd
+          >
+          to {queueMode ? "queue for next turn" : "send"}
+        {/if}
       </span>
     </div>
   </div>
