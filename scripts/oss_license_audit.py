@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import argparse
 import importlib.metadata as metadata
+import json
 import re
 import subprocess
 import sys
+import urllib.request
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date
@@ -151,6 +153,23 @@ def license_from_classifiers(classifiers: list[str]) -> list[str]:
     return simplified
 
 
+def normalize_license_metadata(expression: str, classifiers: list[str], raw_license: str) -> str:
+    expression = expression.strip()
+    if expression and expression.upper() != "UNKNOWN":
+        return expression
+
+    classifier_licenses = license_from_classifiers(classifiers)
+    if classifier_licenses:
+        unique_values = list(dict.fromkeys(classifier_licenses))
+        return " OR ".join(unique_values)
+
+    raw_license = raw_license.strip()
+    if raw_license and raw_license.upper() != "UNKNOWN":
+        return compress_license_text(raw_license)
+
+    return "UNKNOWN"
+
+
 def compress_license_text(raw_value: str) -> str:
     candidate = " ".join(raw_value.split())
     lowered = candidate.lower()
@@ -183,20 +202,44 @@ def compress_license_text(raw_value: str) -> str:
 
 def normalize_license(dist: metadata.Distribution) -> str:
     metadata_map = dist.metadata
-    expression = metadata_map.get("License-Expression", "").strip()
-    if expression and expression.upper() != "UNKNOWN":
-        return expression
+    return normalize_license_metadata(
+        metadata_map.get("License-Expression", ""),
+        metadata_map.get_all("Classifier", []),
+        metadata_map.get("License", ""),
+    )
 
-    classifiers = license_from_classifiers(metadata_map.get_all("Classifier", []))
-    if classifiers:
-        unique_values = list(dict.fromkeys(classifiers))
-        return " OR ".join(unique_values)
 
-    raw_license = metadata_map.get("License", "").strip()
-    if raw_license and raw_license.upper() != "UNKNOWN":
-        return compress_license_text(raw_license)
+def locked_version(requirement_line: str) -> str | None:
+    try:
+        requirement = Requirement(requirement_line)
+    except InvalidRequirement:
+        match = re.search(r"==\s*([^;\s]+)", requirement_line)
+        return match.group(1) if match else None
 
-    return "UNKNOWN"
+    for specifier in requirement.specifier:
+        if specifier.operator == "==":
+            return specifier.version
+    return None
+
+
+def fetch_package_metadata(package_name: str, requirement_line: str) -> tuple[str, str]:
+    version = locked_version(requirement_line)
+    url = (
+        f"https://pypi.org/pypi/{package_name}/{version}/json"
+        if version
+        else f"https://pypi.org/pypi/{package_name}/json"
+    )
+    with urllib.request.urlopen(url, timeout=20) as response:
+        payload = json.load(response)
+
+    info = payload["info"]
+    resolved_version = str(info.get("version") or version or "UNKNOWN")
+    license_name = normalize_license_metadata(
+        str(info.get("license_expression") or ""),
+        [str(value) for value in info.get("classifiers") or []],
+        str(info.get("license") or ""),
+    )
+    return resolved_version, license_name
 
 
 def classify_license(license_name: str) -> str:
@@ -220,14 +263,15 @@ def build_records(
     records: list[PackageRecord] = []
     for package_name in sorted(package_names):
         dist = installed_packages.get(package_name)
-        if dist is None:
-            raise RuntimeError(
-                f"Package '{package_name}' is not installed in the current environment."
-            )
-
-        license_name = normalize_license(dist)
         notes: list[str] = []
         requirement = package_names[package_name]
+        if dist is None:
+            version, license_name = fetch_package_metadata(package_name, requirement)
+            notes.append("metadata from PyPI")
+        else:
+            version = dist.version
+            license_name = normalize_license(dist)
+
         if " @ " in requirement:
             notes.append("direct URL dependency")
         if package_name in elections:
@@ -239,7 +283,7 @@ def build_records(
         records.append(
             PackageRecord(
                 name=package_name,
-                version=dist.version,
+                version=version,
                 license_name=license_name,
                 category=classify_license(license_name),
                 notes="; ".join(notes),
