@@ -24,6 +24,7 @@ from maivn_studio.services.session_manager.manager import get_session_manager
 from .routes.demos.routes import router as demos_router
 from .routes.discovery import router as discovery_router
 from .routes.prompts import router as prompts_router
+from .routes.schedules import router as schedules_router
 from .routes.sessions.routes import router as sessions_router
 
 logger = logging.getLogger(__name__)
@@ -244,6 +245,7 @@ def create_app(
     app.include_router(demos_router)
     app.include_router(discovery_router)
     app.include_router(prompts_router)
+    app.include_router(schedules_router)
     app.include_router(sessions_router)
 
     # Health check

@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { Settings, Search, BrainCircuit } from "lucide-svelte";
+  import { Settings, Search, BrainCircuit, Clock } from "lucide-svelte";
   import Badge from "../ui/Badge.svelte";
   import ConfigTab from "./ConfigTab.svelte";
   import InspectTab from "./InspectTab.svelte";
   import MemoryTab from "./MemoryTab.svelte";
+  import ScheduleTab from "./ScheduleTab.svelte";
   import type {
     AgentInfo,
     ChatFlowFilters,
@@ -33,7 +34,7 @@
     sessionCount: number;
   }
 
-  type InspectorTab = "config" | "inspect" | "memory";
+  type InspectorTab = "config" | "inspect" | "memory" | "schedule";
 
   interface Props {
     events: UIEvent[];
@@ -142,6 +143,7 @@
     { id: "config", label: "Config", icon: Settings },
     { id: "inspect", label: "Inspect", icon: Search },
     { id: "memory", label: "Recall", icon: BrainCircuit },
+    { id: "schedule", label: "Schedule", icon: Clock },
   ];
 </script>
 
@@ -202,6 +204,8 @@
       <InspectTab {eventSummary} {accumulatedStats} {filters} {onFilterChange} {events} />
     {:else if activeTab === "memory"}
       <MemoryTab {extractedSkills} {extractedInsights} {retrievedMemoryContext} />
+    {:else if activeTab === "schedule"}
+      <ScheduleTab {demoId} />
     {/if}
   </div>
 </div>
