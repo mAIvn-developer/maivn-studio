@@ -69,6 +69,49 @@ Create or edit `maivn_studio.json`:
 - `GET /api/sessions/{session_id}/events?last_event_id=...`: SSE stream (pass `last_event_id` on reconnect to skip already-seen history)
 - `POST /api/sessions/{session_id}/messages`: follow-up message (reconnect SSE afterward)
 - `POST /api/sessions/{session_id}/interrupt`: interrupt response
+- `GET /api/schedules`: list active scheduled jobs across all demos
+- `GET /api/schedules/{demo_id}`: get the schedule for one demo
+- `PUT /api/schedules/{demo_id}`: create or replace a schedule (ScheduleConfig body)
+- `POST /api/schedules/{demo_id}/{stop|pause|resume|trigger}`: lifecycle controls
+- `DELETE /api/schedules/{demo_id}`: remove the schedule
+
+## Scheduling Demos (Cron Jobs)
+
+Every demo's inspector now has a **Schedule** tab that drives the SDK's
+`cron()` / `every()` / `at()` builders. Configure the cron expression,
+timezone, jitter (uniform / normal / triangular, with optional snap-to-grid
+and deterministic seed), misfire and overlap policies, retry/backoff,
+and `max_runs` / `end_at` bounds, then start the job. Studio polls the
+job summary every 4 seconds and displays the next-run preview, fire /
+success / skip / failure counters, and a recent-runs table.
+
+The same configuration is reachable over HTTP. Example:
+
+```bash
+curl -X PUT http://localhost:8080/api/schedules/scheduled-agent-cron-demo \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "schedule_type": "cron",
+    "cron_expression": "*/5 * * * *",
+    "tz": "America/New_York",
+    "jitter_min_seconds": 0,
+    "jitter_max_seconds": 30,
+    "jitter_distribution": "uniform",
+    "method": "invoke",
+    "misfire": "coalesce",
+    "overlap_policy": "skip",
+    "max_overlap": 1,
+    "max_runs": 10,
+    "retry_max_attempts": 3,
+    "retry_backoff": "exponential",
+    "retry_base_seconds": 5
+  }'
+```
+
+For the underlying SDK feature — including the full builder,
+`JitterSpec`, `Retry`, and `ScheduledJob` reference — see the SDK
+[Scheduled Invocation guide](../../../libraries/maivn/docs/guides/scheduled-invocation.md)
+and [Scheduling reference](../../../libraries/maivn/docs/api/scheduling.md).
 
 ## Batch Sessions
 
