@@ -2,8 +2,8 @@ import type { MessageType, SavedPrompt } from "../types";
 
 import { API_BASE } from "./shared";
 
-export async function fetchSavedPrompts(demoId?: string): Promise<SavedPrompt[]> {
-  const url = demoId ? `${API_BASE}/prompts?demo_id=${demoId}` : `${API_BASE}/prompts`;
+export async function fetchSavedPrompts(appId?: string): Promise<SavedPrompt[]> {
+  const url = appId ? `${API_BASE}/prompts?app_id=${appId}` : `${API_BASE}/prompts`;
   const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to fetch saved prompts");
   return res.json();
@@ -13,7 +13,7 @@ export async function savePrompt(prompt: {
   name: string;
   content: string;
   description?: string;
-  demoId: string;
+  appId: string;
   messageType?: MessageType;
 }): Promise<SavedPrompt> {
   const res = await fetch(`${API_BASE}/prompts`, {
@@ -23,7 +23,7 @@ export async function savePrompt(prompt: {
       name: prompt.name,
       content: prompt.content,
       description: prompt.description ?? "",
-      demo_id: prompt.demoId,
+      app_id: prompt.appId,
       message_type: prompt.messageType ?? "human",
     }),
   });

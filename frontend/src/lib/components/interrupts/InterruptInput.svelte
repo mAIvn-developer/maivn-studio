@@ -86,7 +86,7 @@
     },
     submitting: {
       color: "var(--color-secondary)",
-      bg: "rgba(137, 208, 237, 0.1)",
+      bg: "color-mix(in srgb, var(--color-secondary) 10%, transparent)",
       borderColor: "rgb(96, 165, 250)",
     },
     completed: {
@@ -331,12 +331,12 @@
 
   .choice-option-btn {
     border-color: var(--color-secondary);
-    background: rgba(137, 208, 237, 0.1);
+    background: color-mix(in srgb, var(--color-secondary) 10%, transparent);
     color: var(--color-secondary);
   }
 
   .choice-option-btn:hover:not(:disabled) {
-    background: rgba(137, 208, 237, 0.2);
+    background: color-mix(in srgb, var(--color-secondary) 20%, transparent);
   }
 
   :global(.animate-spin) {

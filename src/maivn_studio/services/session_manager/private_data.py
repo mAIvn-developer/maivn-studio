@@ -10,7 +10,7 @@ from maivn_shared import DataDependency
 
 from maivn_studio.private_data import get_default_private_data, is_valid_log_path
 
-from ..demo_loader.models import LoadedDemo
+from ..app_loader.models import LoadedApp
 
 logger = logging.getLogger(__name__)
 
@@ -19,13 +19,13 @@ logger = logging.getLogger(__name__)
 
 
 def apply_private_data(
-    loaded: LoadedDemo,
+    loaded: LoadedApp,
     user_private_data: dict[str, Any] | None = None,
 ) -> None:
-    """Apply private data to loaded demo, merging user values with defaults.
+    """Apply private data to loaded app, merging user values with defaults.
 
     Args:
-        loaded: The loaded demo.
+        loaded: The loaded app.
         user_private_data: User-provided private data values.
     """
     # Merge user-provided values with defaults (user values take precedence)
@@ -134,7 +134,7 @@ def _fill_missing_private_data(
                 needs_default = True
                 logger.warning(f'Overriding invalid log_path "{current_value}" with studio default')
         if needs_default:
-            private_data[key] = defaults.get(key, f"demo_{key}")
+            private_data[key] = defaults.get(key, f"app_{key}")
             missing.append(key)
 
     if missing:

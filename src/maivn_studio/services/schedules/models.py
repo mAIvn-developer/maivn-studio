@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 
 class ScheduleConfig(BaseModel):
-    """User-supplied schedule configuration for a demo."""
+    """User-supplied schedule configuration for an app."""
 
     schedule_type: Literal["cron", "interval", "at"] = "cron"
     cron_expression: str | None = None
@@ -59,14 +59,14 @@ class ScheduleRunSummary(BaseModel):
     error: str | None = None
     # Synthetic session id used to subscribe to this fire's event stream.
     # Set when the fire actually runs (i.e., once an EventBridge has been
-    # registered for it). The frontend hits /api/schedules/{demo}/fires/
+    # registered for it). The frontend hits /api/schedules/{app}/fires/
     # {fire_id}/events to stream the same events a chat session emits.
     event_session_id: str | None = None
 
 
 class ScheduleJobSummary(BaseModel):
     job_id: str
-    demo_id: str
+    app_id: str
     name: str
     config: ScheduleConfig
     is_running: bool

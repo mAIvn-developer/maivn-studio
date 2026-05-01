@@ -1,11 +1,11 @@
 <script lang="ts">
-  import type { DemoDetails, SessionStatus } from "$lib/types";
+  import type { AppDetails, SessionStatus } from "$lib/types";
   import { ChevronRight, Menu, PanelRight, RotateCw, Square, Timer } from "lucide-svelte";
   import ThemeToggle from "../ui/ThemeToggle.svelte";
   import Tooltip from "../ui/Tooltip.svelte";
 
   interface Props {
-    demo: DemoDetails | null;
+    app: AppDetails | null;
     sessionStatus: SessionStatus | null;
     isActive: boolean;
     showEvents: boolean;
@@ -16,7 +16,7 @@
   }
 
   let {
-    demo,
+    app,
     sessionStatus,
     isActive,
     showEvents,
@@ -57,18 +57,18 @@
   const currentStyle = $derived(
     sessionStatus ? statusStyles[sessionStatus] || statusStyles.ready : null,
   );
-  const demoSummary = $derived(
+  const appSummary = $derived(
     (() => {
-      if (!demo) return [];
-      const authoredToolCount = demo.tools.length;
-      const runtimeToolCount = demo.runtime_tool_count ?? authoredToolCount;
+      if (!app) return [];
+      const authoredToolCount = app.tools.length;
+      const runtimeToolCount = app.runtime_tool_count ?? authoredToolCount;
       return [
         runtimeToolCount !== authoredToolCount
           ? `${runtimeToolCount} runtime tools`
           : `${runtimeToolCount} tools`,
         runtimeToolCount !== authoredToolCount ? `${authoredToolCount} authored tools` : null,
-        `${demo.agents.length} agents`,
-        demo.swarms.length > 0 ? `${demo.swarms.length} swarms` : null,
+        `${app.agents.length} agents`,
+        app.swarms.length > 0 ? `${app.swarms.length} swarms` : null,
       ].filter((value): value is string => Boolean(value));
     })(),
   );
@@ -134,34 +134,34 @@
                bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]
                hover:bg-[var(--color-surface-variant)] transition-colors lg:hidden"
         onclick={onOpenMobileSidebar}
-        aria-label="Open demo catalog"
+        aria-label="Open app catalog"
       >
         <Menu size={16} />
       </button>
     {/if}
-    {#if demo}
+    {#if app}
       <div
         class="hidden h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[var(--color-outline-variant)] bg-[var(--color-bg-tertiary)]/85 text-sm font-semibold text-[var(--color-secondary)] shadow-[var(--shadow-sm)] sm:flex"
       >
-        {demo.name.slice(0, 2).toUpperCase()}
+        {app.name.slice(0, 2).toUpperCase()}
       </div>
       <div class="min-w-0">
         <div class="flex min-w-0 items-center gap-2">
           <span
             class="max-w-[10rem] truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-text-tertiary)] sm:max-w-none"
           >
-            {demo.category}
+            {app.category}
           </span>
           <ChevronRight size={12} class="shrink-0 text-[var(--color-text-tertiary)]" />
           <span class="truncate text-sm font-semibold text-[var(--color-text)] sm:text-base"
-            >{demo.name}</span
+            >{app.name}</span
           >
         </div>
-        {#if demoSummary.length > 0}
+        {#if appSummary.length > 0}
           <div
             class="mt-1 hidden flex-wrap items-center gap-2 text-[11px] text-[var(--color-text-tertiary)] sm:flex"
           >
-            {#each demoSummary as item}
+            {#each appSummary as item}
               <span
                 class="rounded-full border border-[var(--color-outline-variant)] bg-[var(--color-bg-tertiary)]/80 px-2 py-0.5"
               >
@@ -179,7 +179,7 @@
           Studio Workspace
         </div>
         <div class="mt-1 text-sm text-[var(--color-text-secondary)]">
-          Choose a demo to start a session.
+          Choose an app to start a session.
         </div>
       </div>
     {/if}
@@ -223,8 +223,8 @@
           <span class="hidden sm:inline">New Thread</span>
         </button>
       </Tooltip>
-    {:else if demo}
-      <!-- Show New Thread whenever a demo is loaded so users always have a
+    {:else if app}
+      <!-- Show New Thread whenever an app is loaded so users always have a
            reset affordance — even before the first session, and especially
            in Schedule mode where they may want to clear the runs panel. -->
       <Tooltip text="Start a new thread" shortcut="Ctrl+Alt+N">

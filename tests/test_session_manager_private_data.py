@@ -40,7 +40,7 @@ def _make_loaded(
     agents: list[Any] | None = None,
     swarms: list[Any] | None = None,
 ) -> Any:
-    """Create a mock LoadedDemo."""
+    """Create a mock LoadedApp."""
     return SimpleNamespace(
         agents=agents or [],
         swarms=swarms or [],
@@ -190,12 +190,12 @@ class TestFillMissingPrivateData:
         filled = _fill_missing_private_data(scope, {"key_a": "val"})
         assert filled == []
 
-    def test_falls_back_to_demo_prefix_when_no_default(self) -> None:
+    def test_falls_back_to_app_prefix_when_no_default(self) -> None:
         scope = _make_scope(tools=[_make_tool(["exotic_key"])])
         filled = _fill_missing_private_data(scope, {})
 
         assert filled == ["exotic_key"]
-        assert scope.private_data["exotic_key"] == "demo_exotic_key"
+        assert scope.private_data["exotic_key"] == "app_exotic_key"
 
     def test_overrides_dot_log_path(self) -> None:
         scope = _make_scope(

@@ -1,4 +1,4 @@
-"""Tests for introspection helpers in api/routes/demos/introspection.py."""
+"""Tests for introspection helpers in api/routes/apps/introspection.py."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from maivn import Agent
 from maivn_shared import DataDependency, MemoryConfig
 from pydantic import BaseModel
 
-from maivn_studio.api.routes.demos.introspection import (
+from maivn_studio.api.routes.apps.introspection import (
     build_agent_info,
     build_swarm_info,
     build_tool_info,

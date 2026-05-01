@@ -10,16 +10,16 @@ from pydantic import ValidationError
 from maivn_studio.api.routes.sessions import helpers as sessions_helpers
 from maivn_studio.api.routes.sessions import models as sessions_models
 from maivn_studio.api.routes.sessions import writes as sessions_writes
-from maivn_studio.config.models import DemoConfig, DemoVariant, StudioConfig
+from maivn_studio.config.models import AppConfig, AppVariant, StudioConfig
 
 
 class _DummyRegistry:
-    def __init__(self, demo: DemoConfig) -> None:
-        self._demo = demo
+    def __init__(self, app: AppConfig) -> None:
+        self._app = app
 
-    def get(self, demo_id: str) -> DemoConfig | None:
-        if demo_id == self._demo.id:
-            return self._demo
+    def get(self, app_id: str) -> AppConfig | None:
+        if app_id == self._app.id:
+            return self._app
         return None
 
 
@@ -98,7 +98,7 @@ def test_create_session_request_rejects_attachment_without_content_base64() -> N
     with pytest.raises(ValidationError):
         sessions_models.CreateSessionRequest.model_validate(
             {
-                "demo_id": "demo-1",
+                "app_id": "app-1",
                 "message": "hello",
                 "attachments": [
                     {
@@ -114,18 +114,18 @@ def test_create_session_request_rejects_attachment_without_content_base64() -> N
 async def test_create_session_maps_attachment_value_error_to_http_422(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    demo = DemoConfig(
-        id="demo-1",
-        name="Demo One",
-        module="demos.demo_one",
+    app = AppConfig(
+        id="app-1",
+        name="App One",
+        module="apps.app_one",
     )
 
-    monkeypatch.setattr(sessions_writes, "get_registry", lambda: _DummyRegistry(demo))
+    monkeypatch.setattr(sessions_writes, "get_registry", lambda: _DummyRegistry(app))
     monkeypatch.setattr(sessions_writes, "get_session_manager", lambda: _DummyCreateManager())
     monkeypatch.setattr(sessions_writes, "create_event_bridge", lambda _session_id: None)
 
     request = sessions_models.CreateSessionRequest(
-        demo_id="demo-1",
+        app_id="app-1",
         message="hello",
         attachments=[
             sessions_models.MessageAttachmentPayload(
@@ -168,22 +168,22 @@ async def test_send_message_maps_attachment_value_error_to_http_422(
 async def test_create_session_refreshes_registry_private_data_from_disk(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    stale_demo = DemoConfig(
-        id="demo-1",
-        name="Demo One",
-        module="demos.demo_one",
+    stale_app = AppConfig(
+        id="app-1",
+        name="App One",
+        module="apps.app_one",
         private_data={"manufacturer": "Cote Robotics"},
     )
-    refreshed_demo = DemoConfig(
-        id="demo-1",
-        name="Demo One",
-        module="demos.demo_one",
+    refreshed_app = AppConfig(
+        id="app-1",
+        name="App One",
+        module="apps.app_one",
         private_data={
             "manufacturer": "Cote Robotics",
             "serial_number": "SN-RWX1-2049A",
         },
     )
-    registry = _DummyRegistry(stale_demo)
+    registry = _DummyRegistry(stale_app)
     manager = _CapturingCreateManager()
 
     monkeypatch.setattr(sessions_writes, "get_registry", lambda: registry)
@@ -199,17 +199,17 @@ async def test_create_session_refreshes_registry_private_data_from_disk(
     monkeypatch.setattr(
         sessions_helpers,
         "reload_config",
-        lambda: StudioConfig(demos=[refreshed_demo]),
+        lambda: StudioConfig(apps=[refreshed_app]),
     )
     monkeypatch.setattr(sessions_helpers, "set_config", lambda _config, _config_path: None)
 
     def _init_registry(config: StudioConfig, _base_path: Path) -> None:
-        registry._demo = config.demos[0]
+        registry._app = config.apps[0]
 
     monkeypatch.setattr(sessions_helpers, "init_registry", _init_registry)
 
     request = sessions_models.CreateSessionRequest(
-        demo_id="demo-1",
+        app_id="app-1",
         message="hello",
     )
 
@@ -229,21 +229,21 @@ async def test_create_session_refreshes_registry_private_data_from_disk(
 async def test_create_session_uses_default_variant_when_request_omits_variant(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    demo = DemoConfig(
-        id="demo-1",
-        name="Demo One",
-        module="demos.demo_one",
-        variants={"newsletter": DemoVariant(args=["--newsletter"], description="Newsletter")},
+    app = AppConfig(
+        id="app-1",
+        name="App One",
+        module="apps.app_one",
+        variants={"newsletter": AppVariant(args=["--newsletter"], description="Newsletter")},
         default_variant="newsletter",
     )
     manager = _CapturingCreateManager()
 
-    monkeypatch.setattr(sessions_writes, "get_registry", lambda: _DummyRegistry(demo))
+    monkeypatch.setattr(sessions_writes, "get_registry", lambda: _DummyRegistry(app))
     monkeypatch.setattr(sessions_writes, "get_session_manager", lambda: manager)
     monkeypatch.setattr(sessions_writes, "create_event_bridge", lambda _session_id: None)
 
     request = sessions_models.CreateSessionRequest(
-        demo_id="demo-1",
+        app_id="app-1",
         message="hello",
     )
 
@@ -260,13 +260,13 @@ async def test_create_session_uses_default_variant_when_request_omits_variant(
 async def test_create_session_merges_variant_private_data(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    demo = DemoConfig(
-        id="demo-1",
-        name="Demo One",
-        module="demos.demo_one",
-        private_data={"shared_key": "demo-default", "shared_override": "demo-value"},
+    app = AppConfig(
+        id="app-1",
+        name="App One",
+        module="apps.app_one",
+        private_data={"shared_key": "app-default", "shared_override": "app-value"},
         variants={
-            "with-private-data": DemoVariant(
+            "with-private-data": AppVariant(
                 args=[],
                 description="Private data variant",
                 private_data={
@@ -278,12 +278,12 @@ async def test_create_session_merges_variant_private_data(
     )
     manager = _CapturingCreateManager()
 
-    monkeypatch.setattr(sessions_writes, "get_registry", lambda: _DummyRegistry(demo))
+    monkeypatch.setattr(sessions_writes, "get_registry", lambda: _DummyRegistry(app))
     monkeypatch.setattr(sessions_writes, "get_session_manager", lambda: manager)
     monkeypatch.setattr(sessions_writes, "create_event_bridge", lambda _session_id: None)
 
     request = sessions_models.CreateSessionRequest(
-        demo_id="demo-1",
+        app_id="app-1",
         message="hello",
         variant="with-private-data",
         private_data={"shared_override": "request-value", "request_only": "user-value"},
@@ -297,7 +297,7 @@ async def test_create_session_merges_variant_private_data(
     assert manager.create_kwargs is not None
     assert manager.create_kwargs["variant"] == "with-private-data"
     assert manager.create_kwargs["private_data"] == {
-        "shared_key": "demo-default",
+        "shared_key": "app-default",
         "shared_override": "request-value",
         "secret_token": "variant-token",
         "request_only": "user-value",

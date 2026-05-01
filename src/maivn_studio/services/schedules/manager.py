@@ -22,7 +22,7 @@ from maivn.messages import HumanMessage
 from pydantic import BaseModel
 
 from maivn_studio.discovery.registry import get_registry
-from maivn_studio.services.demo_loader.loader import get_demo_loader
+from maivn_studio.services.app_loader.loader import get_app_loader
 from maivn_studio.services.event_bridge import (
     create_event_bridge,
     get_event_bridge,
@@ -49,45 +49,45 @@ def _fire_event_session_id(job_id: str, fire_id: str) -> str:
 
 
 class ScheduleManager:
-    """Owns the set of Studio-driven scheduled jobs, indexed by demo."""
+    """Owns the set of Studio-driven scheduled jobs, indexed by app."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._jobs_by_demo: dict[str, ScheduledJob] = {}
-        self._configs_by_demo: dict[str, ScheduleConfig] = {}
+        self._jobs_by_app: dict[str, ScheduledJob] = {}
+        self._configs_by_app: dict[str, ScheduleConfig] = {}
         # Track in-flight fires so the UI can render a card before the run
         # completes (history is only populated after _execute_run's finally
-        # block). Keyed by demo_id → {fire_id: RunRecord}.
-        self._active_runs_by_demo: dict[str, dict[str, RunRecord]] = {}
-        # Track all event-session ids we've created per demo so removing a
+        # block). Keyed by app_id → {fire_id: RunRecord}.
+        self._active_runs_by_app: dict[str, dict[str, RunRecord]] = {}
+        # Track all event-session ids we've created per app so removing a
         # schedule cleans up bridges instead of leaking them.
-        self._fire_session_ids_by_demo: dict[str, list[str]] = {}
+        self._fire_session_ids_by_app: dict[str, list[str]] = {}
 
     # MARK: - Public API
 
     def list_jobs(self) -> list[ScheduleJobSummary]:
         with self._lock:
             return [
-                self._summarize(demo_id, job, self._configs_by_demo[demo_id])
-                for demo_id, job in self._jobs_by_demo.items()
+                self._summarize(app_id, job, self._configs_by_app[app_id])
+                for app_id, job in self._jobs_by_app.items()
             ]
 
-    def get(self, demo_id: str) -> ScheduleJobSummary | None:
+    def get(self, app_id: str) -> ScheduleJobSummary | None:
         with self._lock:
-            job = self._jobs_by_demo.get(demo_id)
-            cfg = self._configs_by_demo.get(demo_id)
+            job = self._jobs_by_app.get(app_id)
+            cfg = self._configs_by_app.get(app_id)
         if job is None or cfg is None:
             return None
-        return self._summarize(demo_id, job, cfg)
+        return self._summarize(app_id, job, cfg)
 
-    def start(self, demo_id: str, config: ScheduleConfig) -> ScheduleJobSummary:
-        existing = self._jobs_by_demo.get(demo_id)
+    def start(self, app_id: str, config: ScheduleConfig) -> ScheduleJobSummary:
+        existing = self._jobs_by_app.get(app_id)
         if existing is not None and not existing.is_done:
             existing.stop(drain=False, timeout=5)
         if existing is not None:
-            self._drain_fire_bridges(demo_id)
+            self._drain_fire_bridges(app_id)
 
-        executor = self._resolve_executor(demo_id)
+        executor = self._resolve_executor(app_id)
 
         # Wrap the executor with events() so each fire's invoke runs through
         # the EventRouterReporter that chat sessions rely on for tool cards,
@@ -102,15 +102,15 @@ class ScheduleManager:
                 auto_verbose=False,
             )
             logger.info(
-                "Schedule for demo %s: wrapped executor with events() (%s)",
-                demo_id,
+                "Schedule for app %s: wrapped executor with events() (%s)",
+                app_id,
                 type(scope_for_schedule).__name__,
             )
         else:
             logger.warning(
-                "Schedule for demo %s: executor %s has no events() method; "
+                "Schedule for app %s: executor %s has no events() method; "
                 "tool cards / assistant chunks will not stream to UI",
-                demo_id,
+                app_id,
                 type(executor).__name__,
             )
 
@@ -123,82 +123,82 @@ class ScheduleManager:
         if scope_for_schedule is not executor:
             builder._scope = scope_for_schedule  # type: ignore[attr-defined]
 
-        prompt_messages = self._resolve_prompt(demo_id, config)
+        prompt_messages = self._resolve_prompt(app_id, config)
         job = self._invoke_builder(builder, config, prompt_messages)
-        self._wire_fire_event_bridge(job, demo_id, config, prompt_messages)
+        self._wire_fire_event_bridge(job, app_id, config, prompt_messages)
 
         with self._lock:
-            self._jobs_by_demo[demo_id] = job
-            self._configs_by_demo[demo_id] = config
-        return self._summarize(demo_id, job, config)
+            self._jobs_by_app[app_id] = job
+            self._configs_by_app[app_id] = config
+        return self._summarize(app_id, job, config)
 
-    def stop(self, demo_id: str, *, drain: bool = True) -> ScheduleJobSummary | None:
+    def stop(self, app_id: str, *, drain: bool = True) -> ScheduleJobSummary | None:
         with self._lock:
-            job = self._jobs_by_demo.get(demo_id)
-            cfg = self._configs_by_demo.get(demo_id)
+            job = self._jobs_by_app.get(app_id)
+            cfg = self._configs_by_app.get(app_id)
         if job is None or cfg is None:
             return None
         job.stop(drain=drain, timeout=10)
         # Bridges stay around so the user can scroll back through completed
         # runs after stopping. They're cleaned up by remove().
-        return self._summarize(demo_id, job, cfg)
+        return self._summarize(app_id, job, cfg)
 
-    def pause(self, demo_id: str) -> ScheduleJobSummary | None:
-        return self._mutate(demo_id, lambda job: job.pause())
+    def pause(self, app_id: str) -> ScheduleJobSummary | None:
+        return self._mutate(app_id, lambda job: job.pause())
 
-    def resume(self, demo_id: str) -> ScheduleJobSummary | None:
-        return self._mutate(demo_id, lambda job: job.resume())
+    def resume(self, app_id: str) -> ScheduleJobSummary | None:
+        return self._mutate(app_id, lambda job: job.resume())
 
-    def trigger_now(self, demo_id: str) -> ScheduleJobSummary | None:
-        return self._mutate(demo_id, lambda job: job.trigger_now())
+    def trigger_now(self, app_id: str) -> ScheduleJobSummary | None:
+        return self._mutate(app_id, lambda job: job.trigger_now())
 
-    def remove(self, demo_id: str) -> None:
+    def remove(self, app_id: str) -> None:
         with self._lock:
-            job = self._jobs_by_demo.pop(demo_id, None)
-            self._configs_by_demo.pop(demo_id, None)
+            job = self._jobs_by_app.pop(app_id, None)
+            self._configs_by_app.pop(app_id, None)
         if job is not None:
             job.stop(drain=False, timeout=5)
-        self._drain_fire_bridges(demo_id)
+        self._drain_fire_bridges(app_id)
 
     # MARK: - Helpers
 
-    def _mutate(self, demo_id: str, action: Any) -> ScheduleJobSummary | None:
+    def _mutate(self, app_id: str, action: Any) -> ScheduleJobSummary | None:
         with self._lock:
-            job = self._jobs_by_demo.get(demo_id)
-            cfg = self._configs_by_demo.get(demo_id)
+            job = self._jobs_by_app.get(app_id)
+            cfg = self._configs_by_app.get(app_id)
         if job is None or cfg is None:
             return None
         action(job)
-        return self._summarize(demo_id, job, cfg)
+        return self._summarize(app_id, job, cfg)
 
-    def _resolve_executor(self, demo_id: str) -> Any:
+    def _resolve_executor(self, app_id: str) -> Any:
         registry = get_registry()
-        demo = registry.get(demo_id)
-        if demo is None:
-            raise ValueError(f"Demo not found: {demo_id}")
-        loaded = get_demo_loader().load(demo)
+        app = registry.get(app_id)
+        if app is None:
+            raise ValueError(f"App not found: {app_id}")
+        loaded = get_app_loader().load(app)
         executor = loaded.executor
         if executor is None:
-            raise ValueError(f"Demo {demo_id} has no agent or swarm executor")
+            raise ValueError(f"App {app_id} has no agent or swarm executor")
         return executor
 
-    def _resolve_prompt(self, demo_id: str, config: ScheduleConfig) -> list[HumanMessage]:
+    def _resolve_prompt(self, app_id: str, config: ScheduleConfig) -> list[HumanMessage]:
         # Inline composer text wins over a saved-prompt reference so the user
         # can tweak the prompt without picking it from a dropdown.
         if config.prompt_text and config.prompt_text.strip():
             return [HumanMessage(content=config.prompt_text)]
         registry = get_registry()
-        demo = registry.get(demo_id)
-        if demo is None:
-            raise ValueError(f"Demo not found: {demo_id}")
-        loaded = get_demo_loader().load(demo)
+        app = registry.get(app_id)
+        if app is None:
+            raise ValueError(f"App not found: {app_id}")
+        loaded = get_app_loader().load(app)
         prompt = None
         if config.prompt_id:
             prompt = loaded.get_prompt(config.prompt_id)  # type: ignore[attr-defined]
         if prompt is None:
             prompt = loaded.get_default_prompt()
         if prompt is None:
-            raise ValueError(f"Demo {demo_id} has no prompts to schedule")
+            raise ValueError(f"App {app_id} has no prompts to schedule")
         return [HumanMessage(content=prompt.content)]
 
     def _build_builder(self, executor: Any, config: ScheduleConfig) -> Any:
@@ -300,13 +300,13 @@ class ScheduleManager:
 
     def _summarize(
         self,
-        demo_id: str,
+        app_id: str,
         job: ScheduledJob,
         config: ScheduleConfig,
     ) -> ScheduleJobSummary:
         completed = job.history(limit=20)
         completed_ids = {record.fire_id for record in completed}
-        active = list(self._active_runs_by_demo.get(demo_id, {}).values())
+        active = list(self._active_runs_by_app.get(app_id, {}).values())
         # An in-flight record may briefly exist in both maps if a callback
         # races the dispatch loop; trust history's copy so we don't render a
         # stale "running" pill for a fire that just finished.
@@ -316,7 +316,7 @@ class ScheduleManager:
         history = [self._summarize_run(record) for record in merged[-20:]]
         return ScheduleJobSummary(
             job_id=job.id,
-            demo_id=demo_id,
+            app_id=app_id,
             name=job.name,
             config=config,
             is_running=job.is_running,
@@ -350,7 +350,7 @@ class ScheduleManager:
     def _wire_fire_event_bridge(
         self,
         job: ScheduledJob,
-        demo_id: str,
+        app_id: str,
         config: ScheduleConfig,
         prompt_messages: list[HumanMessage],
     ) -> None:
@@ -385,8 +385,8 @@ class ScheduleManager:
             record.metadata["event_session_id"] = event_session_id
 
             with self._lock:
-                self._active_runs_by_demo.setdefault(demo_id, {})[record.fire_id] = record
-                session_ids = self._fire_session_ids_by_demo.setdefault(demo_id, [])
+                self._active_runs_by_app.setdefault(app_id, {})[record.fire_id] = record
+                session_ids = self._fire_session_ids_by_app.setdefault(app_id, [])
                 if event_session_id not in session_ids:
                     session_ids.append(event_session_id)
 
@@ -411,7 +411,7 @@ class ScheduleManager:
                     "session_start",
                     {
                         "session_id": event_session_id,
-                        "demo_id": demo_id,
+                        "app_id": app_id,
                         "schedule_job_id": job.id,
                         "schedule_fire_id": record.fire_id,
                         "scheduled_at": record.scheduled_at.isoformat(),
@@ -427,7 +427,7 @@ class ScheduleManager:
 
         def _on_terminal(record: RunRecord, *, terminal: str) -> None:
             with self._lock:
-                self._active_runs_by_demo.get(demo_id, {}).pop(record.fire_id, None)
+                self._active_runs_by_app.get(app_id, {}).pop(record.fire_id, None)
 
             event_session_id = record.metadata.get("event_session_id") if record.metadata else None
             if not isinstance(event_session_id, str):
@@ -463,17 +463,17 @@ class ScheduleManager:
         # so on_skip just removes any stale active record for parity.
         def _on_skip(record: RunRecord) -> None:
             with self._lock:
-                self._active_runs_by_demo.get(demo_id, {}).pop(record.fire_id, None)
+                self._active_runs_by_app.get(app_id, {}).pop(record.fire_id, None)
 
         job.on_fire(_on_fire)
         job.on_success(lambda record: _on_terminal(record, terminal="success"))
         job.on_error(lambda record: _on_terminal(record, terminal="error"))
         job.on_skip(_on_skip)
 
-    def _drain_fire_bridges(self, demo_id: str) -> None:
+    def _drain_fire_bridges(self, app_id: str) -> None:
         with self._lock:
-            session_ids = self._fire_session_ids_by_demo.pop(demo_id, [])
-            self._active_runs_by_demo.pop(demo_id, None)
+            session_ids = self._fire_session_ids_by_app.pop(app_id, [])
+            self._active_runs_by_app.pop(app_id, None)
         for session_id in session_ids:
             remove_event_bridge(session_id)
 

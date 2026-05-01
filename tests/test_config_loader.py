@@ -34,17 +34,17 @@ def test_load_config_variant_private_data(tmp_path) -> None:
     config_path = tmp_path / "maivn_studio.json"
     config_path.write_text(
         (
-            '{"demos":[{"id":"demo-1","name":"Demo One","module":"demos.demo_one",'
+            '{"apps":[{"id":"app-1","name":"App One","module":"apps.app_one",'
             '"variants":{"with-private-data":{"description":"Variant","private_data":'
-            '{"secret_token":"tok-123","email":"demo@example.com"}}}}]}'
+            '{"secret_token":"tok-123","email":"app@example.com"}}}}]}'
         ),
         encoding="utf-8",
     )
 
     config = load_config(config_path)
 
-    variant = config.demos[0].variants["with-private-data"]
+    variant = config.apps[0].variants["with-private-data"]
     assert variant.private_data == {
         "secret_token": "tok-123",
-        "email": "demo@example.com",
+        "email": "app@example.com",
     }

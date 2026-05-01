@@ -1,4 +1,4 @@
-"""API routes for repo discovery and demo selection."""
+"""API routes for repo discovery and app selection."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from maivn_studio.config.loader import DEFAULT_CONFIG_FILENAME, save_config, set_config
 from maivn_studio.discovery.registry import init_registry
-from maivn_studio.discovery.scanner import build_demo_config, scan_repo_for_demos
+from maivn_studio.discovery.scanner import build_app_config, scan_repo_for_apps
 
 router = APIRouter(prefix="/api/discovery", tags=["discovery"])
 
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/discovery", tags=["discovery"])
 
 
 class RepoScanItem(BaseModel):
-    """Repo scan result for a demo candidate."""
+    """Repo scan result for an app candidate."""
 
     id: str
     name: str
@@ -42,14 +42,14 @@ class RepoScanResponse(BaseModel):
 
 
 class DiscoverySelection(BaseModel):
-    """Selected demo candidate to persist."""
+    """Selected app candidate to persist."""
 
     file_path: str
     discovery_path: str
 
 
 class ApplyDiscoveryRequest(BaseModel):
-    """Request to persist selected demo candidates."""
+    """Request to persist selected app candidates."""
 
     selections: list[DiscoverySelection]
 
@@ -66,13 +66,13 @@ class ApplyDiscoveryResponse(BaseModel):
 
 @router.post("/scan", response_model=RepoScanResponse)
 async def scan_repo(request: Request) -> RepoScanResponse:
-    """Scan configured discovery paths for demo candidates."""
+    """Scan configured discovery paths for app candidates."""
     state = request.app.state
     config = state.config
     base_path: Path = state.base_path
 
     discovery_paths = config.discovery.paths or ["."]
-    items = scan_repo_for_demos(
+    items = scan_repo_for_apps(
         base_path=base_path,
         discovery_paths=discovery_paths,
         exclude_patterns=config.discovery.exclude,
@@ -92,7 +92,7 @@ async def apply_repo_selection(
     request: Request,
     payload: ApplyDiscoveryRequest,
 ) -> ApplyDiscoveryResponse:
-    """Persist selected demo candidates to config and reload registry."""
+    """Persist selected app candidates to config and reload registry."""
     state = request.app.state
     config = state.config
     base_path: Path = state.base_path
@@ -102,9 +102,9 @@ async def apply_repo_selection(
         config_path = base_path / DEFAULT_CONFIG_FILENAME
         state.config_path = config_path
 
-    demos = list(config.demos)
-    index_by_id = {demo.id: idx for idx, demo in enumerate(demos)}
-    index_by_module = {demo.module.strip().lower(): idx for idx, demo in enumerate(demos)}
+    apps = list(config.apps)
+    index_by_id = {app.id: idx for idx, app in enumerate(apps)}
+    index_by_module = {app.module.strip().lower(): idx for idx, app in enumerate(apps)}
     added = 0
 
     for selection in payload.selections:
@@ -112,32 +112,32 @@ async def apply_repo_selection(
         if not file_path.exists():
             continue
 
-        demo = build_demo_config(
+        app = build_app_config(
             file_path=file_path,
             base_path=base_path,
             search_path=selection.discovery_path,
         )
-        if demo is None:
+        if app is None:
             continue
 
-        if demo.id in index_by_id:
-            demos[index_by_id[demo.id]] = demo
-            index_by_module[demo.module.strip().lower()] = index_by_id[demo.id]
+        if app.id in index_by_id:
+            apps[index_by_id[app.id]] = app
+            index_by_module[app.module.strip().lower()] = index_by_id[app.id]
             continue
 
-        existing_index = index_by_module.get(demo.module.strip().lower())
+        existing_index = index_by_module.get(app.module.strip().lower())
         if existing_index is not None:
             continue
 
         else:
-            index_by_id[demo.id] = len(demos)
-            index_by_module[demo.module.strip().lower()] = len(demos)
-            demos.append(demo)
+            index_by_id[app.id] = len(apps)
+            index_by_module[app.module.strip().lower()] = len(apps)
+            apps.append(app)
             added += 1
 
-    config.demos = demos
+    config.apps = apps
     set_config(config, config_path)
     save_config(config)
     init_registry(config, base_path)
 
-    return ApplyDiscoveryResponse(added=added, total=len(config.demos))
+    return ApplyDiscoveryResponse(added=added, total=len(config.apps))

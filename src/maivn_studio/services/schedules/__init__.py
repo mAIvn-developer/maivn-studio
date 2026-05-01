@@ -1,4 +1,4 @@
-"""Studio service for configuring and running scheduled demo invocations."""
+"""Studio service for configuring and running scheduled app invocations."""
 
 from __future__ import annotations
 

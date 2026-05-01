@@ -25,7 +25,7 @@ async def emit_session_start_event(
         "session_start",
         {
             "session_id": session.session_id,
-            "demo_id": session.demo_config.id,
+            "app_id": session.app_config.id,
             "executor_type": executor_type,
             "executor_name": executor.name,
             "structured_output": structured_output_config is not None,

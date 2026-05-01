@@ -29,24 +29,24 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _resolve_demo_variant(demo, requested_variant: str | None) -> str | None:
-    """Resolve the effective session variant, falling back to the demo default."""
+def _resolve_app_variant(app, requested_variant: str | None) -> str | None:
+    """Resolve the effective session variant, falling back to the app default."""
     if requested_variant:
         return requested_variant
 
-    default_variant = getattr(demo, "default_variant", None)
+    default_variant = getattr(app, "default_variant", None)
     if not isinstance(default_variant, str) or not default_variant.strip():
         return None
 
     normalized_variant = default_variant.strip()
-    if normalized_variant in demo.variants:
+    if normalized_variant in app.variants:
         return normalized_variant
 
     logger.warning(
-        "Ignoring invalid default variant %r for demo %s; available variants: %s",
+        "Ignoring invalid default variant %r for app %s; available variants: %s",
         normalized_variant,
-        demo.id,
-        sorted(demo.variants.keys()),
+        app.id,
+        sorted(app.variants.keys()),
     )
     return None
 
@@ -55,29 +55,29 @@ async def create_session(request: CreateSessionRequest) -> SessionResponse:
     _refresh_registry_from_disk()
 
     registry = get_registry()
-    demo = registry.get(request.demo_id)
+    app = registry.get(request.app_id)
 
-    if demo is None:
-        raise HTTPException(status_code=404, detail=f"Demo not found: {request.demo_id}")
+    if app is None:
+        raise HTTPException(status_code=404, detail=f"App not found: {request.app_id}")
 
-    if request.variant and request.variant not in demo.variants:
+    if request.variant and request.variant not in app.variants:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid variant: {request.variant}. Available: {list(demo.variants.keys())}",
+            detail=f"Invalid variant: {request.variant}. Available: {list(app.variants.keys())}",
         )
 
-    resolved_variant = _resolve_demo_variant(demo, request.variant)
+    resolved_variant = _resolve_app_variant(app, request.variant)
     variant_private_data = None
     if resolved_variant is not None:
-        variant_private_data = demo.variants[resolved_variant].private_data
+        variant_private_data = app.variants[resolved_variant].private_data
 
     manager = get_session_manager()
     session = await manager.create_session(
-        demo_config=demo,
+        app_config=app,
         variant=resolved_variant,
         thread_id=request.thread_id,
         private_data=_merge_private_data(
-            demo.private_data,
+            app.private_data,
             variant_private_data,
             request.private_data,
         ),

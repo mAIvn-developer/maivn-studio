@@ -393,12 +393,12 @@
   }
 
   .executor-badge.swarm {
-    background-color: rgba(211, 188, 253, 0.15);
+    background-color: color-mix(in srgb, var(--color-secondary) 15%, transparent);
     color: var(--color-secondary);
   }
 
   .executor-badge.agent {
-    background-color: rgba(177, 197, 255, 0.15);
+    background-color: color-mix(in srgb, var(--color-primary) 15%, transparent);
     color: var(--color-primary);
   }
 
@@ -416,13 +416,13 @@
 
   .source-badge.configured {
     border: 1px solid color-mix(in srgb, var(--color-secondary) 25%, var(--color-outline-variant));
-    background: rgba(137, 208, 237, 0.12);
+    background: color-mix(in srgb, var(--color-secondary) 12%, transparent);
     color: var(--color-secondary);
   }
 
   .source-badge.discovered {
     border: 1px solid color-mix(in srgb, var(--color-primary) 24%, var(--color-outline-variant));
-    background: rgba(177, 197, 255, 0.12);
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
     color: var(--color-primary);
   }
 </style>

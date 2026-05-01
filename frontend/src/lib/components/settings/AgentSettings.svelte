@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { updateAgent } from "$lib/api_client/demo-config";
+  import { updateAgent } from "$lib/api_client/app-config";
   import AgentCapabilityChips from "$lib/components/scope-settings/AgentCapabilityChips.svelte";
   import ScopePromptPanel from "$lib/components/scope-settings/ScopePromptPanel.svelte";
   import ScopeSaveActions from "$lib/components/scope-settings/ScopeSaveActions.svelte";
@@ -31,12 +31,12 @@
 
   interface Props {
     agents: AgentInfo[];
-    demoId: string;
+    appId: string;
     disabled?: boolean;
     onAgentUpdated?: () => void;
   }
 
-  let { agents, demoId, disabled = false, onAgentUpdated }: Props = $props();
+  let { agents, appId, disabled = false, onAgentUpdated }: Props = $props();
 
   // Track which agents are expanded
   let expandedAgents = $state<Set<string>>(new Set());
@@ -128,7 +128,7 @@
       },
       onUpdated: onAgentUpdated,
       persist: async (pendingEdit: Partial<AgentInfo>) => {
-        await updateAgent(demoId, agent.name, {
+        await updateAgent(appId, agent.name, {
           description: pendingEdit.description as string | undefined,
           system_prompt: pendingEdit.system_prompt as string | undefined,
           tags: pendingEdit.tags as string[] | undefined,

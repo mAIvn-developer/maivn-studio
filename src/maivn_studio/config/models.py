@@ -4,19 +4,19 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-# MARK: Demo Configuration
+# MARK: App Configuration
 
 
-class DemoVariant(BaseModel):
-    """A variant configuration for a demo."""
+class AppVariant(BaseModel):
+    """A variant configuration for an app."""
 
     args: list[str] = Field(default_factory=list)
     description: str = ""
     private_data: dict[str, str | int | bool] = Field(default_factory=dict)
 
 
-class DemoConfig(BaseModel):
-    """Configuration for a single demo."""
+class AppConfig(BaseModel):
+    """Configuration for a single app."""
 
     id: str
     name: str
@@ -24,7 +24,7 @@ class DemoConfig(BaseModel):
     module: str
     category: str = "uncategorized"
     tags: list[str] = Field(default_factory=list)
-    variants: dict[str, DemoVariant] = Field(default_factory=dict)
+    variants: dict[str, AppVariant] = Field(default_factory=dict)
     default_variant: str | None = None
     private_data: dict[str, str | int | bool] = Field(default_factory=dict)
 
@@ -37,7 +37,7 @@ class AgentConfig(BaseModel):
 
     id: str
     name: str
-    demo: str
+    app: str
     description: str = ""
 
 
@@ -46,7 +46,7 @@ class SwarmConfig(BaseModel):
 
     id: str
     name: str
-    demo: str
+    app: str
     agents: list[str] = Field(default_factory=list)
     final_agent: str | None = None
 
@@ -69,13 +69,13 @@ class PrivateDataField(BaseModel):
 
 
 class SavedPrompt(BaseModel):
-    """A user-saved prompt for a demo."""
+    """A user-saved prompt for an app."""
 
     id: str
     name: str
     content: str
     description: str = ""
-    demo_id: str  # The demo this prompt is for
+    app_id: str  # The app this prompt is for
     message_type: str = "human"  # human, redacted, system
     created_at: str | None = None
 
@@ -84,7 +84,7 @@ class SavedPrompt(BaseModel):
 
 
 class DiscoveryConfig(BaseModel):
-    """Configuration for demo auto-discovery."""
+    """Configuration for app auto-discovery."""
 
     paths: list[str] = Field(default_factory=list)
     exclude: list[str] = Field(default_factory=lambda: ["__pycache__", ".pytest_cache"])
@@ -122,7 +122,7 @@ class StudioConfig(BaseModel):
     studio: StudioSettings = Field(default_factory=StudioSettings)
     env: EnvConfig = Field(default_factory=EnvConfig)
     discovery: DiscoveryConfig = Field(default_factory=DiscoveryConfig)
-    demos: list[DemoConfig] = Field(default_factory=list)
+    apps: list[AppConfig] = Field(default_factory=list)
     agents: list[AgentConfig] = Field(default_factory=list)
     swarms: list[SwarmConfig] = Field(default_factory=list)
     saved_prompts: list[SavedPrompt] = Field(default_factory=list)

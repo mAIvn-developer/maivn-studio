@@ -1,4 +1,4 @@
-"""Session management for demo execution.
+"""Session management for app execution.
 
 Submodules:
 - manager: SessionManager coordinator and global accessor

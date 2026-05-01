@@ -1,8 +1,8 @@
 import type {
   AgentInfo,
-  Demo,
-  DemoDetails,
-  DemoVariant,
+  App,
+  AppDetails,
+  AppVariant,
   InvocationConfig,
   MessageAttachmentPayload,
   MessageType,
@@ -53,37 +53,37 @@ async function extractErrorDetail(response: Response, fallback: string): Promise
   return raw.trim() || fallback;
 }
 
-// MARK: Demos API
+// MARK: Apps API
 
-export async function fetchDemos(): Promise<Demo[]> {
-  const res = await fetch(`${API_BASE}/demos`);
-  if (!res.ok) throw new Error("Failed to fetch demos");
+export async function fetchApps(): Promise<App[]> {
+  const res = await fetch(`${API_BASE}/apps`);
+  if (!res.ok) throw new Error("Failed to fetch apps");
   const data = await res.json();
-  return data.demos;
+  return data.apps;
 }
 
-export async function fetchDemosByCategory(): Promise<Record<string, Demo[]>> {
-  const res = await fetch(`${API_BASE}/demos`);
-  if (!res.ok) throw new Error("Failed to fetch demos");
+export async function fetchAppsByCategory(): Promise<Record<string, App[]>> {
+  const res = await fetch(`${API_BASE}/apps`);
+  if (!res.ok) throw new Error("Failed to fetch apps");
   const data = await res.json();
-  // Group demos by category
-  const byCategory: Record<string, Demo[]> = {};
-  for (const demo of data.demos as Demo[]) {
-    if (!byCategory[demo.category]) {
-      byCategory[demo.category] = [];
+  // Group apps by category
+  const byCategory: Record<string, App[]> = {};
+  for (const app of data.apps as App[]) {
+    if (!byCategory[app.category]) {
+      byCategory[app.category] = [];
     }
-    byCategory[demo.category].push(demo);
+    byCategory[app.category].push(app);
   }
   return byCategory;
 }
 
-export async function fetchDemo(id: string): Promise<DemoDetails> {
-  const res = await fetch(`${API_BASE}/demos/${id}`);
-  if (!res.ok) throw new Error(`Failed to fetch demo ${id}`);
+export async function fetchApp(id: string): Promise<AppDetails> {
+  const res = await fetch(`${API_BASE}/apps/${id}`);
+  if (!res.ok) throw new Error(`Failed to fetch app ${id}`);
   const data = await res.json();
-  // API returns { demo, variants } - merge into DemoDetails
+  // API returns { app, variants } - merge into AppDetails
   return {
-    ...data.demo,
+    ...data.app,
     variants: data.variants,
     // These fields aren't returned by API yet, provide defaults
     agents: [],
@@ -91,17 +91,17 @@ export async function fetchDemo(id: string): Promise<DemoDetails> {
     tools: [],
     prompts: [],
     privateDataSchema: [],
-  } as DemoDetails;
+  } as AppDetails;
 }
 
-export async function fetchDemoFullDetails(id: string, variant?: string): Promise<DemoDetails> {
+export async function fetchAppFullDetails(id: string, variant?: string): Promise<AppDetails> {
   const params = new URLSearchParams();
   if (variant) {
     params.set("variant", variant);
   }
   const suffix = params.size > 0 ? `?${params.toString()}` : "";
-  const res = await fetch(`${API_BASE}/demos/${id}/details${suffix}`);
-  if (!res.ok) throw new Error(`Failed to fetch demo details ${id}`);
+  const res = await fetch(`${API_BASE}/apps/${id}/details${suffix}`);
+  if (!res.ok) throw new Error(`Failed to fetch app details ${id}`);
   return res.json();
 }
 
@@ -128,7 +128,7 @@ export async function applyRepoSelection(selections: RepoScanSelection[]): Promi
 // MARK: Sessions API
 
 export async function createSession(
-  demoId: string,
+  appId: string,
   message: string,
   options?: {
     variant?: string;
@@ -145,7 +145,7 @@ export async function createSession(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      demo_id: demoId,
+      app_id: appId,
       message,
       variant: options?.variant,
       thread_id: options?.threadId,
@@ -304,8 +304,8 @@ export function connectToEvents(
 
 // MARK: Prompts API
 
-export async function fetchSavedPrompts(demoId?: string): Promise<SavedPrompt[]> {
-  const url = demoId ? `${API_BASE}/prompts?demo_id=${demoId}` : `${API_BASE}/prompts`;
+export async function fetchSavedPrompts(appId?: string): Promise<SavedPrompt[]> {
+  const url = appId ? `${API_BASE}/prompts?app_id=${appId}` : `${API_BASE}/prompts`;
   const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to fetch saved prompts");
   return res.json();
@@ -315,7 +315,7 @@ export async function savePrompt(prompt: {
   name: string;
   content: string;
   description?: string;
-  demoId: string;
+  appId: string;
   messageType?: MessageType;
 }): Promise<SavedPrompt> {
   const res = await fetch(`${API_BASE}/prompts`, {
@@ -325,7 +325,7 @@ export async function savePrompt(prompt: {
       name: prompt.name,
       content: prompt.content,
       description: prompt.description ?? "",
-      demo_id: prompt.demoId,
+      app_id: prompt.appId,
       message_type: prompt.messageType ?? "human",
     }),
   });
@@ -340,31 +340,31 @@ export async function deletePrompt(promptId: string): Promise<void> {
   if (!res.ok) throw new Error("Failed to delete prompt");
 }
 
-// MARK: Demo Update API
+// MARK: App Update API
 
-export async function updateDemo(
-  demoId: string,
+export async function updateApp(
+  appId: string,
   updates: {
     name?: string;
     description?: string;
     category?: string;
     tags?: string[];
-    variants?: Record<string, DemoVariant>;
+    variants?: Record<string, AppVariant>;
     private_data?: Record<string, string | number | boolean>;
   },
-): Promise<Demo> {
-  const res = await fetch(`${API_BASE}/demos/${demoId}`, {
+): Promise<App> {
+  const res = await fetch(`${API_BASE}/apps/${appId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(updates),
   });
-  if (!res.ok) throw new Error(`Failed to update demo ${demoId}`);
+  if (!res.ok) throw new Error(`Failed to update app ${appId}`);
   const data = await res.json();
-  return data.demo;
+  return data.app;
 }
 
 export async function updateAgent(
-  demoId: string,
+  appId: string,
   agentName: string,
   updates: {
     description?: string;
@@ -380,7 +380,7 @@ export async function updateAgent(
     private_data?: Record<string, unknown>;
   },
 ): Promise<AgentInfo> {
-  const res = await fetch(`${API_BASE}/demos/${demoId}/agents/${encodeURIComponent(agentName)}`, {
+  const res = await fetch(`${API_BASE}/apps/${appId}/agents/${encodeURIComponent(agentName)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(updates),
@@ -390,7 +390,7 @@ export async function updateAgent(
 }
 
 export async function updateSwarm(
-  demoId: string,
+  appId: string,
   swarmName: string,
   updates: {
     description?: string;
@@ -403,7 +403,7 @@ export async function updateSwarm(
     private_data?: Record<string, unknown>;
   },
 ): Promise<SwarmInfo> {
-  const res = await fetch(`${API_BASE}/demos/${demoId}/swarms/${encodeURIComponent(swarmName)}`, {
+  const res = await fetch(`${API_BASE}/apps/${appId}/swarms/${encodeURIComponent(swarmName)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(updates),

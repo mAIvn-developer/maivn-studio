@@ -7,10 +7,10 @@ import {
   createSession,
   deletePrompt,
   endSession,
-  fetchDemo,
-  fetchDemoFullDetails,
-  fetchDemos,
-  fetchDemosByCategory,
+  fetchApp,
+  fetchAppFullDetails,
+  fetchApps,
+  fetchAppsByCategory,
   fetchSavedPrompts,
   fetchSession,
   savePrompt,
@@ -18,7 +18,7 @@ import {
   sendMessage,
   submitInterrupt,
   updateAgent,
-  updateDemo,
+  updateApp,
   updateSwarm,
 } from "./api";
 import type { InvocationConfig, RepoScanSelection } from "./types";
@@ -63,53 +63,53 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// MARK: Demos API
+// MARK: Apps API
 
-describe("fetchDemos", () => {
-  it("returns list of demos", async () => {
-    const demos = [{ id: "d1", name: "Demo 1" }];
-    mockFetchOk({ demos });
+describe("fetchApps", () => {
+  it("returns list of apps", async () => {
+    const apps = [{ id: "d1", name: "App 1" }];
+    mockFetchOk({ apps });
 
-    const result = await fetchDemos();
-    expect(result).toEqual(demos);
-    expect(fetch).toHaveBeenCalledWith("/api/demos");
+    const result = await fetchApps();
+    expect(result).toEqual(apps);
+    expect(fetch).toHaveBeenCalledWith("/api/apps");
   });
 
   it("throws on non-ok response", async () => {
     mockFetchError(500);
-    await expect(fetchDemos()).rejects.toThrow("Failed to fetch demos");
+    await expect(fetchApps()).rejects.toThrow("Failed to fetch apps");
   });
 });
 
-describe("fetchDemosByCategory", () => {
-  it("groups demos by category", async () => {
-    const demos = [
-      { id: "d1", name: "Demo 1", category: "core" },
-      { id: "d2", name: "Demo 2", category: "core" },
-      { id: "d3", name: "Demo 3", category: "advanced" },
+describe("fetchAppsByCategory", () => {
+  it("groups apps by category", async () => {
+    const apps = [
+      { id: "d1", name: "App 1", category: "core" },
+      { id: "d2", name: "App 2", category: "core" },
+      { id: "d3", name: "App 3", category: "advanced" },
     ];
-    mockFetchOk({ demos });
+    mockFetchOk({ apps });
 
-    const result = await fetchDemosByCategory();
+    const result = await fetchAppsByCategory();
     expect(result).toEqual({
-      core: [demos[0], demos[1]],
-      advanced: [demos[2]],
+      core: [apps[0], apps[1]],
+      advanced: [apps[2]],
     });
   });
 
   it("throws on non-ok response", async () => {
     mockFetchError(500);
-    await expect(fetchDemosByCategory()).rejects.toThrow("Failed to fetch demos");
+    await expect(fetchAppsByCategory()).rejects.toThrow("Failed to fetch apps");
   });
 });
 
-describe("fetchDemo", () => {
-  it("merges demo and variants into DemoDetails", async () => {
-    const demo = { id: "d1", name: "Demo 1" };
+describe("fetchApp", () => {
+  it("merges app and variants into AppDetails", async () => {
+    const app = { id: "d1", name: "App 1" };
     const variants = [{ args: [], description: "default" }];
-    mockFetchOk({ demo, variants });
+    mockFetchOk({ app, variants });
 
-    const result = await fetchDemo("d1");
+    const result = await fetchApp("d1");
     expect(result.id).toBe("d1");
     expect(result.variants).toEqual(variants);
     expect(result.agents).toEqual([]);
@@ -118,32 +118,32 @@ describe("fetchDemo", () => {
 
   it("throws on non-ok response", async () => {
     mockFetchError(404);
-    await expect(fetchDemo("d1")).rejects.toThrow("Failed to fetch demo d1");
+    await expect(fetchApp("d1")).rejects.toThrow("Failed to fetch app d1");
   });
 });
 
-describe("fetchDemoFullDetails", () => {
-  it("returns full demo details", async () => {
-    const details = { id: "d1", name: "Demo 1", agents: [], tools: [] };
+describe("fetchAppFullDetails", () => {
+  it("returns full app details", async () => {
+    const details = { id: "d1", name: "App 1", agents: [], tools: [] };
     mockFetchOk(details);
 
-    const result = await fetchDemoFullDetails("d1");
+    const result = await fetchAppFullDetails("d1");
     expect(result).toEqual(details);
-    expect(fetch).toHaveBeenCalledWith("/api/demos/d1/details");
+    expect(fetch).toHaveBeenCalledWith("/api/apps/d1/details");
   });
 
   it("passes the selected variant in the details query string", async () => {
-    const details = { id: "d1", name: "Demo 1", agents: [], tools: [] };
+    const details = { id: "d1", name: "App 1", agents: [], tools: [] };
     mockFetchOk(details);
 
-    await fetchDemoFullDetails("d1", "with-private-data");
+    await fetchAppFullDetails("d1", "with-private-data");
 
-    expect(fetch).toHaveBeenCalledWith("/api/demos/d1/details?variant=with-private-data");
+    expect(fetch).toHaveBeenCalledWith("/api/apps/d1/details?variant=with-private-data");
   });
 
   it("throws on non-ok response", async () => {
     mockFetchError(500);
-    await expect(fetchDemoFullDetails("d1")).rejects.toThrow("Failed to fetch demo details d1");
+    await expect(fetchAppFullDetails("d1")).rejects.toThrow("Failed to fetch app details d1");
   });
 });
 
@@ -197,7 +197,7 @@ describe("createSession", () => {
     const call = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(call[0]).toBe("/api/sessions");
     const body = JSON.parse(call[1].body);
-    expect(body.demo_id).toBe("d1");
+    expect(body.app_id).toBe("d1");
     expect(body.message).toBe("hello");
     expect(body.message_type).toBe("human");
   });
@@ -236,8 +236,8 @@ describe("createSession", () => {
   });
 
   it("throws with error detail from response", async () => {
-    mockFetchError(400, { detail: "Demo not found" });
-    await expect(createSession("bad", "hello")).rejects.toThrow("Demo not found");
+    mockFetchError(400, { detail: "App not found" });
+    await expect(createSession("bad", "hello")).rejects.toThrow("App not found");
   });
 
   it("throws with message field from error response", async () => {
@@ -543,11 +543,11 @@ describe("fetchSavedPrompts", () => {
     expect(fetch).toHaveBeenCalledWith("/api/prompts");
   });
 
-  it("fetches prompts filtered by demoId", async () => {
+  it("fetches prompts filtered by appId", async () => {
     mockFetchOk([]);
 
     await fetchSavedPrompts("d1");
-    expect(fetch).toHaveBeenCalledWith("/api/prompts?demo_id=d1");
+    expect(fetch).toHaveBeenCalledWith("/api/prompts?app_id=d1");
   });
 
   it("throws on non-ok response", async () => {
@@ -564,7 +564,7 @@ describe("savePrompt", () => {
     const result = await savePrompt({
       name: "My Prompt",
       content: "Test content",
-      demoId: "d1",
+      appId: "d1",
     });
     expect(result).toEqual(saved);
 
@@ -572,7 +572,7 @@ describe("savePrompt", () => {
     const body = JSON.parse(call[1].body);
     expect(body.name).toBe("My Prompt");
     expect(body.content).toBe("Test content");
-    expect(body.demo_id).toBe("d1");
+    expect(body.app_id).toBe("d1");
     expect(body.description).toBe("");
     expect(body.message_type).toBe("human");
   });
@@ -584,7 +584,7 @@ describe("savePrompt", () => {
       name: "Test",
       content: "Content",
       description: "A description",
-      demoId: "d1",
+      appId: "d1",
       messageType: "system",
     });
 
@@ -596,7 +596,7 @@ describe("savePrompt", () => {
 
   it("throws on non-ok response", async () => {
     mockFetchError(400);
-    await expect(savePrompt({ name: "Test", content: "C", demoId: "d1" })).rejects.toThrow(
+    await expect(savePrompt({ name: "Test", content: "C", appId: "d1" })).rejects.toThrow(
       "Failed to save prompt",
     );
   });
@@ -616,17 +616,17 @@ describe("deletePrompt", () => {
   });
 });
 
-// MARK: Demo Update API
+// MARK: App Update API
 
-describe("updateDemo", () => {
+describe("updateApp", () => {
   it("sends PATCH request with updates", async () => {
-    mockFetchOk({ demo: { id: "d1", name: "Updated" } });
+    mockFetchOk({ app: { id: "d1", name: "Updated" } });
 
-    const result = await updateDemo("d1", { name: "Updated" });
+    const result = await updateApp("d1", { name: "Updated" });
     expect(result).toEqual({ id: "d1", name: "Updated" });
 
     const call = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(call[0]).toBe("/api/demos/d1");
+    expect(call[0]).toBe("/api/apps/d1");
     expect(call[1].method).toBe("PATCH");
     const body = JSON.parse(call[1].body);
     expect(body.name).toBe("Updated");
@@ -634,7 +634,7 @@ describe("updateDemo", () => {
 
   it("throws on non-ok response", async () => {
     mockFetchError(400);
-    await expect(updateDemo("d1", {})).rejects.toThrow("Failed to update demo d1");
+    await expect(updateApp("d1", {})).rejects.toThrow("Failed to update app d1");
   });
 });
 
@@ -647,7 +647,7 @@ describe("updateAgent", () => {
     expect(result).toEqual(agent);
 
     const call = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(call[0]).toBe("/api/demos/d1/agents/Agent%20One");
+    expect(call[0]).toBe("/api/apps/d1/agents/Agent%20One");
     expect(call[1].method).toBe("PATCH");
   });
 
@@ -666,7 +666,7 @@ describe("updateSwarm", () => {
     expect(result).toEqual(swarm);
 
     const call = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(call[0]).toBe("/api/demos/d1/swarms/My%20Swarm");
+    expect(call[0]).toBe("/api/apps/d1/swarms/My%20Swarm");
     expect(call[1].method).toBe("PATCH");
   });
 

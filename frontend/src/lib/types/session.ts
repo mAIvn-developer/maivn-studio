@@ -2,8 +2,8 @@
 
 export interface Session {
   session_id: string;
-  demo_id: string;
-  demo_name: string;
+  app_id: string;
+  app_name: string;
   thread_id: string;
   variant: string | null;
   status: SessionStatus;

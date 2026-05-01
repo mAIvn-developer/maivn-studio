@@ -10,7 +10,7 @@ import type {
 import { API_BASE, buildStructuredOutputPayload, extractErrorDetail } from "./shared";
 
 export async function createSession(
-  demoId: string,
+  appId: string,
   message: string,
   options?: {
     variant?: string;
@@ -28,7 +28,7 @@ export async function createSession(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      demo_id: demoId,
+      app_id: appId,
       message,
       variant: options?.variant,
       thread_id: options?.threadId,

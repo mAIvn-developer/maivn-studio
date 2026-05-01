@@ -43,9 +43,9 @@ def _build_default_private_data() -> dict[str, Any]:
         "vehicle_id": "VIN12345",
         "sensor_bus_id": "CAN0",
         "manufacturer": "Cote Robotics",
-        "account_id": "ACCT-DEMO-0001",
-        "customer_name": "Customer-Demo",
-        "secret_token": "secret-demo-token",
+        "account_id": "ACCT-APP-0001",
+        "customer_name": "Customer-App",
+        "secret_token": "secret-app-token",
         "email": "user@example.com",
         "log_path": _default_log_path(),
     }
@@ -77,7 +77,7 @@ def is_valid_log_path(value: Any) -> bool:
 
 
 def extract_private_data_schema(loaded: Any) -> list[PrivateDataField]:
-    """Extract private data schema from a loaded demo."""
+    """Extract private data schema from a loaded app."""
     keys: set[str] = set()
     scopes: list[Any] = []
     scopes.extend(loaded.agents)

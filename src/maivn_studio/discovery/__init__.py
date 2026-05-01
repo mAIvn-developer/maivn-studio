@@ -1,8 +1,8 @@
-"""Demo discovery and registry.
+"""App discovery and registry.
 
 Submodules:
-- registry: DemoRegistry and global registry accessors
-- scanner: repo scanning and demo-config discovery helpers
+- registry: AppRegistry and global registry accessors
+- scanner: repo scanning and app-config discovery helpers
 """
 
 from __future__ import annotations

@@ -1,18 +1,18 @@
 import type {
   BatchInvocationConfig,
-  Demo,
+  App,
   MessageAttachmentPayload,
   SendableMessageType,
   StructuredOutputConfig,
 } from "$lib/types";
 
 interface CreateStudioSessionActionsParams {
-  getSelectedDemo: () => { id: string } | null;
-  selectDemo: (demoId: string) => void;
-  addRecentDemo: (demo: Demo) => void;
+  getSelectedApp: () => { id: string } | null;
+  selectApp: (appId: string) => void;
+  addRecentApp: (app: App) => void;
   resetSession: () => void;
   startSession: (
-    demoId: string,
+    appId: string,
     message: string,
     options?: {
       variant?: string;
@@ -41,10 +41,10 @@ interface CreateStudioSessionActionsParams {
 }
 
 export function createStudioSessionActions(params: CreateStudioSessionActionsParams) {
-  function handleSelectDemo(demo: Demo) {
+  function handleSelectApp(app: App) {
     params.resetSession();
-    params.selectDemo(demo.id);
-    params.addRecentDemo(demo);
+    params.selectApp(app.id);
+    params.addRecentApp(app);
   }
 
   function handleStart(
@@ -58,9 +58,9 @@ export function createStudioSessionActions(params: CreateStudioSessionActionsPar
       batch?: BatchInvocationConfig;
     },
   ) {
-    const selectedDemo = params.getSelectedDemo();
-    if (!selectedDemo) return;
-    params.startSession(selectedDemo.id, message, options);
+    const selectedApp = params.getSelectedApp();
+    if (!selectedApp) return;
+    params.startSession(selectedApp.id, message, options);
   }
 
   function handleSend(
@@ -110,7 +110,7 @@ export function createStudioSessionActions(params: CreateStudioSessionActionsPar
   }
 
   return {
-    handleSelectDemo,
+    handleSelectApp,
     handleStart,
     handleSend,
     handleMessageTypeChange,

@@ -23,7 +23,7 @@ class SavePromptRequest(BaseModel):
     name: str
     content: str
     description: str = ""
-    demo_id: str
+    app_id: str
     message_type: str = "human"
 
 
@@ -34,7 +34,7 @@ class SavedPromptResponse(BaseModel):
     name: str
     content: str
     description: str
-    demo_id: str
+    app_id: str
     message_type: str
     created_at: str
 
@@ -43,11 +43,11 @@ class SavedPromptResponse(BaseModel):
 
 
 @router.get("", response_model=list[SavedPromptResponse])
-async def list_saved_prompts(demo_id: str | None = None) -> list[SavedPromptResponse]:
-    """List saved prompts, optionally filtered by demo.
+async def list_saved_prompts(app_id: str | None = None) -> list[SavedPromptResponse]:
+    """List saved prompts, optionally filtered by app.
 
     Args:
-        demo_id: Optional demo ID filter.
+        app_id: Optional app ID filter.
 
     Returns:
         List of saved prompts.
@@ -55,8 +55,8 @@ async def list_saved_prompts(demo_id: str | None = None) -> list[SavedPromptResp
     config = get_config()
     prompts = config.saved_prompts
 
-    if demo_id:
-        prompts = [p for p in prompts if p.demo_id == demo_id]
+    if app_id:
+        prompts = [p for p in prompts if p.app_id == app_id]
 
     return [
         SavedPromptResponse(
@@ -64,7 +64,7 @@ async def list_saved_prompts(demo_id: str | None = None) -> list[SavedPromptResp
             name=p.name,
             content=p.content,
             description=p.description,
-            demo_id=p.demo_id,
+            app_id=p.app_id,
             message_type=p.message_type,
             created_at=p.created_at or datetime.now().isoformat(),
         )
@@ -92,7 +92,7 @@ async def save_prompt(request: SavePromptRequest) -> SavedPromptResponse:
         name=request.name,
         content=request.content,
         description=request.description,
-        demo_id=request.demo_id,
+        app_id=request.app_id,
         message_type=request.message_type,
         created_at=created_at,
     )
@@ -105,7 +105,7 @@ async def save_prompt(request: SavePromptRequest) -> SavedPromptResponse:
         name=request.name,
         content=request.content,
         description=request.description,
-        demo_id=request.demo_id,
+        app_id=request.app_id,
         message_type=request.message_type,
         created_at=created_at,
     )

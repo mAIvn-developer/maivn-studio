@@ -46,7 +46,7 @@ const statusConfig: Record<ToolCardStatus, ToolStatusDisplayConfig> = {
   },
   executing: {
     color: "var(--color-secondary)",
-    bg: "rgba(137, 208, 237, 0.1)",
+    bg: "color-mix(in srgb, var(--color-secondary) 10%, transparent)",
   },
   completed: {
     color: "var(--color-success)",

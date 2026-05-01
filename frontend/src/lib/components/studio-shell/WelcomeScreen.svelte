@@ -1,6 +1,6 @@
 <script lang="ts">
   import ThemeLogo from "$lib/components/ui/ThemeLogo.svelte";
-  import type { Demo } from "$lib/types";
+  import type { App } from "$lib/types";
   import { externalLinks } from "$lib/utils/external-links";
   import {
     ArrowUpRight,
@@ -15,18 +15,18 @@
   interface Props {
     onOpenCommandPalette?: () => void;
     onScanRepo?: () => void;
-    recentDemos?: Demo[];
-    onSelectDemo?: (demo: Demo) => void;
-    demoCount?: number;
+    recentApps?: App[];
+    onSelectApp?: (app: App) => void;
+    appCount?: number;
     connected?: boolean;
   }
 
   let {
     onOpenCommandPalette,
     onScanRepo,
-    recentDemos = [],
-    onSelectDemo,
-    demoCount = 0,
+    recentApps = [],
+    onSelectApp,
+    appCount = 0,
     connected = true,
   }: Props = $props();
 
@@ -73,7 +73,7 @@
             ></span>
             {connected ? "Connected" : "Offline"}
           </span>
-          <span class="welcome-pill">{demoCount} demos ready</span>
+          <span class="welcome-pill">{appCount} apps ready</span>
         </div>
 
         <h1
@@ -85,7 +85,7 @@
         <p
           class="mt-4 max-w-2xl text-left text-sm leading-7 text-[var(--color-text-secondary)] sm:text-base"
         >
-          Launch curated demos, inspect runtime behavior, and discover new experiments in your repo
+          Launch curated apps, inspect runtime behavior, and discover new experiments in your repo
           from one focused workspace.
         </p>
 
@@ -100,10 +100,10 @@
               </span>
               <span class="min-w-0 flex-1 text-left">
                 <span class="block text-sm font-semibold text-[var(--color-text)]"
-                  >Select a demo</span
+                  >Select an app</span
                 >
                 <span class="mt-1 block text-xs text-[var(--color-text-tertiary)]">
-                  Browse the demo catalog or launch the command palette.
+                  Browse the app catalog or launch the command palette.
                 </span>
               </span>
               <kbd class="welcome-shortcut-key">Ctrl+K</kbd>
@@ -120,7 +120,7 @@
                   >Scan repository</span
                 >
                 <span class="mt-1 block text-xs text-[var(--color-text-tertiary)]">
-                  Discover new demos and register them in Studio.
+                  Discover new apps and register them in Studio.
                 </span>
               </span>
             </button>
@@ -170,22 +170,22 @@
         </div>
       </div>
 
-      <!-- Recent demos -->
+      <!-- Recent apps -->
       <div class="welcome-side-panel">
-        {#if recentDemos.length > 0 && onSelectDemo}
+        {#if recentApps.length > 0 && onSelectApp}
           <div class="flex items-center gap-2 text-xs text-[var(--color-text-tertiary)]">
             <Clock size={12} />
-            <span>Recent demos</span>
+            <span>Recent apps</span>
           </div>
           <div class="mt-4 space-y-2">
-            {#each recentDemos.slice(0, 5) as demo}
-              <button class="welcome-recent-item" onclick={() => onSelectDemo?.(demo)}>
+            {#each recentApps.slice(0, 5) as app}
+              <button class="welcome-recent-item" onclick={() => onSelectApp?.(app)}>
                 <span class="min-w-0 flex-1 text-left">
                   <span class="block truncate text-sm font-medium text-[var(--color-text)]"
-                    >{demo.name}</span
+                    >{app.name}</span
                   >
                   <span class="mt-1 block truncate text-xs text-[var(--color-text-tertiary)]">
-                    {demo.category}
+                    {app.category}
                   </span>
                 </span>
                 <span class="welcome-open-pill">Open</span>
@@ -201,7 +201,7 @@
             <div class="welcome-step">
               <span class="welcome-step-index">1</span>
               <div>
-                <div class="text-sm font-medium text-[var(--color-text)]">Choose a demo</div>
+                <div class="text-sm font-medium text-[var(--color-text)]">Choose an app</div>
                 <div class="mt-1 text-xs leading-6 text-[var(--color-text-tertiary)]">
                   Open the command palette to browse the full Studio catalog.
                 </div>
@@ -350,7 +350,7 @@
     width: 0.45rem;
     border-radius: 9999px;
     background: var(--color-secondary);
-    box-shadow: 0 0 0 4px rgba(137, 208, 237, 0.12);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-secondary) 12%, transparent);
   }
 
   .welcome-status-dot_disconnected {
@@ -410,12 +410,12 @@
   }
 
   .welcome-action-icon_primary {
-    background: rgba(137, 208, 237, 0.14);
+    background: color-mix(in srgb, var(--color-secondary) 14%, transparent);
     color: var(--color-secondary);
   }
 
   .welcome-action-icon_secondary {
-    background: rgba(177, 197, 255, 0.14);
+    background: color-mix(in srgb, var(--color-primary) 14%, transparent);
     color: var(--color-primary);
   }
 
@@ -451,7 +451,7 @@
     font-size: 0.6875rem;
     font-weight: 600;
     color: var(--color-secondary);
-    background: rgba(137, 208, 237, 0.12);
+    background: color-mix(in srgb, var(--color-secondary) 12%, transparent);
   }
 
   .welcome-step {
@@ -468,7 +468,7 @@
     align-items: center;
     justify-content: center;
     border-radius: 9999px;
-    background: rgba(137, 208, 237, 0.14);
+    background: color-mix(in srgb, var(--color-secondary) 14%, transparent);
     color: var(--color-secondary);
     font-size: 0.75rem;
     font-weight: 700;
@@ -539,7 +539,7 @@
     align-items: center;
     justify-content: center;
     border-radius: 0.55rem;
-    background: rgba(177, 197, 255, 0.14);
+    background: color-mix(in srgb, var(--color-primary) 14%, transparent);
     color: var(--color-primary);
     flex-shrink: 0;
   }

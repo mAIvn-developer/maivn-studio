@@ -30,7 +30,7 @@ interface CreateSessionStoreApiParams {
   getPendingInterrupts: () => import("$lib/types").InterruptData[];
   getAllInterrupts: () => import("$lib/types").InterruptData[];
   startSession: (
-    demoId: string,
+    appId: string,
     initialMessage: string,
     options?: {
       variant?: string;

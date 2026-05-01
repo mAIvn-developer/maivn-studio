@@ -9,22 +9,22 @@ from maivn_studio.api.app import create_app
 from maivn_studio.config.models import DiscoveryConfig, StudioConfig, StudioSettings
 
 
-def _write_demo_file(path: Path) -> None:
+def _write_app_file(path: Path) -> None:
     path.write_text(
-        "from maivn import Agent\ndemo_agent = Agent()\n",
+        "from maivn import Agent\napp_agent = Agent()\n",
         encoding="utf-8",
     )
 
 
 def test_discovery_scan_and_apply(tmp_path) -> None:
-    demos_dir = tmp_path / "demos"
-    demos_dir.mkdir()
-    demo_file = demos_dir / "demo_one.py"
-    _write_demo_file(demo_file)
+    apps_dir = tmp_path / "apps"
+    apps_dir.mkdir()
+    app_file = apps_dir / "app_one.py"
+    _write_app_file(app_file)
 
     config = StudioConfig(
         studio=StudioSettings(debug=False),
-        discovery=DiscoveryConfig(paths=["demos"], exclude=[]),
+        discovery=DiscoveryConfig(paths=["apps"], exclude=[]),
     )
 
     app = create_app(config=config, base_path=tmp_path)
@@ -48,18 +48,18 @@ def test_discovery_scan_and_apply(tmp_path) -> None:
     config_path = tmp_path / "maivn_studio.json"
     assert config_path.exists()
     data = json.loads(config_path.read_text(encoding="utf-8"))
-    assert data["demos"][0]["id"] == "demo-one"
+    assert data["apps"][0]["id"] == "app-one"
 
 
 def test_discovery_apply_ignores_files_outside_base_path(tmp_path) -> None:
-    outside_dir = tmp_path.parent / "outside-demos"
+    outside_dir = tmp_path.parent / "outside-apps"
     outside_dir.mkdir(exist_ok=True)
-    outside_file = outside_dir / "outside_demo.py"
-    _write_demo_file(outside_file)
+    outside_file = outside_dir / "outside_app.py"
+    _write_app_file(outside_file)
 
     config = StudioConfig(
         studio=StudioSettings(debug=False),
-        discovery=DiscoveryConfig(paths=["demos"], exclude=[]),
+        discovery=DiscoveryConfig(paths=["apps"], exclude=[]),
     )
 
     app = create_app(config=config, base_path=tmp_path)
@@ -70,8 +70,8 @@ def test_discovery_apply_ignores_files_outside_base_path(tmp_path) -> None:
             json={
                 "selections": [
                     {
-                        "file_path": "../outside-demos/outside_demo.py",
-                        "discovery_path": "../outside-demos",
+                        "file_path": "../outside-apps/outside_app.py",
+                        "discovery_path": "../outside-apps",
                     }
                 ]
             },

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { updateSwarm } from "$lib/api_client/demo-config";
+  import { updateSwarm } from "$lib/api_client/app-config";
   import ScopeMetadataChips from "$lib/components/scope-settings/ScopeMetadataChips.svelte";
   import ScopePromptPanel from "$lib/components/scope-settings/ScopePromptPanel.svelte";
   import ScopeSaveActions from "$lib/components/scope-settings/ScopeSaveActions.svelte";
@@ -31,12 +31,12 @@
 
   interface Props {
     swarms: SwarmInfo[];
-    demoId: string;
+    appId: string;
     disabled?: boolean;
     onSwarmUpdated?: () => void;
   }
 
-  let { swarms, demoId, disabled = false, onSwarmUpdated }: Props = $props();
+  let { swarms, appId, disabled = false, onSwarmUpdated }: Props = $props();
 
   // Track which swarms are expanded
   let expandedSwarms = $state<Set<string>>(new Set());
@@ -121,7 +121,7 @@
       },
       onUpdated: onSwarmUpdated,
       persist: async (pendingEdit: Partial<SwarmInfo>) => {
-        await updateSwarm(demoId, swarm.name, {
+        await updateSwarm(appId, swarm.name, {
           description: pendingEdit.description as string | undefined,
           system_prompt: pendingEdit.system_prompt as string | undefined,
           tags: pendingEdit.tags as string[] | undefined,

@@ -1,11 +1,11 @@
 <script lang="ts">
-  import type { BatchInvocationRow, DemoDetails, InvocationConfig } from "$lib/types";
+  import type { BatchInvocationRow, AppDetails, InvocationConfig } from "$lib/types";
   import { Copy, Plus, SlidersHorizontal, Trash2 } from "lucide-svelte";
 
   interface Props {
     rows?: BatchInvocationRow[];
-    variants: Array<[string, DemoDetails["variants"][string]]>;
-    tools?: DemoDetails["tools"];
+    variants: Array<[string, AppDetails["variants"][string]]>;
+    tools?: AppDetails["tools"];
     selectedVariant?: string | undefined;
   }
 
