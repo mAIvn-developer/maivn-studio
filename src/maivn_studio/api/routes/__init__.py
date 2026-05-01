@@ -1,7 +1,7 @@
 """API route handlers.
 
 Submodules:
-- demos.routes: demo-management endpoints
+- apps.routes: app-management endpoints
 - discovery: repository discovery endpoints
 - prompts: saved-prompt endpoints
 - sessions.routes: session lifecycle and SSE endpoints
@@ -9,6 +9,6 @@ Submodules:
 
 from __future__ import annotations
 
-from . import demos, discovery, prompts, sessions
+from . import apps, discovery, prompts, sessions
 
-__all__ = ["demos", "discovery", "prompts", "sessions"]
+__all__ = ["apps", "discovery", "prompts", "sessions"]

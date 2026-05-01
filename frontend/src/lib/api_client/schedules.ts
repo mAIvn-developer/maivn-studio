@@ -53,14 +53,14 @@ export interface ScheduleRunSummary {
    * Synthetic session id for this fire's event bridge. Set once the fire
    * has actually started executing (via the schedule manager's on_fire
    * callback). The frontend uses this to subscribe to the fire's chat-style
-   * SSE stream at /api/schedules/{demoId}/fires/{fire_id}/events.
+   * SSE stream at /api/schedules/{appId}/fires/{fire_id}/events.
    */
   event_session_id: string | null;
 }
 
 export interface ScheduleJobSummary {
   job_id: string;
-  demo_id: string;
+  app_id: string;
   name: string;
   config: ScheduleConfig;
   is_running: boolean;
@@ -116,52 +116,52 @@ export async function listSchedules(): Promise<ScheduleJobSummary[]> {
   return res.json();
 }
 
-export async function getSchedule(demoId: string): Promise<ScheduleJobSummary | null> {
+export async function getSchedule(appId: string): Promise<ScheduleJobSummary | null> {
   const schedules = await listSchedules();
-  return schedules.find((schedule) => schedule.demo_id === demoId) ?? null;
+  return schedules.find((schedule) => schedule.app_id === appId) ?? null;
 }
 
 export async function upsertSchedule(
-  demoId: string,
+  appId: string,
   config: ScheduleConfig,
 ): Promise<ScheduleJobSummary> {
-  const res = await fetch(`${API_BASE}/schedules/${demoId}`, {
+  const res = await fetch(`${API_BASE}/schedules/${appId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(config),
   });
-  await ensureOk(res, `Failed to start schedule for ${demoId}`);
+  await ensureOk(res, `Failed to start schedule for ${appId}`);
   return res.json();
 }
 
-export async function stopSchedule(demoId: string, drain = true): Promise<ScheduleJobSummary> {
-  const res = await fetch(`${API_BASE}/schedules/${demoId}/stop?drain=${drain}`, {
+export async function stopSchedule(appId: string, drain = true): Promise<ScheduleJobSummary> {
+  const res = await fetch(`${API_BASE}/schedules/${appId}/stop?drain=${drain}`, {
     method: "POST",
   });
-  await ensureOk(res, `Failed to stop schedule for ${demoId}`);
+  await ensureOk(res, `Failed to stop schedule for ${appId}`);
   return res.json();
 }
 
-export async function pauseSchedule(demoId: string): Promise<ScheduleJobSummary> {
-  const res = await fetch(`${API_BASE}/schedules/${demoId}/pause`, { method: "POST" });
-  await ensureOk(res, `Failed to pause schedule for ${demoId}`);
+export async function pauseSchedule(appId: string): Promise<ScheduleJobSummary> {
+  const res = await fetch(`${API_BASE}/schedules/${appId}/pause`, { method: "POST" });
+  await ensureOk(res, `Failed to pause schedule for ${appId}`);
   return res.json();
 }
 
-export async function resumeSchedule(demoId: string): Promise<ScheduleJobSummary> {
-  const res = await fetch(`${API_BASE}/schedules/${demoId}/resume`, { method: "POST" });
-  await ensureOk(res, `Failed to resume schedule for ${demoId}`);
+export async function resumeSchedule(appId: string): Promise<ScheduleJobSummary> {
+  const res = await fetch(`${API_BASE}/schedules/${appId}/resume`, { method: "POST" });
+  await ensureOk(res, `Failed to resume schedule for ${appId}`);
   return res.json();
 }
 
-export async function triggerScheduleNow(demoId: string): Promise<ScheduleJobSummary> {
-  const res = await fetch(`${API_BASE}/schedules/${demoId}/trigger`, { method: "POST" });
-  await ensureOk(res, `Failed to trigger schedule for ${demoId}`);
+export async function triggerScheduleNow(appId: string): Promise<ScheduleJobSummary> {
+  const res = await fetch(`${API_BASE}/schedules/${appId}/trigger`, { method: "POST" });
+  await ensureOk(res, `Failed to trigger schedule for ${appId}`);
   return res.json();
 }
 
-export async function deleteSchedule(demoId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/schedules/${demoId}`, { method: "DELETE" });
+export async function deleteSchedule(appId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/schedules/${appId}`, { method: "DELETE" });
   if (res.status === 204) return;
-  await ensureOk(res, `Failed to delete schedule for ${demoId}`);
+  await ensureOk(res, `Failed to delete schedule for ${appId}`);
 }

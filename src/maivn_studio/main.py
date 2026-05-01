@@ -31,7 +31,7 @@ def main() -> None:
     # Load .env from CWD first, then walk up to find any parent .env
     load_dotenv(find_dotenv(usecwd=True))
 
-    parser = argparse.ArgumentParser(description="MAIVN Studio - Demo UI/UX Tool")
+    parser = argparse.ArgumentParser(description="MAIVN Studio - App UI/UX Tool")
     parser.add_argument(
         "--config",
         "-c",

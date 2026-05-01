@@ -261,8 +261,8 @@ class _FakeStatus(str, Enum):
 @dataclass
 class _FakeSession:
     session_id: str = "sess-1"
-    demo_id: str = "demo-1"
-    demo_name: str = "Demo One"
+    app_id: str = "app-1"
+    app_name: str = "App One"
     thread_id: str = "thread-1"
     variant: str | None = None
     status: _FakeStatus = _FakeStatus.READY
@@ -279,8 +279,8 @@ class _FakeSession:
     def to_dict(self) -> dict[str, Any]:
         return {
             "session_id": self.session_id,
-            "demo_id": self.demo_id,
-            "demo_name": self.demo_name,
+            "app_id": self.app_id,
+            "app_name": self.app_name,
             "thread_id": self.thread_id,
             "variant": self.variant,
             "status": self.status.value,

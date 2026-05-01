@@ -141,7 +141,7 @@ class MessageAttachmentPayload(BaseModel):
 class CreateSessionRequest(BaseModel):
     """Request to create a new session."""
 
-    demo_id: str
+    app_id: str
     variant: str | None = None
     thread_id: str | None = None
     message: str
@@ -180,8 +180,8 @@ class SessionResponse(BaseModel):
     """Response for session operations."""
 
     session_id: str
-    demo_id: str
-    demo_name: str
+    app_id: str
+    app_name: str
     thread_id: str
     variant: str | None
     status: str

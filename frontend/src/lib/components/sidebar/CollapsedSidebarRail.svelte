@@ -1,31 +1,31 @@
 <script lang="ts">
-  import type { Demo } from "$lib/types";
+  import type { App } from "$lib/types";
   import { AlertCircle, Command, Search } from "lucide-svelte";
 
   interface Props {
     connecting: boolean;
     loading: boolean;
     error: string | null;
-    selectedDemoId?: string | null;
-    selectedDemoName?: string | null;
-    recentDemos: Demo[];
+    selectedAppId?: string | null;
+    selectedAppName?: string | null;
+    recentApps: App[];
     onOpenCommandPalette: () => void;
     onOpenDiscovery: () => void;
-    onSelectDemo: (demo: Demo) => void;
-    getCollapsedDemoLabel: (name: string) => string;
+    onSelectApp: (app: App) => void;
+    getCollapsedAppLabel: (name: string) => string;
   }
 
   let {
     connecting,
     loading,
     error,
-    selectedDemoId = null,
-    selectedDemoName = null,
-    recentDemos,
+    selectedAppId = null,
+    selectedAppName = null,
+    recentApps,
     onOpenCommandPalette,
     onOpenDiscovery,
-    onSelectDemo,
-    getCollapsedDemoLabel,
+    onSelectApp,
+    getCollapsedAppLabel,
   }: Props = $props();
 </script>
 
@@ -71,38 +71,38 @@
       </div>
     {/if}
 
-    {#if selectedDemoName}
+    {#if selectedAppName}
       <button
         type="button"
         class="collapsed-active-btn"
         onclick={onOpenCommandPalette}
-        title={`Active demo: ${selectedDemoName}. Open command palette to switch.`}
+        title={`Active app: ${selectedAppName}. Open command palette to switch.`}
       >
-        {getCollapsedDemoLabel(selectedDemoName)}
+        {getCollapsedAppLabel(selectedAppName)}
       </button>
     {:else}
       <button
         type="button"
         class="collapsed-empty-btn"
         onclick={onOpenCommandPalette}
-        title="No demo selected. Open command palette."
+        title="No app selected. Open command palette."
       >
         Pick
       </button>
     {/if}
 
-    {#if recentDemos.length > 0}
+    {#if recentApps.length > 0}
       <div class="collapsed-divider" aria-hidden="true"></div>
       <div class="collapsed-recent-list">
-        {#each recentDemos.slice(0, 6) as demo (demo.id)}
+        {#each recentApps.slice(0, 6) as app (app.id)}
           <button
             type="button"
-            class="collapsed-demo-btn"
-            class:selected={selectedDemoId === demo.id}
-            onclick={() => onSelectDemo(demo)}
-            title={`Recent: ${demo.name}`}
+            class="collapsed-app-btn"
+            class:selected={selectedAppId === app.id}
+            onclick={() => onSelectApp(app)}
+            title={`Recent: ${app.name}`}
           >
-            {getCollapsedDemoLabel(demo.name)}
+            {getCollapsedAppLabel(app.name)}
           </button>
         {/each}
       </div>
@@ -145,7 +145,7 @@
 
   .collapsed-active-btn,
   .collapsed-empty-btn,
-  .collapsed-demo-btn {
+  .collapsed-app-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -205,20 +205,20 @@
     gap: 0.35rem;
   }
 
-  .collapsed-demo-btn:hover {
+  .collapsed-app-btn:hover {
     color: var(--color-text);
     background: color-mix(in srgb, var(--color-bg-tertiary) 90%, transparent);
     border-color: color-mix(in srgb, var(--color-outline) 45%, var(--color-outline-variant));
   }
 
-  .collapsed-demo-btn.selected {
+  .collapsed-app-btn.selected {
     color: var(--color-secondary);
     background: color-mix(in srgb, var(--color-secondary) 14%, var(--color-bg-secondary));
     border-color: color-mix(in srgb, var(--color-secondary) 42%, var(--color-outline-variant));
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-secondary) 18%, transparent);
   }
 
-  .collapsed-demo-btn:active {
+  .collapsed-app-btn:active {
     transform: scale(0.96);
   }
 </style>

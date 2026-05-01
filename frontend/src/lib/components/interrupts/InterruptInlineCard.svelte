@@ -49,7 +49,7 @@
     },
     submitting: {
       color: "var(--color-secondary)",
-      bg: "rgba(137, 208, 237, 0.1)",
+      bg: "color-mix(in srgb, var(--color-secondary) 10%, transparent)",
       borderColor: "rgb(96, 165, 250)",
       icon: RefreshCw,
       label: "SUBMITTING",

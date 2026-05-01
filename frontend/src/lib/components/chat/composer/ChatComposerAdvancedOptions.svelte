@@ -1,7 +1,7 @@
 <script lang="ts">
   import type {
     BatchInvocationRow,
-    DemoDetails,
+    AppDetails,
     ModelToolOption,
     StructuredOutputConfig,
   } from "$lib/types";
@@ -10,7 +10,7 @@
   import StructuredOutputSelector from "../../settings/StructuredOutputSelector.svelte";
 
   interface Props {
-    hasDemo: boolean;
+    hasApp: boolean;
     hasActiveSession: boolean;
     showSystemInput?: boolean;
     selectedVariant?: string | undefined;
@@ -21,8 +21,8 @@
     batchAsyncMode?: boolean;
     batchItemCount?: number;
     batchRows?: BatchInvocationRow[];
-    demoTools?: DemoDetails["tools"];
-    variants: Array<[string, DemoDetails["variants"][string]]>;
+    appTools?: AppDetails["tools"];
+    variants: Array<[string, AppDetails["variants"][string]]>;
     structuredOutputConfig?: StructuredOutputConfig;
     availableModelTools?: ModelToolOption[];
     onSelectedVariantChange?: (variant: string | undefined) => void;
@@ -30,7 +30,7 @@
   }
 
   let {
-    hasDemo,
+    hasApp,
     hasActiveSession,
     showSystemInput = $bindable(false),
     selectedVariant = $bindable<string | undefined>(undefined),
@@ -41,7 +41,7 @@
     batchAsyncMode = $bindable(true),
     batchItemCount = 0,
     batchRows = $bindable<BatchInvocationRow[]>([]),
-    demoTools = [],
+    appTools = [],
     variants,
     structuredOutputConfig,
     availableModelTools = [],
@@ -73,7 +73,7 @@
   );
 </script>
 
-{#if !hasActiveSession && hasDemo}
+{#if !hasActiveSession && hasApp}
   <div class="advanced-options" class:open={showSystemInput}>
     <button
       type="button"
@@ -175,7 +175,7 @@
               <ChatComposerBatchMatrix
                 bind:rows={batchRows}
                 {variants}
-                tools={demoTools}
+                tools={appTools}
                 {selectedVariant}
               />
             {/if}

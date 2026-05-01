@@ -9,8 +9,8 @@ from maivn import Agent
 from maivn_shared import SessionResponse as SharedSessionResponse
 
 import maivn_studio.services.event_bridge as event_bridge_module
-from maivn_studio.config.models import DemoConfig
-from maivn_studio.services.demo_loader.models import LoadedDemo
+from maivn_studio.config.models import AppConfig
+from maivn_studio.services.app_loader.models import LoadedApp
 from maivn_studio.services.session_manager.manager import SessionManager
 from maivn_studio.services.session_manager.models import SessionStatus, StudioSession
 
@@ -74,26 +74,26 @@ class _MatrixExecutor:
         return SharedSessionResponse(responses=[f"matrix: {messages[-1].content}"])
 
 
-def _build_demo_config() -> DemoConfig:
-    return DemoConfig(
-        id="batch-demo",
-        name="Batch Demo",
-        module="demos.batch",
+def _build_app_config() -> AppConfig:
+    return AppConfig(
+        id="batch-app",
+        name="Batch App",
+        module="apps.batch",
     )
 
 
 @pytest.mark.asyncio
 async def test_execute_session_emits_grouped_batch_events() -> None:
     executor = _BatchExecutor()
-    loaded_demo = LoadedDemo(
-        config=_build_demo_config(),
-        module=ModuleType("batch_demo_module"),
+    loaded_app = LoadedApp(
+        config=_build_app_config(),
+        module=ModuleType("batch_app_module"),
         agents=[cast(Agent, executor)],
         swarms=[],
     )
     session = StudioSession(
         session_id="session-batch",
-        demo_config=_build_demo_config(),
+        app_config=_build_app_config(),
         thread_id="thread-batch",
         status=SessionStatus.RUNNING,
         messages=[HumanMessage(content="1. alpha\n2. beta")],
@@ -105,7 +105,7 @@ async def test_execute_session_emits_grouped_batch_events() -> None:
                 "message_type": "human",
             }
         },
-        _loaded_demo=loaded_demo,
+        _loaded_app=loaded_app,
     )
 
     manager = SessionManager()
@@ -142,15 +142,15 @@ async def test_execute_session_emits_grouped_batch_events() -> None:
 @pytest.mark.asyncio
 async def test_execute_session_batch_matrix_applies_row_overrides() -> None:
     executor = _MatrixExecutor()
-    loaded_demo = LoadedDemo(
-        config=_build_demo_config(),
-        module=ModuleType("batch_matrix_demo_module"),
+    loaded_app = LoadedApp(
+        config=_build_app_config(),
+        module=ModuleType("batch_matrix_app_module"),
         agents=[cast(Agent, executor)],
         swarms=[],
     )
     session = StudioSession(
         session_id="session-matrix",
-        demo_config=_build_demo_config(),
+        app_config=_build_app_config(),
         thread_id="thread-matrix",
         status=SessionStatus.RUNNING,
         messages=[HumanMessage(content="1. alpha\n2. beta")],
@@ -178,7 +178,7 @@ async def test_execute_session_batch_matrix_applies_row_overrides() -> None:
                 "message_type": "human",
             }
         },
-        _loaded_demo=loaded_demo,
+        _loaded_app=loaded_app,
     )
 
     manager = SessionManager()

@@ -9,9 +9,9 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from maivn_studio.config.models import DemoConfig
+from maivn_studio.config.models import AppConfig
 
-from ..demo_loader.loader import get_demo_loader
+from ..app_loader.loader import get_app_loader
 from ..event_bridge import remove_event_bridge
 from .messages import apply_turn_configuration
 from .models import SessionStatus, StudioSession
@@ -20,14 +20,14 @@ from .private_data import apply_private_data
 # MARK: Resource Cleanup
 
 
-def close_loaded_demo_resources(session: StudioSession) -> None:
-    """Close loaded demo executors during process-level shutdown."""
-    loaded_demo = session._loaded_demo
-    if loaded_demo is None:
+def close_loaded_app_resources(session: StudioSession) -> None:
+    """Close loaded app executors during process-level shutdown."""
+    loaded_app = session._loaded_app
+    if loaded_app is None:
         return
 
     seen: set[int] = set()
-    for resource in _iter_loaded_demo_resources(loaded_demo):
+    for resource in _iter_loaded_app_resources(loaded_app):
         resource_id = id(resource)
         if resource_id in seen:
             continue
@@ -42,14 +42,14 @@ def close_loaded_demo_resources(session: StudioSession) -> None:
             pass
 
 
-def _iter_loaded_demo_resources(loaded_demo: Any) -> list[Any]:
+def _iter_loaded_app_resources(loaded_app: Any) -> list[Any]:
     resources: list[Any] = []
-    executor = getattr(loaded_demo, "executor", None)
+    executor = getattr(loaded_app, "executor", None)
     if executor is not None:
         resources.append(executor)
 
-    swarms = list(getattr(loaded_demo, "swarms", []) or [])
-    agents = list(getattr(loaded_demo, "agents", []) or [])
+    swarms = list(getattr(loaded_app, "swarms", []) or [])
+    agents = list(getattr(loaded_app, "agents", []) or [])
     resources.extend(swarms)
     resources.extend(agents)
 
@@ -59,15 +59,15 @@ def _iter_loaded_demo_resources(loaded_demo: Any) -> list[Any]:
     return resources
 
 
-def release_loaded_demo(session: StudioSession) -> None:
-    """Drop the session's reference to its loaded demo.
+def release_loaded_app(session: StudioSession) -> None:
+    """Drop the session's reference to its loaded app.
 
-    Historically this also called ``close()`` on the demo's executor /
-    agents / swarms. That broke demos whose ``Agent`` is a module-level
-    singleton in a submodule - e.g. ``demos/projects/email_project/
-    agent.py`` exporting ``agent = Agent(...)`` that the leaf demo
+    Historically this also called ``close()`` on the app's executor /
+    agents / swarms. That broke apps whose ``Agent`` is a module-level
+    singleton in a submodule - e.g. ``apps/projects/email_project/
+    agent.py`` exporting ``agent = Agent(...)`` that the leaf app
     module picks up via ``from .agent import agent``. On the next
-    session, ``DemoLoader`` calls ``importlib.reload`` on the LEAF
+    session, ``AppLoader`` calls ``importlib.reload`` on the LEAF
     module only; the submodule stays cached, so ``loaded.agents`` on
     the new run resolves back to the SAME (now-closed) ``Agent``
     instance. The first tool dispatch then raised
@@ -75,10 +75,10 @@ def release_loaded_demo(session: StudioSession) -> None:
     ``BackgroundExecutor`` attached to that shared Agent had already
     been torn down by the previous session's cleanup.
 
-    Fix: the ``DemoLoader`` does not create the Agent / Swarm objects -
+    Fix: the ``AppLoader`` does not create the Agent / Swarm objects -
     it discovers module-level globals via ``dir()`` - so Studio must
-    not close them. Their lifecycle belongs to the demo authors
-    (typically "live for the process lifetime"). If a demo truly does
+    not close them. Their lifecycle belongs to the app authors
+    (typically "live for the process lifetime"). If an app truly does
     need per-run cleanup, GC will handle it when the reloaded module
     replaces the global and the old instance becomes unreachable
     (Agent.__del__ -> close()).
@@ -88,9 +88,9 @@ def release_loaded_demo(session: StudioSession) -> None:
     down pool on the next ``submit()``, so a previous version's
     ``close()`` can no longer brick a cached Agent.
     """
-    if session._loaded_demo is None:
+    if session._loaded_app is None:
         return
-    session._loaded_demo = None
+    session._loaded_app = None
 
 
 async def shutdown_sessions(sessions: list[StudioSession]) -> None:
@@ -108,8 +108,8 @@ async def shutdown_sessions(sessions: list[StudioSession]) -> None:
         session._task = None
 
     for session in sessions:
-        close_loaded_demo_resources(session)
-        release_loaded_demo(session)
+        close_loaded_app_resources(session)
+        release_loaded_app(session)
 
     for session in sessions:
         remove_event_bridge(session.session_id)
@@ -122,7 +122,7 @@ async def create_session_record(
     *,
     sessions: dict[str, StudioSession],
     sessions_by_thread: dict[str, list[str]],
-    demo_config: DemoConfig,
+    app_config: AppConfig,
     variant: str | None,
     thread_id: str | None,
     metadata: dict[str, Any] | None,
@@ -138,7 +138,7 @@ async def create_session_record(
 
     session = StudioSession(
         session_id=session_id,
-        demo_config=demo_config,
+        app_config=app_config,
         thread_id=resolved_thread_id,
         variant=variant,
         metadata=session_metadata,
@@ -161,20 +161,20 @@ async def start_session_execution(
     invocation_kwargs: dict[str, Any] | None,
     batch_config: dict[str, Any] | None,
 ) -> None:
-    """Load a demo, initialize the session state, and launch execution."""
+    """Load an app, initialize the session state, and launch execution."""
     if session.status != SessionStatus.CREATED:
         raise ValueError(f"Session {session.session_id} already started")
 
-    loader = get_demo_loader()
-    loaded = loader.load(session.demo_config, force_reload=True, variant=session.variant)
-    session._loaded_demo = loaded
+    loader = get_app_loader()
+    loaded = loader.load(session.app_config, force_reload=True, variant=session.variant)
+    session._loaded_app = loaded
 
     user_private_data = session.metadata.get("user_private_data", {})
     apply_private_data(loaded, user_private_data)
 
     if not loaded.has_executor:
         session.status = SessionStatus.FAILED
-        session.error = "Demo has no executable agent or swarm"
+        session.error = "App has no executable agent or swarm"
         return
 
     apply_turn_configuration(
@@ -291,7 +291,7 @@ async def end_session_record(manager: Any, session: StudioSession) -> None:
         },
     )
 
-    release_loaded_demo(session)
+    release_loaded_app(session)
 
 
 async def cancel_session_record(session: StudioSession) -> None:
@@ -306,4 +306,4 @@ async def cancel_session_record(session: StudioSession) -> None:
     session.status = SessionStatus.CANCELLED
     session.completed_at = datetime.now()
     session._task = None
-    release_loaded_demo(session)
+    release_loaded_app(session)

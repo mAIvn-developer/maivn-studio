@@ -24,8 +24,8 @@ from pydantic import BaseModel
 import maivn_studio.services.event_bridge as event_bridge_module
 import maivn_studio.services.session_manager.execution as session_execution_module
 import maivn_studio.services.session_manager.lifecycle as session_manager_lifecycle_module
-from maivn_studio.config.models import DemoConfig
-from maivn_studio.services.demo_loader.models import LoadedDemo
+from maivn_studio.config.models import AppConfig
+from maivn_studio.services.app_loader.models import LoadedApp
 from maivn_studio.services.session_manager.manager import SessionManager
 from maivn_studio.services.session_manager.models import SessionStatus, StudioSession
 
@@ -140,11 +140,11 @@ class _DummyLegacyExecutor:
         return _DummySessionResult()
 
 
-def _build_demo_config() -> DemoConfig:
-    return DemoConfig(
-        id="demo-id",
-        name="Demo",
-        module="demos.example",
+def _build_app_config() -> AppConfig:
+    return AppConfig(
+        id="app-id",
+        name="App",
+        module="apps.example",
     )
 
 
@@ -298,16 +298,16 @@ async def test_execute_session_ignores_targeted_tools_with_structured_output(
     model_tool = _DummyModelTool(name="schema_tool", model=_StructuredPayload)
     executor = _DummyExecutor(model_tool=model_tool)
 
-    loaded_demo = LoadedDemo(
-        config=_build_demo_config(),
-        module=ModuleType("test_demo_module"),
+    loaded_app = LoadedApp(
+        config=_build_app_config(),
+        module=ModuleType("test_app_module"),
         agents=[cast(Agent, executor)],
         swarms=[],
     )
 
     session = StudioSession(
         session_id="session-structured-output",
-        demo_config=_build_demo_config(),
+        app_config=_build_app_config(),
         thread_id="thread-1",
         status=SessionStatus.RUNNING,
         messages=[HumanMessage(content="hello")],
@@ -318,7 +318,7 @@ async def test_execute_session_ignores_targeted_tools_with_structured_output(
                 "model": "balanced",
             },
         },
-        _loaded_demo=loaded_demo,
+        _loaded_app=loaded_app,
     )
 
     manager = SessionManager()
@@ -346,9 +346,9 @@ async def test_execute_session_uses_default_invocation_metadata_for_structured_o
     model_tool = _DummyModelTool(name="schema_tool", model=_StructuredPayload)
     executor = _DummyExecutor(model_tool=model_tool)
 
-    loaded_demo = LoadedDemo(
-        config=_build_demo_config(),
-        module=ModuleType("test_demo_module"),
+    loaded_app = LoadedApp(
+        config=_build_app_config(),
+        module=ModuleType("test_app_module"),
         agents=[cast(Agent, executor)],
         swarms=[],
         default_invocation={
@@ -359,7 +359,7 @@ async def test_execute_session_uses_default_invocation_metadata_for_structured_o
 
     session = StudioSession(
         session_id="session-structured-output-default-metadata",
-        demo_config=_build_demo_config(),
+        app_config=_build_app_config(),
         thread_id="thread-default-metadata",
         status=SessionStatus.RUNNING,
         messages=[HumanMessage(content="hello")],
@@ -369,7 +369,7 @@ async def test_execute_session_uses_default_invocation_metadata_for_structured_o
                 "force_final_tool": True,
             },
         },
-        _loaded_demo=loaded_demo,
+        _loaded_app=loaded_app,
     )
 
     manager = SessionManager()
@@ -397,16 +397,16 @@ async def test_execute_session_preserves_metadata_on_legacy_structured_output_pa
     model_tool = _DummyModelTool(name="schema_tool", model=_StructuredPayload)
     executor = _DummyLegacyExecutor(model_tool=model_tool)
 
-    loaded_demo = LoadedDemo(
-        config=_build_demo_config(),
-        module=ModuleType("test_demo_module"),
+    loaded_app = LoadedApp(
+        config=_build_app_config(),
+        module=ModuleType("test_app_module"),
         agents=[cast(Agent, executor)],
         swarms=[],
     )
 
     session = StudioSession(
         session_id="session-legacy-structured-output",
-        demo_config=_build_demo_config(),
+        app_config=_build_app_config(),
         thread_id="thread-legacy",
         status=SessionStatus.RUNNING,
         messages=[HumanMessage(content="hello")],
@@ -419,7 +419,7 @@ async def test_execute_session_preserves_metadata_on_legacy_structured_output_pa
                 "allow_private_in_system_tools": True,
             },
         },
-        _loaded_demo=loaded_demo,
+        _loaded_app=loaded_app,
     )
 
     manager = SessionManager()
@@ -448,16 +448,16 @@ async def test_execute_session_uses_stream_path_by_default(
     model_tool = _DummyModelTool(name="schema_tool", model=_StructuredPayload)
     executor = _DummyExecutor(model_tool=model_tool)
 
-    loaded_demo = LoadedDemo(
-        config=_build_demo_config(),
-        module=ModuleType("test_demo_module"),
+    loaded_app = LoadedApp(
+        config=_build_app_config(),
+        module=ModuleType("test_app_module"),
         agents=[cast(Agent, executor)],
         swarms=[],
     )
 
     session = StudioSession(
         session_id="session-stream-default",
-        demo_config=_build_demo_config(),
+        app_config=_build_app_config(),
         thread_id="thread-stream-default",
         status=SessionStatus.RUNNING,
         messages=[HumanMessage(content="hello")],
@@ -466,7 +466,7 @@ async def test_execute_session_uses_stream_path_by_default(
                 "model": "balanced",
             },
         },
-        _loaded_demo=loaded_demo,
+        _loaded_app=loaded_app,
     )
 
     manager = SessionManager()
@@ -522,20 +522,20 @@ async def test_execute_session_forwards_normalized_contract_stream_events_to_bri
         on_stream=_report_runtime_tool_start,
     )
 
-    loaded_demo = LoadedDemo(
-        config=_build_demo_config(),
-        module=ModuleType("stream_contract_demo_module"),
+    loaded_app = LoadedApp(
+        config=_build_app_config(),
+        module=ModuleType("stream_contract_app_module"),
         agents=[cast(Agent, executor)],
         swarms=[],
     )
 
     session = StudioSession(
         session_id="session-contract-stream",
-        demo_config=_build_demo_config(),
+        app_config=_build_app_config(),
         thread_id="thread-contract-stream",
         status=SessionStatus.RUNNING,
         messages=[HumanMessage(content="hello")],
-        _loaded_demo=loaded_demo,
+        _loaded_app=loaded_app,
     )
 
     manager = SessionManager()
@@ -607,20 +607,20 @@ async def test_execute_session_replay_ownership_skips_normalized_tool_and_status
         on_stream=_emit_reporter_owned_events,
     )
 
-    loaded_demo = LoadedDemo(
-        config=_build_demo_config(),
-        module=ModuleType("stream_contract_ownership_demo_module"),
+    loaded_app = LoadedApp(
+        config=_build_app_config(),
+        module=ModuleType("stream_contract_ownership_app_module"),
         agents=[cast(Agent, executor)],
         swarms=[],
     )
 
     session = StudioSession(
         session_id="session-contract-ownership",
-        demo_config=_build_demo_config(),
+        app_config=_build_app_config(),
         thread_id="thread-contract-ownership",
         status=SessionStatus.RUNNING,
         messages=[HumanMessage(content="hello")],
-        _loaded_demo=loaded_demo,
+        _loaded_app=loaded_app,
     )
 
     manager = SessionManager()
@@ -655,21 +655,21 @@ def test_studio_contract_stream_replay_ownership_is_explicit() -> None:
 @pytest.mark.asyncio
 async def test_execute_session_emits_turn_complete_after_pending_reporter_events() -> None:
     executor = _OrderingExecutor()
-    loaded_demo = LoadedDemo(
-        config=_build_demo_config(),
-        module=ModuleType("ordering_demo_module"),
+    loaded_app = LoadedApp(
+        config=_build_app_config(),
+        module=ModuleType("ordering_app_module"),
         agents=[cast(Agent, executor)],
         swarms=[],
     )
 
     session = StudioSession(
         session_id="session-ordering",
-        demo_config=_build_demo_config(),
+        app_config=_build_app_config(),
         thread_id="thread-ordering",
         status=SessionStatus.RUNNING,
         messages=[HumanMessage(content="hello")],
         metadata={"invocation_kwargs": {"stream_response": False}},
-        _loaded_demo=loaded_demo,
+        _loaded_app=loaded_app,
     )
 
     manager = SessionManager()
@@ -723,16 +723,16 @@ async def test_execute_session_uses_invoke_path_when_streaming_disabled(
     model_tool = _DummyModelTool(name="schema_tool", model=_StructuredPayload)
     executor = _DummyExecutor(model_tool=model_tool)
 
-    loaded_demo = LoadedDemo(
-        config=_build_demo_config(),
-        module=ModuleType("test_demo_module"),
+    loaded_app = LoadedApp(
+        config=_build_app_config(),
+        module=ModuleType("test_app_module"),
         agents=[cast(Agent, executor)],
         swarms=[],
     )
 
     session = StudioSession(
         session_id="session-invoke-explicit",
-        demo_config=_build_demo_config(),
+        app_config=_build_app_config(),
         thread_id="thread-invoke-explicit",
         status=SessionStatus.RUNNING,
         messages=[HumanMessage(content="hello")],
@@ -742,7 +742,7 @@ async def test_execute_session_uses_invoke_path_when_streaming_disabled(
                 "model": "fast",
             },
         },
-        _loaded_demo=loaded_demo,
+        _loaded_app=loaded_app,
     )
 
     manager = SessionManager()
@@ -762,19 +762,19 @@ async def test_execute_session_uses_invoke_path_when_streaming_disabled(
 
 
 @pytest.mark.asyncio
-async def test_start_session_force_reloads_demo_module(
+async def test_start_session_force_reloads_app_module(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    loaded_demo = LoadedDemo(
-        config=_build_demo_config(),
-        module=ModuleType("reloaded_demo_module"),
+    loaded_app = LoadedApp(
+        config=_build_app_config(),
+        module=ModuleType("reloaded_app_module"),
         agents=[cast(Agent, object())],
         swarms=[],
     )
     manager = SessionManager()
     session = StudioSession(
         session_id="session-force-reload",
-        demo_config=_build_demo_config(),
+        app_config=_build_app_config(),
         thread_id="thread-force-reload",
     )
     captured: dict[str, Any] = {}
@@ -782,14 +782,14 @@ async def test_start_session_force_reloads_demo_module(
     class _LoaderStub:
         def load(
             self,
-            config: DemoConfig,
+            config: AppConfig,
             force_reload: bool = False,
             variant: str | None = None,
-        ) -> LoadedDemo:
+        ) -> LoadedApp:
             captured["config"] = config
             captured["force_reload"] = force_reload
             captured["variant"] = variant
-            return loaded_demo
+            return loaded_app
 
     def _create_task_stub(coro: Any, *, name: str | None = None) -> _DummyBackgroundTask:
         captured["task_name"] = name
@@ -798,7 +798,7 @@ async def test_start_session_force_reloads_demo_module(
 
     monkeypatch.setattr(
         session_manager_lifecycle_module,
-        "get_demo_loader",
+        "get_app_loader",
         lambda: _LoaderStub(),
     )
     monkeypatch.setattr(
@@ -807,32 +807,32 @@ async def test_start_session_force_reloads_demo_module(
         _create_task_stub,
     )
 
-    await manager.start_session(session, "reload the demo please")
+    await manager.start_session(session, "reload the app please")
 
-    assert captured["config"].id == session.demo_config.id
+    assert captured["config"].id == session.app_config.id
     assert captured["force_reload"] is True
     assert captured["variant"] is None
     assert captured["task_name"] == "session-session-force-reload"
-    assert session._loaded_demo is loaded_demo
+    assert session._loaded_app is loaded_app
     assert session.status == SessionStatus.RUNNING
 
 
 @pytest.mark.asyncio
-async def test_shutdown_releases_loaded_demo_resources_and_bridges() -> None:
+async def test_shutdown_releases_loaded_app_resources_and_bridges() -> None:
     executor = _CloseableExecutor()
-    loaded_demo = LoadedDemo(
-        config=_build_demo_config(),
-        module=ModuleType("shutdown_demo_module"),
+    loaded_app = LoadedApp(
+        config=_build_app_config(),
+        module=ModuleType("shutdown_app_module"),
         agents=[cast(Agent, executor)],
         swarms=[],
     )
     manager = SessionManager()
     session = StudioSession(
         session_id="session-shutdown",
-        demo_config=_build_demo_config(),
+        app_config=_build_app_config(),
         thread_id="thread-shutdown",
         status=SessionStatus.RUNNING,
-        _loaded_demo=loaded_demo,
+        _loaded_app=loaded_app,
         _task=cast(Any, _ShutdownTask()),
     )
     manager._sessions[session.session_id] = session
@@ -844,7 +844,7 @@ async def test_shutdown_releases_loaded_demo_resources_and_bridges() -> None:
     await manager.shutdown()
 
     assert executor.close_calls == 1
-    assert session._loaded_demo is None
+    assert session._loaded_app is None
     assert session._task is None
     assert manager.sessions == []
     assert event_bridge_module.get_event_bridge(session.session_id) is None

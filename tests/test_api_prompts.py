@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 import maivn_studio.api.app as app_module
 from maivn_studio.api.app import create_app
-from maivn_studio.config.models import DemoConfig, DiscoveryConfig, StudioConfig, StudioSettings
+from maivn_studio.config.models import AppConfig, DiscoveryConfig, StudioConfig, StudioSettings
 
 
 def test_prompts_crud(tmp_path) -> None:
@@ -29,7 +29,7 @@ def test_prompts_crud(tmp_path) -> None:
         payload = {
             "name": "Test Prompt",
             "content": "Hello",
-            "demo_id": "demo-1",
+            "app_id": "app-1",
             "message_type": "human",
         }
         create_resp = client.post("/api/prompts", json=payload)
@@ -37,7 +37,7 @@ def test_prompts_crud(tmp_path) -> None:
         created = create_resp.json()
         assert created["name"] == payload["name"]
 
-        list_resp = client.get("/api/prompts?demo_id=demo-1")
+        list_resp = client.get("/api/prompts?app_id=app-1")
         assert list_resp.status_code == 200
         assert len(list_resp.json()) == 1
 
@@ -96,12 +96,12 @@ def test_app_shutdown_invokes_session_manager_shutdown(tmp_path, monkeypatch) ->
 
 def test_sessions_collection_post_accepts_slashless_path(tmp_path, monkeypatch) -> None:
     class _Registry:
-        def __init__(self, demo: DemoConfig) -> None:
-            self._demo = demo
+        def __init__(self, app_config: AppConfig) -> None:
+            self._app = app_config
 
-        def get(self, demo_id: str) -> DemoConfig | None:
-            if demo_id == self._demo.id:
-                return self._demo
+        def get(self, app_id: str) -> AppConfig | None:
+            if app_id == self._app.id:
+                return self._app
             return None
 
     class _Session:
@@ -110,8 +110,8 @@ def test_sessions_collection_post_accepts_slashless_path(tmp_path, monkeypatch) 
         def to_dict(self) -> dict[str, object]:
             return {
                 "session_id": "session-1",
-                "demo_id": "demo-1",
-                "demo_name": "Demo One",
+                "app_id": "app-1",
+                "app_name": "App One",
                 "thread_id": "thread-1",
                 "variant": None,
                 "status": "running",
@@ -136,10 +136,10 @@ def test_sessions_collection_post_accepts_slashless_path(tmp_path, monkeypatch) 
         async def shutdown(self) -> None:
             return None
 
-    demo = DemoConfig(id="demo-1", name="Demo One", module="demos.demo_one")
+    app_config = AppConfig(id="app-1", name="App One", module="apps.app_one")
     monkeypatch.setattr(
         "maivn_studio.api.routes.sessions.writes.get_registry",
-        lambda: _Registry(demo),
+        lambda: _Registry(app_config),
     )
     monkeypatch.setattr(
         "maivn_studio.api.routes.sessions.writes.get_session_manager",
@@ -161,7 +161,7 @@ def test_sessions_collection_post_accepts_slashless_path(tmp_path, monkeypatch) 
         resp = client.post(
             "/api/sessions",
             json={
-                "demo_id": "demo-1",
+                "app_id": "app-1",
                 "message": "Inspect laptop",
             },
         )

@@ -150,7 +150,7 @@
               class="flex items-center gap-2 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-tertiary)]"
             >
               <FileText size={12} />
-              Demo Prompts
+              App Prompts
               <span
                 class="ml-auto rounded-full bg-[var(--color-primary)]/15 px-1.5 py-0.5 text-[var(--color-primary)]"
               >

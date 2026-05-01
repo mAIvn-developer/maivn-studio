@@ -18,10 +18,10 @@ from fastapi.staticfiles import StaticFiles
 from maivn_studio.config.loader import find_config_file, load_config, set_config
 from maivn_studio.config.models import StudioConfig
 from maivn_studio.discovery.registry import init_registry
-from maivn_studio.services.demo_loader.loader import init_demo_loader
+from maivn_studio.services.app_loader.loader import init_app_loader
 from maivn_studio.services.session_manager.manager import get_session_manager
 
-from .routes.demos.routes import router as demos_router
+from .routes.apps.routes import router as apps_router
 from .routes.discovery import router as discovery_router
 from .routes.prompts import router as prompts_router
 from .routes.schedules import router as schedules_router
@@ -169,7 +169,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     state: AppState = app.state  # type: ignore
     init_registry(state.config, state.base_path)
-    init_demo_loader(state.base_path)
+    init_app_loader(state.base_path)
 
     logger.info(
         f"MAIVN Studio ready at http://{state.config.studio.host}:{state.config.studio.port}"
@@ -196,7 +196,7 @@ def create_app(
 
     Args:
         config: Studio configuration. If None, loads from file.
-        base_path: Base path for demo discovery. If None, derives from config file location.
+        base_path: Base path for app discovery. If None, derives from config file location.
 
     Returns:
         Configured FastAPI application.
@@ -213,7 +213,7 @@ def create_app(
 
     app = FastAPI(
         title=config.studio.name,
-        description="UI/UX developer tool for MAIVN SDK demos",
+        description="UI/UX developer tool for MAIVN SDK apps",
         version=config.studio.version,
         lifespan=lifespan,
     )
@@ -242,7 +242,7 @@ def create_app(
     set_config(config, config_path)
 
     # Include routers
-    app.include_router(demos_router)
+    app.include_router(apps_router)
     app.include_router(discovery_router)
     app.include_router(prompts_router)
     app.include_router(schedules_router)

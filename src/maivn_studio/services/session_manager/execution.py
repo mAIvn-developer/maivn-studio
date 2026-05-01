@@ -358,7 +358,7 @@ def _build_base_invoke_kwargs(
 
     user_invoke_kwargs = session.metadata.get("invocation_kwargs")
     fallback_invocation_kwargs = resolve_structured_output_invocation_fallbacks(
-        loaded_demo=loaded,
+        loaded_app=loaded,
         structured_output_model=structured_output_model,
         user_invoke_kwargs=user_invoke_kwargs,
     )
@@ -380,14 +380,14 @@ def _resolve_row_executor(
     if not spec.variant or spec.variant == session.variant:
         return executor
 
-    if spec.variant not in session.demo_config.variants:
+    if spec.variant not in session.app_config.variants:
         raise ValueError(f"Unknown batch row variant: {spec.variant}")
 
-    from maivn_studio.services.demo_loader.loader import get_demo_loader
+    from maivn_studio.services.app_loader.loader import get_app_loader
     from maivn_studio.services.session_manager.private_data import apply_private_data
 
-    row_loaded = get_demo_loader().load(
-        session.demo_config,
+    row_loaded = get_app_loader().load(
+        session.app_config,
         force_reload=True,
         variant=spec.variant,
     )
@@ -713,7 +713,7 @@ async def execute_session(manager: Any, session: StudioSession, logger: Any) -> 
     reporter_token: contextvars.Token | None = None
     reporter: Any | None = None
     try:
-        loaded = session._loaded_demo
+        loaded = session._loaded_app
         if not loaded or not loaded.executor:
             raise ValueError("No executor available")
 
@@ -821,7 +821,7 @@ async def execute_session(manager: Any, session: StudioSession, logger: Any) -> 
 
                 user_invoke_kwargs = session.metadata.get("invocation_kwargs")
                 fallback_invocation_kwargs = resolve_structured_output_invocation_fallbacks(
-                    loaded_demo=loaded,
+                    loaded_app=loaded,
                     structured_output_model=structured_output_model,
                     user_invoke_kwargs=user_invoke_kwargs,
                 )

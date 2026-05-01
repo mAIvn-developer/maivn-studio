@@ -1,10 +1,10 @@
 <script lang="ts">
-  import type { DemoDetails } from "$lib/types";
+  import type { AppDetails } from "$lib/types";
   import { List, MessageSquareMore } from "lucide-svelte";
 
   interface Props {
-    demo: DemoDetails | null;
-    prompts: DemoDetails["prompts"];
+    app: AppDetails | null;
+    prompts: AppDetails["prompts"];
     onSelectPrompt: (
       content: string,
       structuredOutputTool?: string,
@@ -13,11 +13,11 @@
     ) => void;
   }
 
-  let { demo, prompts, onSelectPrompt }: Props = $props();
+  let { app, prompts, onSelectPrompt }: Props = $props();
 </script>
 
 <div class="empty-state-wrap">
-  {#if demo}
+  {#if app}
     <div class="max-w-md">
       <div
         class="mx-auto w-16 h-16 rounded-2xl bg-[var(--color-bg-tertiary)] flex items-center justify-center mb-4"
@@ -26,7 +26,7 @@
       </div>
       <h3 class="text-lg font-medium text-[var(--color-text)]">Start a conversation</h3>
       <p class="mt-2 text-sm text-[var(--color-text-secondary)]">
-        Enter a message below to start interacting with {demo.name}.
+        Enter a message below to start interacting with {app.name}.
       </p>
 
       {#if prompts.length > 0}
@@ -61,7 +61,7 @@
         <List size={32} class="text-[var(--color-text-tertiary)]" />
       </div>
       <p class="text-[var(--color-text-secondary)]">
-        Select a demo from the sidebar to get started.
+        Select an app from the sidebar to get started.
       </p>
     </div>
   {/if}

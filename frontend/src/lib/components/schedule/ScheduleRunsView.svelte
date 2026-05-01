@@ -9,29 +9,29 @@
   import ScheduleRunCard from "./ScheduleRunCard.svelte";
 
   interface Props {
-    demoId: string;
+    appId: string;
     chatFlowItems: ChatFlowItem[];
     pollIntervalMs?: number;
     resetRevision?: number;
-    /** Notified when a schedule is configured for this demo (running, paused, or done).
+    /** Notified when a schedule is configured for this app (running, paused, or done).
      *  ChatPanel uses this to hide its empty state. */
     onActiveChange?: (active: boolean) => void;
   }
 
   let {
-    demoId,
+    appId,
     chatFlowItems,
     pollIntervalMs = 4000,
     resetRevision = 0,
     onActiveChange,
   }: Props = $props();
 
-  // Polling lives here so the parent only has to pass demoId. ScheduleTab keeps
+  // Polling lives here so the parent only has to pass appId. ScheduleTab keeps
   // its own poll — duplicate fetches at 4s are fine and avoid lifting state to
   // the page level just to wire one consumer.
   let summary = $state<ScheduleJobSummary | null>(null);
   let pollHandle: ReturnType<typeof setInterval> | null = null;
-  let activeDemoId = $state<string | null>(null);
+  let activeAppId = $state<string | null>(null);
   // 1Hz tick so the upcoming-run countdown updates every second, not every
   // poll. ScheduleTab uses the same trick.
   let nowTick = $state(Date.now());
@@ -45,12 +45,12 @@
   let userExpanded = $state(new Map<string, boolean>());
 
   async function refresh(): Promise<void> {
-    if (!demoId) return;
-    const requestDemoId = demoId;
+    if (!appId) return;
+    const requestAppId = appId;
     const requestVersion = refreshVersion;
     try {
-      const next = await getSchedule(requestDemoId);
-      if (activeDemoId !== requestDemoId || requestVersion !== refreshVersion) return;
+      const next = await getSchedule(requestAppId);
+      if (activeAppId !== requestAppId || requestVersion !== refreshVersion) return;
       summary = next;
     } catch {
       // Swallow — ScheduleTab surfaces schedule errors; this view is best-effort.
@@ -58,7 +58,7 @@
   }
 
   $effect(() => {
-    const id = demoId;
+    const id = appId;
     untrack(() => {
       if (pollHandle !== null) {
         clearInterval(pollHandle);
@@ -69,7 +69,7 @@
         nowTickHandle = null;
       }
       refreshVersion += 1;
-      activeDemoId = id;
+      activeAppId = id;
       summary = null;
       userExpanded = new Map();
       onActiveChange?.(false);
@@ -105,7 +105,7 @@
   const runs = $derived(buildScheduleRuns(summary?.history ?? [], chatFlowItems));
   const newestFireId = $derived(runs.length > 0 ? runs[runs.length - 1].fireId : null);
 
-  // Whether to consider the schedule "configured" for this demo. We treat
+  // Whether to consider the schedule "configured" for this app. We treat
   // any non-null summary as configured — the chat panel uses this to hide
   // its empty state, regardless of whether the schedule is active or paused.
   const hasSchedule = $derived(summary !== null);
@@ -170,7 +170,7 @@
       {#each runs as run, i (run.fireId)}
         <ScheduleRunCard
           {run}
-          {demoId}
+          {appId}
           runIndex={i}
           expanded={isExpanded(run.fireId)}
           onToggle={() => toggle(run.fireId)}

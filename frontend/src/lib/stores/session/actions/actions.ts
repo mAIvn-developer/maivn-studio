@@ -28,7 +28,7 @@ export function createStartSession(
   clearMemoryIndexedToastTimer: () => void,
 ) {
   return async function startSession(
-    demoId: string,
+    appId: string,
     initialMessage: string,
     options?: {
       variant?: string;
@@ -59,7 +59,7 @@ export function createStartSession(
       );
 
       // Create session
-      const session = await createSession(demoId, initialMessage, {
+      const session = await createSession(appId, initialMessage, {
         variant: options?.variant,
         messageType: msgType,
         attachments: options?.attachments,

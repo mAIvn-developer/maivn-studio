@@ -15,8 +15,8 @@ import { useSession } from "./session/index.svelte";
 
 const MOCK_SESSION: Session = {
   session_id: "s-123",
-  demo_id: "d-1",
-  demo_name: "Test Demo",
+  app_id: "d-1",
+  app_name: "Test App",
   thread_id: "t-1",
   variant: null,
   status: "running",
@@ -376,13 +376,13 @@ describe("useSession - startSession", () => {
   });
 
   it("handles session creation error", async () => {
-    mockFetchError(400, { detail: "Demo not found" });
+    mockFetchError(400, { detail: "App not found" });
 
     const s = useSession();
     await s.startSession("bad-id", "Hello");
 
     expect(s.session).toBeNull();
-    expect(s.error).toBe("Demo not found");
+    expect(s.error).toBe("App not found");
     expect(s.loading).toBe(false);
   });
 
@@ -417,7 +417,7 @@ describe("useSession - startSession", () => {
     expect(body.invocation.memory_config.retrieval.resources_enabled).toBe(true);
   });
 
-  it("preserves advanced demo memory_config defaults in the request payload", async () => {
+  it("preserves advanced app memory_config defaults in the request payload", async () => {
     const { MockEventSource } = makeMockEventSource();
     vi.stubGlobal("EventSource", MockEventSource);
     mockFetchOk(MOCK_SESSION);

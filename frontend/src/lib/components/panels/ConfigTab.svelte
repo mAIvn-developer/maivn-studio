@@ -23,7 +23,7 @@
     hasActiveSession?: boolean;
     agents?: AgentInfo[];
     swarms?: SwarmInfo[];
-    demoId?: string;
+    appId?: string;
     invocationConfig?: InvocationConfig;
     availableTools?: string[];
     // Structured output now lives in the composer's Advanced disclosure;
@@ -33,7 +33,7 @@
     interruptStyle?: InterruptStyle;
     memoryConfig?: MemoryConfig;
     onPrivateDataChange?: (data: Record<string, unknown>) => void;
-    onDemoRefresh?: () => void;
+    onAppRefresh?: () => void;
     onInvocationChange?: (config: InvocationConfig) => void;
     onInterruptStyleChange?: (style: InterruptStyle) => void;
     onMemoryConfigChange?: (config: MemoryConfig) => void;
@@ -46,14 +46,14 @@
     hasActiveSession = false,
     agents = [],
     swarms = [],
-    demoId = "",
+    appId = "",
     invocationConfig,
     availableTools = [],
     structuredOutputConfig,
     interruptStyle = "inline",
     memoryConfig,
     onPrivateDataChange,
-    onDemoRefresh,
+    onAppRefresh,
     onInvocationChange,
     onInterruptStyleChange,
     onMemoryConfigChange,
@@ -104,7 +104,7 @@
   {/if}
 
   <!-- Interrupt Style -->
-  {#if demoId && onInterruptStyleChange}
+  {#if appId && onInterruptStyleChange}
     <CollapsibleConfigSection
       title="Interrupt Style"
       subtitle="Inline, modal, drawer, floating"
@@ -119,31 +119,31 @@
   {/if}
 
   <!-- Agent Settings -->
-  {#if agents.length > 0 && demoId}
+  {#if agents.length > 0 && appId}
     <CollapsibleConfigSection
       title="Agents"
       subtitle={`${agents.length} configured`}
       open={sectionOpen.agents}
       onToggle={() => toggleSection("agents")}
     >
-      <AgentSettings {agents} {demoId} disabled={hasActiveSession} onAgentUpdated={onDemoRefresh} />
+      <AgentSettings {agents} {appId} disabled={hasActiveSession} onAgentUpdated={onAppRefresh} />
     </CollapsibleConfigSection>
   {/if}
 
   <!-- Swarm Settings -->
-  {#if swarms.length > 0 && demoId}
+  {#if swarms.length > 0 && appId}
     <CollapsibleConfigSection
       title="Swarms"
       subtitle={`${swarms.length} configured`}
       open={sectionOpen.swarms}
       onToggle={() => toggleSection("swarms")}
     >
-      <SwarmSettings {swarms} {demoId} disabled={hasActiveSession} onSwarmUpdated={onDemoRefresh} />
+      <SwarmSettings {swarms} {appId} disabled={hasActiveSession} onSwarmUpdated={onAppRefresh} />
     </CollapsibleConfigSection>
   {/if}
 
   <!-- Invocation Settings -->
-  {#if invocationConfig && onInvocationChange && demoId}
+  {#if invocationConfig && onInvocationChange && appId}
     <CollapsibleConfigSection
       title="Invocation"
       subtitle="Model, reasoning, tool targeting"
@@ -161,7 +161,7 @@
   {/if}
 
   <!-- Memory Settings -->
-  {#if demoId && memoryConfig && onMemoryConfigChange}
+  {#if appId && memoryConfig && onMemoryConfigChange}
     <CollapsibleConfigSection
       title="Memory"
       subtitle={memoryConfig.enabled ? "Enabled" : "Disabled"}
@@ -177,11 +177,11 @@
   {/if}
 
   <!-- Empty state when no config options available -->
-  {#if privateDataSchema.length === 0 && agents.length === 0 && swarms.length === 0 && !invocationConfig && !demoId}
+  {#if privateDataSchema.length === 0 && agents.length === 0 && swarms.length === 0 && !invocationConfig && !appId}
     <div class="flex flex-col items-center justify-center p-8 text-center">
       <p class="text-sm text-[var(--color-text-tertiary)]">No configuration options available.</p>
       <p class="text-xs text-[var(--color-text-tertiary)] mt-1">
-        Select a demo to see its settings.
+        Select an app to see its settings.
       </p>
     </div>
   {/if}

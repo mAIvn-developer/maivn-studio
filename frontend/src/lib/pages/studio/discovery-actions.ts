@@ -16,7 +16,7 @@ interface CreateDiscoveryActionsParams {
   setDiscoveryLoading: (loading: boolean) => void;
   getDiscoveryError: () => string | null;
   setDiscoveryError: (error: string | null) => void;
-  reloadDemos: () => Promise<void>;
+  reloadApps: () => Promise<void>;
 }
 
 export function createDiscoveryActions(params: CreateDiscoveryActionsParams) {
@@ -62,7 +62,7 @@ export function createDiscoveryActions(params: CreateDiscoveryActionsParams) {
       await applyRepoSelection(selections);
       params.setDiscoveryOpen(false);
       params.setDiscoverySelections(new Set());
-      await params.reloadDemos();
+      await params.reloadApps();
     } catch (e) {
       params.setDiscoveryError(e instanceof Error ? e.message : "Failed to apply selections");
     }

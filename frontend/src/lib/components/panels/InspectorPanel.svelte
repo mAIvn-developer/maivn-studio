@@ -47,7 +47,7 @@
     hasActiveSession?: boolean;
     agents?: AgentInfo[];
     swarms?: SwarmInfo[];
-    demoId?: string;
+    appId?: string;
     invocationConfig?: InvocationConfig;
     availableTools?: string[];
     structuredOutputConfig?: StructuredOutputConfig;
@@ -59,7 +59,7 @@
     memoryConfig?: MemoryConfig;
     onFilterChange: (filters: Partial<ChatFlowFilters>) => void;
     onPrivateDataChange?: (data: Record<string, unknown>) => void;
-    onDemoRefresh?: () => void;
+    onAppRefresh?: () => void;
     onInvocationChange?: (config: InvocationConfig) => void;
     onStructuredOutputChange?: (config: StructuredOutputConfig) => void;
     onInterruptStyleChange?: (style: InterruptStyle) => void;
@@ -77,7 +77,7 @@
     hasActiveSession = false,
     agents = [],
     swarms = [],
-    demoId = "",
+    appId = "",
     invocationConfig,
     availableTools = [],
     structuredOutputConfig,
@@ -88,7 +88,7 @@
     memoryConfig,
     onFilterChange,
     onPrivateDataChange,
-    onDemoRefresh,
+    onAppRefresh,
     onInvocationChange,
     onInterruptStyleChange,
     onMemoryConfigChange,
@@ -184,14 +184,14 @@
         {hasActiveSession}
         {agents}
         {swarms}
-        {demoId}
+        {appId}
         {invocationConfig}
         {availableTools}
         {structuredOutputConfig}
         {interruptStyle}
         {memoryConfig}
         {onPrivateDataChange}
-        {onDemoRefresh}
+        {onAppRefresh}
         {onInvocationChange}
         {onInterruptStyleChange}
         {onMemoryConfigChange}
@@ -201,7 +201,7 @@
     {:else if activeTab === "memory"}
       <MemoryTab {extractedSkills} {extractedInsights} {retrievedMemoryContext} />
     {:else if activeTab === "schedule"}
-      <ScheduleTab {demoId} />
+      <ScheduleTab {appId} />
     {/if}
   </div>
 </div>

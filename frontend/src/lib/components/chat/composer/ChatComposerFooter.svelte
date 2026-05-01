@@ -2,7 +2,7 @@
   import { Layers3, Send, Square } from "lucide-svelte";
 
   interface Props {
-    hasDemo: boolean;
+    hasApp: boolean;
     hasActiveSession: boolean;
     canSend: boolean;
     canStageNext: boolean;
@@ -24,7 +24,7 @@
   }
 
   let {
-    hasDemo,
+    hasApp,
     hasActiveSession,
     canSend,
     canStageNext,
@@ -53,8 +53,8 @@
   {:else}
     <textarea
       bind:value={inputValue}
-      placeholder={hasDemo ? "Type your message..." : "Select a demo first"}
-      disabled={!hasDemo ||
+      placeholder={hasApp ? "Type your message..." : "Select an app first"}
+      disabled={!hasApp ||
         (hasActiveSession && !canSend && !canStageNext) ||
         (loading && !queueMode)}
       rows={1}
@@ -82,7 +82,7 @@
   {:else}
     <button
       type="submit"
-      disabled={!hasDemo ||
+      disabled={!hasApp ||
         !canSubmitMessage ||
         (hasActiveSession && !canSend && !canStageNext) ||
         (loading && !queueMode)}

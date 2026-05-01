@@ -313,7 +313,7 @@
   }
 
   .user-avatar {
-    background-color: rgba(177, 197, 255, 0.15);
+    background-color: color-mix(in srgb, var(--color-primary) 15%, transparent);
     color: var(--color-text-secondary);
   }
 

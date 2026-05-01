@@ -19,7 +19,7 @@ export interface SavedPrompt {
   name: string;
   content: string;
   description: string;
-  demoId: string;
+  appId: string;
   messageType: MessageType;
   createdAt: string;
 }
@@ -66,7 +66,7 @@ export interface InvocationConfig {
   targeted_tools?: string[];
   /**
    * Caps how many semantic-search results the agent considers when picking a
-   * tool. Maps to `SessionRequest.max_results` server-side. Useful for demos
+   * tool. Maps to `SessionRequest.max_results` server-side. Useful for apps
    * with a long tool catalog where the default cap would either be too loose
    * (too many irrelevant tools surface) or too tight.
    */

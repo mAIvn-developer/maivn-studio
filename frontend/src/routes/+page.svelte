@@ -3,7 +3,7 @@
   import InspectorPanel from "$lib/components/panels/InspectorPanel.svelte";
   import ResizablePanel from "$lib/components/ResizablePanel.svelte";
   import CollapsedSidebarRail from "$lib/components/sidebar/CollapsedSidebarRail.svelte";
-  import DemoList from "$lib/components/sidebar/DemoList.svelte";
+  import AppList from "$lib/components/sidebar/AppList.svelte";
   import SidebarHeader from "$lib/components/sidebar/SidebarHeader.svelte";
   import CommandPalette from "$lib/components/studio-shell/CommandPalette.svelte";
   import RepoDiscoveryModal from "$lib/components/studio-shell/RepoDiscoveryModal.svelte";
@@ -14,16 +14,16 @@
   import { formatMemoryIndexedToastDetails as formatMemoryIndexedToastDetailsHelper } from "$lib/pages/studio/memory-toast";
   import { createPromptActions } from "$lib/pages/studio/prompt-actions";
   import {
-    getCollapsedDemoLabel as getCollapsedDemoLabelHelper,
-    loadRecentDemos as loadStoredRecentDemos,
-    updateRecentDemos,
-  } from "$lib/pages/studio/recent-demos";
+    getCollapsedAppLabel as getCollapsedAppLabelHelper,
+    loadRecentApps as loadStoredRecentApps,
+    updateRecentApps,
+  } from "$lib/pages/studio/recent-apps";
   import { createStudioSessionActions } from "$lib/pages/studio/session-actions";
-  import { useDemos } from "$lib/stores/demos.svelte";
+  import { useApps } from "$lib/stores/apps.svelte";
   import { useSession } from "$lib/stores/session/index.svelte";
   import type {
     BatchInvocationConfig,
-    Demo,
+    App,
     ModelToolOption,
     RepoScanItem,
     SavedPrompt,
@@ -34,7 +34,7 @@
   import { AlertCircle, RotateCw, Terminal } from "lucide-svelte";
   import { onMount } from "svelte";
 
-  const demos = useDemos();
+  const apps = useApps();
   const session = useSession();
 
   // MARK: UI State
@@ -58,19 +58,19 @@
   let discoveryItems = $state<RepoScanItem[]>([]);
   let discoverySelections = $state(new Set<string>());
 
-  // Recent demos for welcome screen
-  let recentDemoObjects = $state<Demo[]>([]);
+  // Recent apps for welcome screen
+  let recentAppObjects = $state<App[]>([]);
 
   // Derived state
-  const isConnected = $derived(!demos.connecting && !demos.error);
+  const isConnected = $derived(!apps.connecting && !apps.error);
   const sessionStatus = $derived(session.session?.status ?? null);
 
   // Structured output state (lifted from ChatPanel for cross-component sharing)
   let structuredOutputConfig = $state<StructuredOutputConfig>({ enabled: false });
   let selectedVariant = $state<string | undefined>(undefined);
   const availableModelTools = $derived<ModelToolOption[]>(
-    demos.selectedDemo?.tools
-      ? demos.selectedDemo.tools.map((tool) => ({
+    apps.selectedApp?.tools
+      ? apps.selectedApp.tools.map((tool) => ({
           name: tool.name,
           description: tool.description,
         }))
@@ -88,8 +88,8 @@
       }
     }
 
-    demos.loadDemos();
-    loadRecentDemos();
+    apps.loadApps();
+    loadRecentApps();
 
     const unregisterShortcuts = [
       registerShortcut({
@@ -144,11 +144,11 @@
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, sidebarCollapsed ? "1" : "0");
   });
 
-  // Auto-close the mobile sidebar drawer once a demo is selected — without
+  // Auto-close the mobile sidebar drawer once an app is selected — without
   // this, the user is left looking at the still-open sidebar over their
   // freshly-loaded chat panel.
   $effect(() => {
-    if (demos.selectedDemo && mobileSidebarOpen) {
+    if (apps.selectedApp && mobileSidebarOpen) {
       mobileSidebarOpen = false;
     }
   });
@@ -158,18 +158,18 @@
     localStorage.setItem(SHOW_EVENTS_KEY, showEvents ? "1" : "0");
   });
 
-  // Load saved prompts when a demo is selected
+  // Load saved prompts when an app is selected
   $effect(() => {
-    if (demos.selectedDemo) {
-      loadSavedPrompts(demos.selectedDemo.id);
+    if (apps.selectedApp) {
+      loadSavedPrompts(apps.selectedApp.id);
     } else {
       savedPrompts = [];
     }
   });
 
-  // Apply default invocation config when demo changes
+  // Apply default invocation config when app changes
   $effect(() => {
-    const defaults = demos.selectedDemo?.defaultInvocation;
+    const defaults = apps.selectedApp?.defaultInvocation;
     session.setInvocationConfig({
       force_final_tool: false,
       stream_response: true,
@@ -213,34 +213,34 @@
     return clearErrorTimer;
   });
 
-  // MARK: Recent Demos
+  // MARK: Recent Apps
 
-  function loadRecentDemos() {
-    recentDemoObjects = loadStoredRecentDemos();
+  function loadRecentApps() {
+    recentAppObjects = loadStoredRecentApps();
   }
 
-  function addRecentDemo(demo: Demo) {
-    recentDemoObjects = updateRecentDemos(recentDemoObjects, demo);
+  function addRecentApp(app: App) {
+    recentAppObjects = updateRecentApps(recentAppObjects, app);
   }
 
-  function getCollapsedDemoLabel(name: string): string {
-    return getCollapsedDemoLabelHelper(name);
+  function getCollapsedAppLabel(name: string): string {
+    return getCollapsedAppLabelHelper(name);
   }
 
-  function refreshSelectedDemoDetails(): void {
-    if (demos.selectedDemoId) {
-      void demos.selectDemo(demos.selectedDemoId, selectedVariant);
+  function refreshSelectedAppDetails(): void {
+    if (apps.selectedAppId) {
+      void apps.selectApp(apps.selectedAppId, selectedVariant);
     }
   }
 
   function handleSelectedVariantChange(variant: string | undefined): void {
     selectedVariant = variant;
     session.setPrivateData({});
-    refreshSelectedDemoDetails();
+    refreshSelectedAppDetails();
   }
 
   const { loadSavedPrompts, handleSavePrompt } = createPromptActions({
-    getSelectedDemo: () => demos.selectedDemo,
+    getSelectedApp: () => apps.selectedApp,
     getMessageType: () => session.messageType,
     getSavedPrompts: () => savedPrompts,
     setSavedPrompts: (prompts) => {
@@ -278,13 +278,13 @@
     setDiscoveryError: (error) => {
       discoveryError = error;
     },
-    reloadDemos: () => demos.loadDemos(),
+    reloadApps: () => apps.loadApps(),
   });
 
   // MARK: Session Handlers
 
   const {
-    handleSelectDemo,
+    handleSelectApp,
     handleStart,
     handleSend,
     handleMessageTypeChange,
@@ -293,17 +293,17 @@
     handleNewThread,
     handleCommandPaletteAction,
   } = createStudioSessionActions({
-    getSelectedDemo: () => demos.selectedDemo,
-    selectDemo: (demoId) => {
+    getSelectedApp: () => apps.selectedApp,
+    selectApp: (appId) => {
       selectedVariant = undefined;
-      void demos.selectDemo(demoId);
+      void apps.selectApp(appId);
     },
-    addRecentDemo,
+    addRecentApp,
     resetSession: () => {
       session.reset();
     },
-    startSession: (demoId, message, options) => {
-      session.startSession(demoId, message, options);
+    startSession: (appId, message, options) => {
+      session.startSession(appId, message, options);
     },
     sendMessage: (
       message,
@@ -385,7 +385,7 @@
     >
       <nav
         class="studio-sidebar h-full flex flex-col border-r border-[var(--color-outline-variant)]"
-        aria-label="Demo browser"
+        aria-label="App browser"
       >
         <!-- Sidebar Header -->
         <SidebarHeader
@@ -395,10 +395,10 @@
           onOpenCommandPalette={() => (commandPaletteOpen = true)}
         />
 
-        <!-- Demo List -->
+        <!-- App List -->
         {#if !sidebarCollapsed}
           <div class="flex-1 min-h-0 overflow-y-auto">
-            {#if demos.connecting}
+            {#if apps.connecting}
               <div class="flex h-40 flex-col items-center justify-center gap-3 px-4">
                 <div
                   class="h-8 w-8 rounded-full border-2 border-[var(--color-secondary)]/30
@@ -408,23 +408,23 @@
                   Connecting to server...
                 </p>
                 <p class="text-center text-xs text-[var(--color-text-tertiary)]">
-                  Fetching demo metadata and preparing the Studio catalog.
+                  Fetching app metadata and preparing the Studio catalog.
                 </p>
               </div>
-            {:else if demos.loading && Object.keys(demos.byCategory).length === 0}
+            {:else if apps.loading && Object.keys(apps.byCategory).length === 0}
               <div class="flex h-40 flex-col items-center justify-center gap-3 px-4">
                 <div
                   class="h-8 w-8 rounded-full border-2 border-[var(--color-secondary)]/30
                        border-t-[var(--color-secondary)] animate-spin"
                 ></div>
                 <p class="text-sm font-medium text-[var(--color-text-secondary)]">
-                  Loading demos...
+                  Loading apps...
                 </p>
                 <p class="text-center text-xs text-[var(--color-text-tertiary)]">
-                  Indexing available demos so you can jump in quickly.
+                  Indexing available apps so you can jump in quickly.
                 </p>
               </div>
-            {:else if demos.error}
+            {:else if apps.error}
               <div class="p-4">
                 <div
                   class="rounded-2xl border border-[var(--color-error)]/25 bg-[var(--color-error-container)]/40
@@ -437,7 +437,7 @@
                       <div
                         class="mt-1 break-words text-xs text-[var(--color-on-error-container)]/90"
                       >
-                        {demos.error}
+                        {apps.error}
                       </div>
                     </div>
                   </div>
@@ -459,7 +459,7 @@
                           maivn studio
                         </code>
                         <p class="mt-1 text-[var(--color-text-tertiary)]">
-                          Run from the directory that holds your demos so Studio can index them. If <code
+                          Run from the directory that holds your apps so Studio can index them. If <code
                             class="inline-code">maivn</code
                           >
                           isn't on your PATH, install with
@@ -472,7 +472,7 @@
                   <div class="mt-3 flex items-center gap-2">
                     <button
                       type="button"
-                      onclick={() => demos.loadDemos()}
+                      onclick={() => apps.loadApps()}
                       class="inline-flex items-center gap-1.5 rounded-md
                            border border-[var(--color-outline-variant)] bg-[var(--color-bg-tertiary)]/80
                            px-2.5 py-1.5 text-xs font-medium text-[var(--color-text)]
@@ -494,26 +494,26 @@
                 </div>
               </div>
             {:else}
-              <DemoList
-                demos={demos.byCategory}
-                selectedId={demos.selectedDemoId ?? demos.selectedDemo?.id}
-                onSelect={handleSelectDemo}
+              <AppList
+                apps={apps.byCategory}
+                selectedId={apps.selectedAppId ?? apps.selectedApp?.id}
+                onSelect={handleSelectApp}
                 onScanRepo={openDiscovery}
               />
             {/if}
           </div>
         {:else}
           <CollapsedSidebarRail
-            connecting={demos.connecting}
-            loading={demos.loading}
-            error={demos.error}
-            selectedDemoId={demos.selectedDemoId ?? demos.selectedDemo?.id}
-            selectedDemoName={demos.selectedDemo?.name}
-            recentDemos={recentDemoObjects}
+            connecting={apps.connecting}
+            loading={apps.loading}
+            error={apps.error}
+            selectedAppId={apps.selectedAppId ?? apps.selectedApp?.id}
+            selectedAppName={apps.selectedApp?.name}
+            recentApps={recentAppObjects}
             onOpenCommandPalette={() => (commandPaletteOpen = true)}
             onOpenDiscovery={openDiscovery}
-            onSelectDemo={handleSelectDemo}
-            {getCollapsedDemoLabel}
+            onSelectApp={handleSelectApp}
+            {getCollapsedAppLabel}
           />
         {/if}
       </nav>
@@ -524,7 +524,7 @@
   <main class="studio-main flex flex-1 flex-col min-w-0">
     <!-- Toolbar -->
     <Toolbar
-      demo={demos.selectedDemo}
+      app={apps.selectedApp}
       {sessionStatus}
       isActive={session.hasActiveSession}
       {showEvents}
@@ -539,9 +539,9 @@
       <div
         class="studio-content-panel flex flex-1 min-h-0 flex-col overflow-hidden border-r border-[var(--color-outline-variant)]"
       >
-        {#if demos.selectedDemo}
+        {#if apps.selectedApp}
           <ChatPanel
-            demo={demos.selectedDemo}
+            app={apps.selectedApp}
             chatFlowItems={session.filteredChatFlowItems}
             loading={session.loading}
             canSend={session.session?.can_send_message ?? false}
@@ -576,9 +576,9 @@
           <WelcomeScreen
             onOpenCommandPalette={() => (commandPaletteOpen = true)}
             onScanRepo={openDiscovery}
-            recentDemos={recentDemoObjects}
-            onSelectDemo={handleSelectDemo}
-            demoCount={Object.values(demos.byCategory).reduce((sum, arr) => sum + arr.length, 0)}
+            recentApps={recentAppObjects}
+            onSelectApp={handleSelectApp}
+            appCount={Object.values(apps.byCategory).reduce((sum, arr) => sum + arr.length, 0)}
             connected={isConnected}
           />
         {/if}
@@ -586,20 +586,20 @@
 
       <!-- Inspector panel (replaces EventPanel). Hidden on the welcome screen
            so the welcome content has room to breathe — there's nothing useful
-           to inspect until a demo is selected. -->
-      {#if showEvents && demos.selectedDemo}
+           to inspect until an app is selected. -->
+      {#if showEvents && apps.selectedApp}
         <ResizablePanel side="right" defaultWidth={380} minWidth={280} maxWidth={560}>
           <div
             class="studio-inspector-panel h-full overflow-hidden border-l border-[var(--color-outline-variant)]"
           >
-            {#if demos.connecting || (demos.loading && !demos.selectedDemo)}
+            {#if apps.connecting || (apps.loading && !apps.selectedApp)}
               <div class="flex h-full flex-col items-center justify-center gap-3">
                 <div
                   class="h-8 w-8 rounded-full border-2 border-[var(--color-secondary)]/30
                          border-t-[var(--color-secondary)] animate-spin"
                 ></div>
                 <p class="text-sm text-[var(--color-text-secondary)]">
-                  {demos.connecting ? "Connecting to server..." : "Loading demo..."}
+                  {apps.connecting ? "Connecting to server..." : "Loading app..."}
                 </p>
               </div>
             {:else}
@@ -608,15 +608,15 @@
                 filters={session.filters}
                 eventSummary={session.eventSummary}
                 accumulatedStats={session.accumulatedStats}
-                privateDataSchema={demos.selectedDemo?.privateDataSchema ?? []}
+                privateDataSchema={apps.selectedApp?.privateDataSchema ?? []}
                 privateData={session.privateData}
-                privateDataDefaults={demos.selectedDemo?.privateDataDefaults ?? {}}
+                privateDataDefaults={apps.selectedApp?.privateDataDefaults ?? {}}
                 hasActiveSession={session.hasActiveSession}
-                agents={demos.selectedDemo?.agents ?? []}
-                swarms={demos.selectedDemo?.swarms ?? []}
-                demoId={demos.selectedDemo?.id ?? ""}
+                agents={apps.selectedApp?.agents ?? []}
+                swarms={apps.selectedApp?.swarms ?? []}
+                appId={apps.selectedApp?.id ?? ""}
                 invocationConfig={session.invocationConfig}
-                availableTools={demos.selectedDemo?.tools?.map((t) => t.name) ?? []}
+                availableTools={apps.selectedApp?.tools?.map((t) => t.name) ?? []}
                 {structuredOutputConfig}
                 {availableModelTools}
                 interruptStyle={session.interruptStyle}
@@ -626,7 +626,7 @@
                 memoryConfig={session.memoryConfig}
                 onFilterChange={session.setFilters}
                 onPrivateDataChange={handlePrivateDataChange}
-                onDemoRefresh={refreshSelectedDemoDetails}
+                onAppRefresh={refreshSelectedAppDetails}
                 onInvocationChange={session.setInvocationConfig}
                 onStructuredOutputChange={handleStructuredOutputChange}
                 onInterruptStyleChange={session.setInterruptStyle}
@@ -643,9 +643,9 @@
 <!-- Command Palette -->
 <CommandPalette
   open={commandPaletteOpen}
-  demos={demos.byCategory}
+  apps={apps.byCategory}
   onClose={() => (commandPaletteOpen = false)}
-  onSelectDemo={handleSelectDemo}
+  onSelectApp={handleSelectApp}
   onAction={handleCommandPaletteActionRequest}
 />
 

@@ -39,7 +39,7 @@ interface ScheduleFireEventStream {
  * `stream.chatFlowItems` straight into `ChatExchangeList`.
  */
 export function createScheduleFireEventStream(
-  demoId: string,
+  appId: string,
   fireId: string,
   _eventSessionId: string,
 ): ScheduleFireEventStream {
@@ -56,7 +56,7 @@ export function createScheduleFireEventStream(
   const itemIdByToolId = new Map<string, string>();
   let streamingAssistantItemId: string | null = null;
 
-  const url = `${API_BASE}/schedules/${encodeURIComponent(demoId)}/fires/${encodeURIComponent(fireId)}/events`;
+  const url = `${API_BASE}/schedules/${encodeURIComponent(appId)}/fires/${encodeURIComponent(fireId)}/events`;
   let es: EventSource | null = null;
   let closed = false;
 
@@ -479,7 +479,7 @@ export function createScheduleFireEventStream(
   }
 
   // Open the SSE connection. The chat panel's connectToEvents helper hits
-  // /sessions/{id}/events; for fires we built /schedules/{demo}/fires/{id}/
+  // /sessions/{id}/events; for fires we built /schedules/{app}/fires/{id}/
   // events which delivers the same EventBridge stream, so we use the URL
   // override branch.
   void connectScheduleFireStream();

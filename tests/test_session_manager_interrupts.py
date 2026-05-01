@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from maivn_studio.config.models import DemoConfig
+from maivn_studio.config.models import AppConfig
 from maivn_studio.services.session_manager.lifecycle import submit_interrupt_response
 from maivn_studio.services.session_manager.models import SessionStatus, StudioSession
 
@@ -10,7 +10,7 @@ from maivn_studio.services.session_manager.models import SessionStatus, StudioSe
 def _build_session(*, status: SessionStatus) -> StudioSession:
     return StudioSession(
         session_id="session-1",
-        demo_config=DemoConfig(id="demo-1", name="Demo", module="demo.module"),
+        app_config=AppConfig(id="app-1", name="App", module="app.module"),
         thread_id="thread-1",
         status=status,
     )

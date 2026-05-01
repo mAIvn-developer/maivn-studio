@@ -51,18 +51,18 @@ def apply_turn_configuration(
 
 def resolve_structured_output_metadata_fallback(
     *,
-    loaded_demo: Any,
+    loaded_app: Any,
     structured_output_model: type[Any] | None,
     user_invoke_kwargs: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
-    """Reuse demo-level metadata when structured output turns omit it."""
+    """Reuse app-level metadata when structured output turns omit it."""
     if structured_output_model is None:
         return None
     if isinstance(user_invoke_kwargs, dict) and "metadata" in user_invoke_kwargs:
         metadata = user_invoke_kwargs.get("metadata")
         return dict(metadata) if isinstance(metadata, dict) else None
 
-    default_invocation = getattr(loaded_demo, "default_invocation", None)
+    default_invocation = getattr(loaded_app, "default_invocation", None)
     if not isinstance(default_invocation, dict):
         return None
 
@@ -75,15 +75,15 @@ def resolve_structured_output_metadata_fallback(
 
 def resolve_structured_output_invocation_fallbacks(
     *,
-    loaded_demo: Any,
+    loaded_app: Any,
     structured_output_model: type[Any] | None,
     user_invoke_kwargs: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    """Reuse demo-level typed invocation defaults when structured output turns omit them."""
+    """Reuse app-level typed invocation defaults when structured output turns omit them."""
     if structured_output_model is None:
         return {}
 
-    default_invocation = getattr(loaded_demo, "default_invocation", None)
+    default_invocation = getattr(loaded_app, "default_invocation", None)
     if not isinstance(default_invocation, dict):
         return {}
 

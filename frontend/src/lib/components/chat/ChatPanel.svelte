@@ -3,7 +3,7 @@
     BatchInvocationConfig,
     BatchInvocationRow,
     ChatFlowItem,
-    DemoDetails,
+    AppDetails,
     InterruptData,
     InterruptStyle,
     MessageAttachmentPayload,
@@ -39,7 +39,7 @@
   import ChatComposer from "./composer/ChatComposer.svelte";
 
   interface Props {
-    demo: DemoDetails | null;
+    app: AppDetails | null;
     chatFlowItems: ChatFlowItem[];
     loading: boolean;
     canSend: boolean;
@@ -93,7 +93,7 @@
   }
 
   let {
-    demo,
+    app,
     chatFlowItems,
     loading,
     canSend,
@@ -144,7 +144,7 @@
   let pendingVariantPromptSync = $state<{ seed: string; promptSignature: string } | null>(null);
 
   let pendingAttachments = $state<PendingAttachment[]>([]);
-  // Tracks whether a schedule is configured for the current demo. ScheduleRunsView
+  // Tracks whether a schedule is configured for the current app. ScheduleRunsView
   // tells us via onActiveChange so we can hide the chat empty state — when the
   // user is in cron mode, the welcome scaffolding would just be in the way.
   let scheduleActive = $state(false);
@@ -153,22 +153,22 @@
   // Send button with start/update/pause/stop controls.
   let composerMode = $state<"chat" | "schedule">("chat");
 
-  // Per-demo schedule store (reference-counted, polls on its own). Held
+  // Per-app schedule store (reference-counted, polls on its own). Held
   // here so the composer's submit handler can write config + prompt_text.
   type ScheduleHandle = ReturnType<typeof useSchedule>;
 
   let schedule = $state<ScheduleHandle | null>(null);
-  let scheduleDemoId = $state<string | null>(null);
+  let scheduleAppId = $state<string | null>(null);
   let seenThreadResetRevision = $state<number | null>(null);
   let scheduleResetRevision = $state(0);
 
   function ensureScheduleStore(): ScheduleHandle | null {
-    const demoId = demo?.id ?? null;
-    if (!demoId) return null;
-    if (schedule && scheduleDemoId === demoId) return schedule;
+    const appId = app?.id ?? null;
+    if (!appId) return null;
+    if (schedule && scheduleAppId === appId) return schedule;
     if (schedule) schedule.dispose();
-    scheduleDemoId = demoId;
-    schedule = useSchedule(demoId);
+    scheduleAppId = appId;
+    schedule = useSchedule(appId);
     return schedule;
   }
 
@@ -199,15 +199,15 @@
   }
 
   $effect(() => {
-    const newDemoId = demo?.id ?? null;
-    if (newDemoId === scheduleDemoId) return;
+    const newAppId = app?.id ?? null;
+    if (newAppId === scheduleAppId) return;
     if (schedule) {
       schedule.dispose();
       schedule = null;
     }
-    scheduleDemoId = newDemoId;
-    if (newDemoId) {
-      schedule = useSchedule(newDemoId);
+    scheduleAppId = newAppId;
+    if (newAppId) {
+      schedule = useSchedule(newAppId);
     }
   });
 
@@ -477,8 +477,8 @@
     }
   }
 
-  const variants = $derived(demo ? Object.entries(demo.variants) : []);
-  const prompts = $derived(demo?.prompts || []);
+  const variants = $derived(app ? Object.entries(app.variants) : []);
+  const prompts = $derived(app?.prompts || []);
   const promptSignature = $derived(
     prompts.map((prompt) => `${prompt.id}:${prompt.content}`).join("\u0001"),
   );
@@ -568,16 +568,16 @@
       aria-live="polite"
     >
       <div class="chat-content-lane">
-        {#if demo}
+        {#if app}
           <ScheduleRunsView
-            demoId={demo.id}
+            appId={app.id}
             {chatFlowItems}
             resetRevision={threadResetRevision + scheduleResetRevision}
             onActiveChange={(active) => (scheduleActive = active)}
           />
         {/if}
         {#if chatFlowItems.length === 0 && !hasActiveSession && !scheduleActive}
-          <ChatEmptyState {demo} {prompts} onSelectPrompt={selectPrompt} />
+          <ChatEmptyState {app} {prompts} onSelectPrompt={selectPrompt} />
         {:else if chatFlowItems.length > 0 || hasActiveSession}
           <ChatExchangeList
             exchanges={exchanges()}
@@ -626,7 +626,7 @@
   </div>
 
   <ChatComposer
-    hasDemo={!!demo}
+    hasApp={!!app}
     {hasActiveSession}
     {canSend}
     {canStageNext}
@@ -636,7 +636,7 @@
     discoveredPrompts={prompts}
     {savedPrompts}
     {variants}
-    demoTools={demo?.tools ?? []}
+    appTools={app?.tools ?? []}
     pendingAttachments={pendingAttachmentViews}
     {formatAttachmentSize}
     canSubmitMessage={canSubmitMessage()}

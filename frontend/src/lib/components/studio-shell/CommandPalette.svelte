@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Demo } from "$lib/types";
+  import type { App } from "$lib/types";
   import { Bot, Clock, Command, FolderSearch, PanelRight, Plus, Search } from "lucide-svelte";
 
   // MARK: Types
@@ -13,15 +13,15 @@
 
   interface Props {
     open: boolean;
-    demos: Record<string, Demo[]>;
+    apps: Record<string, App[]>;
     onClose: () => void;
-    onSelectDemo: (demo: Demo) => void;
+    onSelectApp: (app: App) => void;
     onAction: (actionId: string) => void;
   }
 
   // MARK: Props & State
 
-  let { open, demos, onClose, onSelectDemo, onAction }: Props = $props();
+  let { open, apps, onClose, onSelectApp, onAction }: Props = $props();
 
   let searchQuery = $state("");
   let selectedIndex = $state(0);
@@ -43,8 +43,8 @@
     { id: "scan-repo", label: "Scan Repo", icon: FolderSearch },
   ];
 
-  function getSourceLabel(demo: Demo): string {
-    return demo.source === "discovered" ? "Auto" : "Config";
+  function getSourceLabel(app: App): string {
+    return app.source === "discovered" ? "Auto" : "Config";
   }
 
   // MARK: Recent Items
@@ -70,32 +70,32 @@
     }
   }
 
-  // MARK: All Demos Flat List
+  // MARK: All Apps Flat List
 
-  const allDemos = $derived.by(() => {
-    const result: Demo[] = [];
-    for (const categoryDemos of Object.values(demos)) {
-      result.push(...categoryDemos);
+  const allApps = $derived.by(() => {
+    const result: App[] = [];
+    for (const categoryApps of Object.values(apps)) {
+      result.push(...categoryApps);
     }
     return result;
   });
 
   // MARK: Fuzzy Search
 
-  function matchesQuery(demo: Demo, query: string): boolean {
+  function matchesQuery(app: App, query: string): boolean {
     const q = query.toLowerCase();
-    if (demo.name.toLowerCase().includes(q)) return true;
-    if (demo.description?.toLowerCase().includes(q)) return true;
-    if (demo.category.toLowerCase().includes(q)) return true;
-    if (demo.tags.some((tag) => tag.toLowerCase().includes(q))) return true;
+    if (app.name.toLowerCase().includes(q)) return true;
+    if (app.description?.toLowerCase().includes(q)) return true;
+    if (app.category.toLowerCase().includes(q)) return true;
+    if (app.tags.some((tag) => tag.toLowerCase().includes(q))) return true;
     return false;
   }
 
   // MARK: Filtered Results
 
-  const filteredDemos = $derived.by(() => {
+  const filteredApps = $derived.by(() => {
     if (!searchQuery.trim()) return [];
-    return allDemos.filter((demo) => matchesQuery(demo, searchQuery.trim()));
+    return allApps.filter((app) => matchesQuery(app, searchQuery.trim()));
   });
 
   const filteredActions = $derived.by(() => {
@@ -104,14 +104,14 @@
     return actions.filter((a) => a.label.toLowerCase().includes(q));
   });
 
-  // MARK: Recent Demos
+  // MARK: Recent Apps
 
-  const recentDemos = $derived.by(() => {
+  const recentApps = $derived.by(() => {
     if (searchQuery.trim()) return [];
     const recentIds = getRecentItems();
-    const result: Demo[] = [];
+    const result: App[] = [];
     for (const id of recentIds) {
-      const found = allDemos.find((d) => d.id === id);
+      const found = allApps.find((d) => d.id === id);
       if (found) result.push(found);
     }
     return result;
@@ -120,8 +120,8 @@
   // MARK: Navigable Items
 
   interface FlatItem {
-    type: "demo" | "action" | "recent";
-    demo?: Demo;
+    type: "app" | "action" | "recent";
+    app?: App;
     action?: ActionItem;
   }
 
@@ -130,16 +130,16 @@
 
     if (!searchQuery.trim()) {
       // No query: show recent + actions
-      for (const demo of recentDemos) {
-        items.push({ type: "recent", demo });
+      for (const app of recentApps) {
+        items.push({ type: "recent", app });
       }
       for (const action of filteredActions) {
         items.push({ type: "action", action });
       }
     } else {
-      // With query: show filtered demos + filtered actions
-      for (const demo of filteredDemos) {
-        items.push({ type: "demo", demo });
+      // With query: show filtered apps + filtered actions
+      for (const app of filteredApps) {
+        items.push({ type: "app", app });
       }
       for (const action of filteredActions) {
         items.push({ type: "action", action });
@@ -191,9 +191,9 @@
     if (item.type === "action" && item.action) {
       onAction(item.action.id);
       addRecentItem(item.action.id);
-    } else if ((item.type === "demo" || item.type === "recent") && item.demo) {
-      onSelectDemo(item.demo);
-      addRecentItem(item.demo.id);
+    } else if ((item.type === "app" || item.type === "recent") && item.app) {
+      onSelectApp(item.app);
+      addRecentItem(item.app.id);
     }
     onClose();
   }
@@ -258,11 +258,11 @@
       let section = "";
 
       if (item.type === "recent") section = "Recent";
-      else if (item.type === "demo") section = "Demos";
+      else if (item.type === "app") section = "Apps";
       else if (item.type === "action") section = "Actions";
 
       if (section !== currentSection) {
-        const icon = section === "Recent" ? Clock : section === "Demos" ? Bot : Command;
+        const icon = section === "Recent" ? Clock : section === "Apps" ? Bot : Command;
         result.push({ label: section, icon, startIndex: i });
         currentSection = section;
       }
@@ -310,7 +310,7 @@
               Command Palette
             </div>
             <div class="mt-1 text-sm text-[var(--color-text-secondary)]">
-              Jump to demos and workspace actions.
+              Jump to apps and workspace actions.
             </div>
           </div>
           <kbd
@@ -329,14 +329,14 @@
             bind:this={searchInput}
             bind:value={searchQuery}
             type="text"
-            placeholder="Search demos, actions..."
+            placeholder="Search apps, actions..."
             class="flex-1 bg-transparent text-base text-[var(--color-text)]
                  placeholder-[var(--color-text-tertiary)] outline-none"
           />
           <span
             class="hidden rounded-full border border-[var(--color-outline-variant)] bg-[var(--color-bg-tertiary)]/80 px-2 py-0.5 text-[10px] text-[var(--color-text-tertiary)] sm:inline-flex"
           >
-            {searchQuery.trim() ? `${flatItems.length} matches` : `${recentDemos.length} recent`}
+            {searchQuery.trim() ? `${flatItems.length} matches` : `${recentApps.length} recent`}
           </span>
         </div>
       </div>
@@ -409,8 +409,8 @@
                     {item.action.shortcut}
                   </kbd>
                 {/if}
-              {:else if item.demo}
-                <!-- Demo or Recent item -->
+              {:else if item.app}
+                <!-- App or Recent item -->
                 <div
                   class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl
                          bg-[var(--color-bg-tertiary)]"
@@ -424,7 +424,7 @@
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-2">
                     {#if searchQuery.trim()}
-                      {@const match = highlightMatch(item.demo.name, searchQuery.trim())}
+                      {@const match = highlightMatch(item.app.name, searchQuery.trim())}
                       {#if match}
                         <span class="text-sm text-[var(--color-text)] truncate">
                           {match.before}<mark
@@ -434,32 +434,31 @@
                         </span>
                       {:else}
                         <span class="text-sm text-[var(--color-text)] truncate"
-                          >{item.demo.name}</span
+                          >{item.app.name}</span
                         >
                       {/if}
                     {:else}
-                      <span class="text-sm text-[var(--color-text)] truncate">{item.demo.name}</span
-                      >
+                      <span class="text-sm text-[var(--color-text)] truncate">{item.app.name}</span>
                     {/if}
                     <span
                       class="shrink-0 rounded-full bg-[var(--color-surface-variant)] px-2 py-0.5
                              text-[10px] text-[var(--color-text-tertiary)]"
                     >
-                      {item.demo.category}
+                      {item.app.category}
                     </span>
                     <span
                       class={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
-                        item.demo.source === "discovered"
+                        item.app.source === "discovered"
                           ? "border-[var(--color-primary)]/25 bg-[var(--color-primary)]/10 text-[var(--color-primary)]"
                           : "border-[var(--color-secondary)]/25 bg-[var(--color-secondary)]/10 text-[var(--color-secondary)]"
                       }`}
                     >
-                      {getSourceLabel(item.demo)}
+                      {getSourceLabel(item.app)}
                     </span>
                   </div>
-                  {#if item.demo.description}
+                  {#if item.app.description}
                     <p class="mt-0.5 text-xs text-[var(--color-text-tertiary)] truncate">
-                      {item.demo.description}
+                      {item.app.description}
                     </p>
                   {/if}
                 </div>

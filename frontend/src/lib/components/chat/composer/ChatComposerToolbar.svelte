@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { DemoDetails, SavedPrompt, SendableMessageType } from "$lib/types";
+  import type { AppDetails, SavedPrompt, SendableMessageType } from "$lib/types";
   import { CalendarClock, MessageSquareMore, Paperclip } from "lucide-svelte";
   import MessageTypeSelector from "./MessageTypeSelector.svelte";
   import PromptDropdown from "./PromptDropdown.svelte";
@@ -7,12 +7,12 @@
   type ComposerMode = "chat" | "schedule";
 
   interface Props {
-    hasDemo: boolean;
+    hasApp: boolean;
     hasActiveSession: boolean;
     canSend: boolean;
     loading: boolean;
     messageType: SendableMessageType;
-    discoveredPrompts: DemoDetails["prompts"];
+    discoveredPrompts: AppDetails["prompts"];
     savedPrompts: SavedPrompt[];
     inputValue: string;
     composerMode: ComposerMode;
@@ -31,7 +31,7 @@
   }
 
   let {
-    hasDemo,
+    hasApp,
     hasActiveSession,
     canSend,
     loading,
@@ -54,7 +54,7 @@
   <button
     type="button"
     onclick={onOpenFilePicker}
-    disabled={!hasDemo || (hasActiveSession && !canSend) || loading}
+    disabled={!hasApp || (hasActiveSession && !canSend) || loading}
     class="toolbar-button"
     title="Attach files"
     aria-label="Attach files"
@@ -68,17 +68,17 @@
     {discoveredPrompts}
     onSelect={onSelectPrompt}
     onSave={inputValue.trim() ? onSavePrompt : undefined}
-    disabled={!hasDemo}
+    disabled={!hasApp}
   />
 
-  <MessageTypeSelector value={messageType} onchange={onMessageTypeChange} disabled={!hasDemo} />
+  <MessageTypeSelector value={messageType} onchange={onMessageTypeChange} disabled={!hasApp} />
 
   <div class="composer-mode-tabs" role="tablist" aria-label="Composer mode">
     <button
       type="button"
       class="composer-mode-tab"
       class:active={composerMode === "chat"}
-      disabled={!hasDemo}
+      disabled={!hasApp}
       role="tab"
       aria-selected={composerMode === "chat"}
       onclick={() => onComposerModeChange?.("chat")}
@@ -90,7 +90,7 @@
       type="button"
       class="composer-mode-tab"
       class:active={composerMode === "schedule"}
-      disabled={!hasDemo}
+      disabled={!hasApp}
       role="tab"
       aria-selected={composerMode === "schedule"}
       onclick={() => onComposerModeChange?.("schedule")}

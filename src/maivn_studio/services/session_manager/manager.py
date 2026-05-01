@@ -7,7 +7,7 @@ from typing import Any
 
 from langchain_core.messages import BaseMessage
 
-from maivn_studio.config.models import DemoConfig
+from maivn_studio.config.models import AppConfig
 
 from .events import emit_event, emit_session_start_event
 from .execution import execute_session, flush_reporter_events, supports_structured_output_kwarg
@@ -15,7 +15,7 @@ from .lifecycle import (
     cancel_session_record,
     create_session_record,
     end_session_record,
-    release_loaded_demo,
+    release_loaded_app,
     send_followup_message,
     shutdown_sessions,
     start_session_execution,
@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 class SessionManager:
-    """Manages demo execution sessions."""
+    """Manages app execution sessions."""
 
     def __init__(self) -> None:
         self._sessions: dict[str, StudioSession] = {}
@@ -83,12 +83,12 @@ class SessionManager:
     @staticmethod
     def _resolve_structured_output_metadata_fallback(
         *,
-        loaded_demo: Any,
+        loaded_app: Any,
         structured_output_model: type[Any] | None,
         user_invoke_kwargs: dict[str, Any] | None,
     ) -> dict[str, Any] | None:
         return resolve_structured_output_metadata_fallback(
-            loaded_demo=loaded_demo,
+            loaded_app=loaded_app,
             structured_output_model=structured_output_model,
             user_invoke_kwargs=user_invoke_kwargs,
         )
@@ -198,7 +198,7 @@ class SessionManager:
 
     async def create_session(
         self,
-        demo_config: DemoConfig,
+        app_config: AppConfig,
         variant: str | None = None,
         thread_id: str | None = None,
         metadata: dict[str, Any] | None = None,
@@ -207,7 +207,7 @@ class SessionManager:
         """Create a new execution session.
 
         Args:
-            demo_config: Demo configuration to execute.
+            app_config: App configuration to execute.
             variant: Optional variant name.
             thread_id: Optional thread ID for conversation continuity.
             metadata: Optional session metadata.
@@ -219,13 +219,13 @@ class SessionManager:
         session = await create_session_record(
             sessions=self._sessions,
             sessions_by_thread=self._by_thread,
-            demo_config=demo_config,
+            app_config=app_config,
             variant=variant,
             thread_id=thread_id,
             metadata=metadata,
             private_data=private_data,
         )
-        logger.info("Created session %s for demo %s", session.session_id, demo_config.id)
+        logger.info("Created session %s for app %s", session.session_id, app_config.id)
         return session
 
     async def start_session(
@@ -389,8 +389,8 @@ class SessionManager:
             attachments=attachments,
         )
 
-    def _release_loaded_demo(self, session: StudioSession) -> None:
-        release_loaded_demo(session)
+    def _release_loaded_app(self, session: StudioSession) -> None:
+        release_loaded_app(session)
 
 
 # MARK: Global Manager

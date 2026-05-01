@@ -6,7 +6,7 @@ from datetime import datetime
 
 from langchain_core.messages import HumanMessage
 
-from maivn_studio.config.models import DemoConfig
+from maivn_studio.config.models import AppConfig
 from maivn_studio.services.session_manager.models import (
     QueuedMessage,
     SessionStatus,
@@ -39,7 +39,7 @@ class TestCanSendMessage:
     def _session(self, status: SessionStatus) -> StudioSession:
         return StudioSession(
             session_id="test",
-            demo_config=DemoConfig(id="d1", name="Demo", module="m"),
+            app_config=AppConfig(id="d1", name="App", module="m"),
             thread_id="t1",
             status=status,
         )
@@ -70,7 +70,7 @@ class TestCanStageMessage:
     def _session(self, status: SessionStatus) -> StudioSession:
         return StudioSession(
             session_id="test",
-            demo_config=DemoConfig(id="d1", name="Demo", module="m"),
+            app_config=AppConfig(id="d1", name="App", module="m"),
             thread_id="t1",
             status=status,
         )
@@ -95,7 +95,7 @@ class TestIsActive:
     def _session(self, status: SessionStatus) -> StudioSession:
         return StudioSession(
             session_id="test",
-            demo_config=DemoConfig(id="d1", name="Demo", module="m"),
+            app_config=AppConfig(id="d1", name="App", module="m"),
             thread_id="t1",
             status=status,
         )
@@ -125,7 +125,7 @@ class TestQueuedMessageCount:
     def test_empty_queue(self) -> None:
         session = StudioSession(
             session_id="test",
-            demo_config=DemoConfig(id="d1", name="Demo", module="m"),
+            app_config=AppConfig(id="d1", name="App", module="m"),
             thread_id="t1",
         )
         assert session.queued_message_count == 0
@@ -133,7 +133,7 @@ class TestQueuedMessageCount:
     def test_with_messages(self) -> None:
         session = StudioSession(
             session_id="test",
-            demo_config=DemoConfig(id="d1", name="Demo", module="m"),
+            app_config=AppConfig(id="d1", name="App", module="m"),
             thread_id="t1",
             queued_messages=[
                 QueuedMessage(content="msg1"),
@@ -155,7 +155,7 @@ class TestToDict:
 
         session = StudioSession(
             session_id="sess-123",
-            demo_config=DemoConfig(id="d1", name="Demo One", module="m.one"),
+            app_config=AppConfig(id="d1", name="App One", module="m.one"),
             thread_id="thread-abc",
             variant="fast",
             status=SessionStatus.COMPLETED,
@@ -169,8 +169,8 @@ class TestToDict:
 
         d = session.to_dict()
         assert d["session_id"] == "sess-123"
-        assert d["demo_id"] == "d1"
-        assert d["demo_name"] == "Demo One"
+        assert d["app_id"] == "d1"
+        assert d["app_name"] == "App One"
         assert d["thread_id"] == "thread-abc"
         assert d["variant"] == "fast"
         assert d["status"] == "completed"
@@ -187,7 +187,7 @@ class TestToDict:
     def test_dict_with_none_timestamps(self) -> None:
         session = StudioSession(
             session_id="s1",
-            demo_config=DemoConfig(id="d1", name="D", module="m"),
+            app_config=AppConfig(id="d1", name="A", module="m"),
             thread_id="t1",
             status=SessionStatus.CREATED,
         )
@@ -198,7 +198,7 @@ class TestToDict:
     def test_dict_with_error(self) -> None:
         session = StudioSession(
             session_id="s1",
-            demo_config=DemoConfig(id="d1", name="D", module="m"),
+            app_config=AppConfig(id="d1", name="A", module="m"),
             thread_id="t1",
             status=SessionStatus.FAILED,
             error="Something went wrong",

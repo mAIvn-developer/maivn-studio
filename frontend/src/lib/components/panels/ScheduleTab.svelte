@@ -15,10 +15,10 @@
   } from "lucide-svelte";
 
   interface Props {
-    demoId: string;
+    appId: string;
   }
 
-  let { demoId }: Props = $props();
+  let { appId }: Props = $props();
 
   // Insights-only view: setup (cadence, jitter, retry, etc.) lives in the
   // composer's Advanced disclosure now. This tab focuses on observing what
@@ -30,7 +30,7 @@
   let nowTickHandle: ReturnType<typeof setInterval> | null = null;
 
   onMount(() => {
-    store = useSchedule(demoId);
+    store = useSchedule(appId);
     nowTickHandle = setInterval(() => {
       nowTick = Date.now();
     }, 1000);

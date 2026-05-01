@@ -11,10 +11,10 @@ import {
   type ScheduleJobSummary,
 } from "$lib/api_client/schedules";
 
-// MARK: - Per-demo store registry
+// MARK: - Per-app store registry
 
 /**
- * One reactive store per demo so the inspector tab and the composer can
+ * One reactive store per app so the inspector tab and the composer can
  * share state (summary, config, busy, errors) without round-tripping
  * through the page-level component. Stores are cached so two consumers
  * get the same instance.
@@ -30,7 +30,7 @@ interface ScheduleStore {
   readonly busy: boolean;
   readonly lastError: string | null;
   clearError: () => void;
-  /** True when a job exists for this demo (running, paused, or done). */
+  /** True when a job exists for this app (running, paused, or done). */
   readonly hasJob: boolean;
 
   refresh: () => Promise<void>;
@@ -51,7 +51,7 @@ interface InternalStore extends ScheduleStore {
 
 const stores = new Map<string, InternalStore>();
 
-function createStore(demoId: string, pollIntervalMs: number): InternalStore {
+function createStore(appId: string, pollIntervalMs: number): InternalStore {
   const state = $state({
     summary: null as ScheduleJobSummary | null,
     config: { ...DEFAULT_SCHEDULE_CONFIG } as ScheduleConfig,
@@ -63,7 +63,7 @@ function createStore(demoId: string, pollIntervalMs: number): InternalStore {
 
   async function refresh(): Promise<void> {
     try {
-      const next = await getSchedule(demoId);
+      const next = await getSchedule(appId);
       state.summary = next;
       if (next) {
         // Mirror server config into the working copy so the inspector and
@@ -89,32 +89,32 @@ function createStore(demoId: string, pollIntervalMs: number): InternalStore {
   }
 
   async function start(): Promise<void> {
-    const next = await action(() => upsertSchedule(demoId, state.config));
+    const next = await action(() => upsertSchedule(appId, state.config));
     if (next) state.summary = next;
   }
 
   async function stop(): Promise<void> {
-    const next = await action(() => stopSchedule(demoId, true));
+    const next = await action(() => stopSchedule(appId, true));
     if (next) state.summary = next;
   }
 
   async function pause(): Promise<void> {
-    const next = await action(() => pauseSchedule(demoId));
+    const next = await action(() => pauseSchedule(appId));
     if (next) state.summary = next;
   }
 
   async function resume(): Promise<void> {
-    const next = await action(() => resumeSchedule(demoId));
+    const next = await action(() => resumeSchedule(appId));
     if (next) state.summary = next;
   }
 
   async function trigger(): Promise<void> {
-    const next = await action(() => triggerScheduleNow(demoId));
+    const next = await action(() => triggerScheduleNow(appId));
     if (next) state.summary = next;
   }
 
   async function remove(): Promise<void> {
-    await action(() => deleteSchedule(demoId));
+    await action(() => deleteSchedule(appId));
     state.summary = null;
     state.config = { ...DEFAULT_SCHEDULE_CONFIG };
   }
@@ -157,21 +157,21 @@ function createStore(demoId: string, pollIntervalMs: number): InternalStore {
         clearInterval(pollHandle);
         pollHandle = null;
       }
-      stores.delete(demoId);
+      stores.delete(appId);
     },
   };
 }
 
 /**
- * Reference-counted accessor. The first caller for a demo creates the
+ * Reference-counted accessor. The first caller for an app creates the
  * store and starts polling; subsequent callers reuse it. When the last
  * caller releases via `dispose()`, polling stops.
  */
-export function useSchedule(demoId: string, pollIntervalMs = 4000): ScheduleStore {
-  let store = stores.get(demoId);
+export function useSchedule(appId: string, pollIntervalMs = 4000): ScheduleStore {
+  let store = stores.get(appId);
   if (!store) {
-    store = createStore(demoId, pollIntervalMs);
-    stores.set(demoId, store);
+    store = createStore(appId, pollIntervalMs);
+    stores.set(appId, store);
   }
   store._refCount += 1;
 

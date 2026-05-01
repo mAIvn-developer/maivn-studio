@@ -10,9 +10,9 @@ from typing import Any
 
 from langchain_core.messages import BaseMessage
 
-from maivn_studio.config.models import DemoConfig
+from maivn_studio.config.models import AppConfig
 
-from ..demo_loader.models import LoadedDemo
+from ..app_loader.models import LoadedApp
 
 # MARK: Constants
 
@@ -95,10 +95,10 @@ class SessionStatus(str, Enum):
 
 @dataclass
 class StudioSession:
-    """Represents an active demo execution session."""
+    """Represents an active app execution session."""
 
     session_id: str
-    demo_config: DemoConfig
+    app_config: AppConfig
     thread_id: str
     variant: str | None = None
     status: SessionStatus = SessionStatus.CREATED
@@ -112,7 +112,7 @@ class StudioSession:
     queued_messages: list[QueuedMessage] = field(default_factory=list, repr=False)
 
     # Internal state
-    _loaded_demo: LoadedDemo | None = field(default=None, repr=False)
+    _loaded_app: LoadedApp | None = field(default=None, repr=False)
     _task: asyncio.Task | None = field(default=None, repr=False)
 
     @property
@@ -143,8 +143,8 @@ class StudioSession:
         """Convert session to dictionary for API response."""
         return {
             "session_id": self.session_id,
-            "demo_id": self.demo_config.id,
-            "demo_name": self.demo_config.name,
+            "app_id": self.app_config.id,
+            "app_name": self.app_config.name,
             "thread_id": self.thread_id,
             "variant": self.variant,
             "status": self.status.value,

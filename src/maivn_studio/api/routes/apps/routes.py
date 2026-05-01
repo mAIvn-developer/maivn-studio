@@ -185,9 +185,7 @@ async def get_app(app_id: str) -> AppDetailResponse:
 
 
 @router.get("/{app_id}/details", response_model=AppFullDetailsResponse)
-async def get_app_full_details(
-    app_id: str, variant: str | None = None
-) -> AppFullDetailsResponse:
+async def get_app_full_details(app_id: str, variant: str | None = None) -> AppFullDetailsResponse:
     """Get full details for an app including private data schema.
 
     Args:

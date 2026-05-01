@@ -2,7 +2,7 @@
   import type { ScheduleConfig, ScheduleJobSummary } from "$lib/api_client/schedules";
   import type {
     BatchInvocationRow,
-    DemoDetails,
+    AppDetails,
     ModelToolOption,
     SavedPrompt,
     SendableMessageType,
@@ -32,17 +32,17 @@
   }
 
   interface Props {
-    hasDemo: boolean;
+    hasApp: boolean;
     hasActiveSession: boolean;
     canSend: boolean;
     canStageNext: boolean;
     loading: boolean;
     queuedMessageCount: number;
     messageType: SendableMessageType;
-    discoveredPrompts: DemoDetails["prompts"];
+    discoveredPrompts: AppDetails["prompts"];
     savedPrompts: SavedPrompt[];
-    variants: Array<[string, DemoDetails["variants"][string]]>;
-    demoTools?: DemoDetails["tools"];
+    variants: Array<[string, AppDetails["variants"][string]]>;
+    appTools?: AppDetails["tools"];
     pendingAttachments: PendingAttachmentView[];
     formatAttachmentSize: (bytes: number) => string;
     canSubmitMessage: boolean;
@@ -95,7 +95,7 @@
   }
 
   let {
-    hasDemo,
+    hasApp,
     hasActiveSession,
     canSend,
     canStageNext,
@@ -105,7 +105,7 @@
     discoveredPrompts,
     savedPrompts,
     variants,
-    demoTools = [],
+    appTools = [],
     pendingAttachments,
     formatAttachmentSize,
     canSubmitMessage,
@@ -206,7 +206,7 @@
       />
     {:else}
       <ChatComposerAdvancedOptions
-        {hasDemo}
+        {hasApp}
         {hasActiveSession}
         bind:showSystemInput
         bind:selectedVariant
@@ -217,7 +217,7 @@
         bind:batchAsyncMode
         bind:batchRows
         {batchItemCount}
-        {demoTools}
+        {appTools}
         {variants}
         {structuredOutputConfig}
         {availableModelTools}
@@ -236,7 +236,7 @@
       ondrop={handleDrop}
     >
       <ChatComposerToolbar
-        {hasDemo}
+        {hasApp}
         {hasActiveSession}
         {canSend}
         {loading}
@@ -274,7 +274,7 @@
       {/if}
 
       <ChatComposerFooter
-        {hasDemo}
+        {hasApp}
         {hasActiveSession}
         {canSend}
         {canStageNext}

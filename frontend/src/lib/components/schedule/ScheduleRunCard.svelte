@@ -11,11 +11,11 @@
     run: ScheduleRun;
     runIndex: number;
     expanded: boolean;
-    demoId: string;
+    appId: string;
     onToggle: () => void;
   }
 
-  let { run, runIndex, expanded, demoId, onToggle }: Props = $props();
+  let { run, runIndex, expanded, appId, onToggle }: Props = $props();
 
   const status = $derived(deriveRunStatus(run));
   const isRunning = $derived(status === "running" || status === "pending");
@@ -37,7 +37,7 @@
     lastSubscribedSessionId = sessionId;
     if (!sessionId) return;
 
-    stream = createScheduleFireEventStream(demoId, run.fireId, sessionId);
+    stream = createScheduleFireEventStream(appId, run.fireId, sessionId);
   });
 
   onDestroy(() => {

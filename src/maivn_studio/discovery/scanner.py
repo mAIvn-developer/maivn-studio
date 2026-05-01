@@ -1,4 +1,4 @@
-"""Demo discovery and scanning."""
+"""App discovery and scanning."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from maivn_studio.config.models import DemoConfig, DemoVariant
+from maivn_studio.config.models import AppConfig, AppVariant
 
 logger = logging.getLogger(__name__)
 
@@ -15,17 +15,17 @@ logger = logging.getLogger(__name__)
 # MARK: AST Analysis
 
 
-class DemoModuleAnalyzer(ast.NodeVisitor):
-    """AST visitor to extract demo metadata from a Python module.
+class AppModuleAnalyzer(ast.NodeVisitor):
+    """AST visitor to extract app metadata from a Python module.
 
     Focuses on finding module-level Agent and Swarm instances, as well as
-    pre-defined prompts (DEMO_PROMPTS, DEFAULT_PROMPT, messages).
+    pre-defined prompts (APP_PROMPTS, DEFAULT_PROMPT, messages).
     """
 
     def __init__(self) -> None:
         self.agents: list[str] = []
         self.swarms: list[str] = []
-        self.has_demo_prompts: bool = False
+        self.has_app_prompts: bool = False
         self.has_default_prompt: bool = False
         self.has_messages: bool = False
         self.argparse_args: list[dict[str, Any]] = []
@@ -55,8 +55,8 @@ class DemoModuleAnalyzer(ast.NodeVisitor):
                         self.swarms.append(var_name)
 
             # Check for prompt definitions
-            if var_name == "DEMO_PROMPTS":
-                self.has_demo_prompts = True
+            if var_name == "APP_PROMPTS":
+                self.has_app_prompts = True
             elif var_name == "DEFAULT_PROMPT":
                 self.has_default_prompt = True
             elif var_name == "messages":
@@ -103,51 +103,51 @@ class DemoModuleAnalyzer(ast.NodeVisitor):
     @property
     def has_prompts(self) -> bool:
         """Check if module has any pre-defined prompts."""
-        return self.has_demo_prompts or self.has_default_prompt or self.has_messages
+        return self.has_app_prompts or self.has_default_prompt or self.has_messages
 
 
-def analyze_module(file_path: Path) -> DemoModuleAnalyzer:
-    """Analyze a Python module file for demo metadata.
+def analyze_module(file_path: Path) -> AppModuleAnalyzer:
+    """Analyze a Python module file for app metadata.
 
     Args:
         file_path: Path to the Python file.
 
     Returns:
-        DemoModuleAnalyzer with extracted metadata.
+        AppModuleAnalyzer with extracted metadata.
     """
     with open(file_path, encoding="utf-8") as f:
         source = f.read()
 
     tree = ast.parse(source)
-    analyzer = DemoModuleAnalyzer()
+    analyzer = AppModuleAnalyzer()
     analyzer.visit(tree)
     return analyzer
 
 
-# MARK: Demo Discovery
+# MARK: App Discovery
 
 
-def discover_demos_in_path(
+def discover_apps_in_path(
     base_path: Path,
     search_path: str,
     exclude_patterns: list[str],
-) -> list[DemoConfig]:
-    """Discover demo modules in a given path.
+) -> list[AppConfig]:
+    """Discover app modules in a given path.
 
     Args:
         base_path: The base path to resolve relative paths from.
-        search_path: Relative path to search for demos.
+        search_path: Relative path to search for apps.
         exclude_patterns: Patterns to exclude from discovery.
 
     Returns:
-        List of discovered DemoConfig instances.
+        List of discovered AppConfig instances.
     """
-    demos: list[DemoConfig] = []
+    apps: list[AppConfig] = []
     full_path = base_path / search_path
 
     if not full_path.exists():
         logger.warning(f"Discovery path does not exist: {full_path}")
-        return demos
+        return apps
 
     for py_file in full_path.rglob("*.py"):
         # Skip excluded patterns
@@ -159,30 +159,30 @@ def discover_demos_in_path(
             continue
 
         try:
-            demo = build_demo_config(py_file, base_path, search_path)
-            if demo:
-                demos.append(demo)
-                logger.debug(f"Discovered demo: {demo.id}")
+            app = build_app_config(py_file, base_path, search_path)
+            if app:
+                apps.append(app)
+                logger.debug(f"Discovered app: {app.id}")
         except Exception as e:
             logger.warning(f"Failed to analyze {py_file}: {e}")
 
-    return demos
+    return apps
 
 
-def _build_demo_config_from_analyzer(
-    analyzer: DemoModuleAnalyzer,
+def _build_app_config_from_analyzer(
+    analyzer: AppModuleAnalyzer,
     file_path: Path,
     base_path: Path,
     search_path: str,
-) -> DemoConfig:
-    """Build a DemoConfig from an analyzed module."""
+) -> AppConfig:
+    """Build an AppConfig from an analyzed module."""
     # Build module path
     relative_path = file_path.relative_to(base_path)
     module_parts = list(relative_path.with_suffix("").parts)
     module_path = ".".join(module_parts)
 
     # Generate ID from filename
-    demo_id = file_path.stem.replace("_demo", "").replace("_", "-")
+    app_id = file_path.stem.replace("_app", "").replace("_", "-")
 
     # Determine category from path
     category = "uncategorized"
@@ -191,7 +191,7 @@ def _build_demo_config_from_analyzer(
         category = path_parts[-1]
 
     # Generate name from filename
-    name = file_path.stem.replace("_", " ").title().replace(" Demo", "")
+    name = file_path.stem.replace("_", " ").title().replace(" App", "")
 
     # Extract description from docstring
     description = ""
@@ -201,11 +201,11 @@ def _build_demo_config_from_analyzer(
         description = lines[0].strip().strip("#").strip()
 
     # Build variants from argparse args (kept for CLI compatibility)
-    variants: dict[str, DemoVariant] = {}
+    variants: dict[str, AppVariant] = {}
     for arg in analyzer.argparse_args:
         arg_name = arg["name"].lstrip("-")
         variant_id = arg_name.replace("_", "-")
-        variants[variant_id] = DemoVariant(
+        variants[variant_id] = AppVariant(
             args=[arg["name"]],
             description=arg.get("help", f"Run with {arg_name}"),
         )
@@ -221,8 +221,8 @@ def _build_demo_config_from_analyzer(
     if analyzer.has_prompts:
         tags.append("has-prompts")
 
-    return DemoConfig(
-        id=demo_id,
+    return AppConfig(
+        id=app_id,
         name=name,
         description=description,
         module=module_path,
@@ -232,14 +232,14 @@ def _build_demo_config_from_analyzer(
     )
 
 
-def build_demo_config(
+def build_app_config(
     file_path: Path,
     base_path: Path,
     search_path: str,
-) -> DemoConfig | None:
-    """Create a DemoConfig from a Python file.
+) -> AppConfig | None:
+    """Create an AppConfig from a Python file.
 
-    A valid demo module must have at least one module-level Agent or Swarm
+    A valid app module must have at least one module-level Agent or Swarm
     instance. Entry point functions are no longer required.
 
     Args:
@@ -248,7 +248,7 @@ def build_demo_config(
         search_path: The search path this file was found in.
 
     Returns:
-        DemoConfig if the file is a valid demo, None otherwise.
+        AppConfig if the file is a valid app, None otherwise.
     """
     resolved_base_path = base_path.resolve()
     resolved_file_path = file_path.resolve()
@@ -263,7 +263,7 @@ def build_demo_config(
     if not analyzer.has_executor:
         return None
 
-    return _build_demo_config_from_analyzer(
+    return _build_app_config_from_analyzer(
         analyzer,
         resolved_file_path,
         resolved_base_path,
@@ -271,12 +271,12 @@ def build_demo_config(
     )
 
 
-def discover_all_demos(
+def discover_all_apps(
     base_path: Path,
     discovery_paths: list[str],
     exclude_patterns: list[str],
-) -> list[DemoConfig]:
-    """Discover all demos from configured paths.
+) -> list[AppConfig]:
+    """Discover all apps from configured paths.
 
     Args:
         base_path: Base path to resolve relative paths from.
@@ -284,16 +284,16 @@ def discover_all_demos(
         exclude_patterns: Patterns to exclude from discovery.
 
     Returns:
-        List of all discovered DemoConfig instances.
+        List of all discovered AppConfig instances.
     """
-    all_demos: list[DemoConfig] = []
+    all_apps: list[AppConfig] = []
 
     for search_path in discovery_paths:
-        demos = discover_demos_in_path(base_path, search_path, exclude_patterns)
-        all_demos.extend(demos)
+        apps = discover_apps_in_path(base_path, search_path, exclude_patterns)
+        all_apps.extend(apps)
 
-    logger.info(f"Discovered {len(all_demos)} demos from {len(discovery_paths)} paths")
-    return all_demos
+    logger.info(f"Discovered {len(all_apps)} apps from {len(discovery_paths)} paths")
+    return all_apps
 
 
 # MARK: Repo Scan
@@ -311,12 +311,12 @@ DEFAULT_SCAN_EXCLUDES = [
 ]
 
 
-def scan_repo_for_demos(
+def scan_repo_for_apps(
     base_path: Path,
     discovery_paths: list[str],
     exclude_patterns: list[str],
 ) -> list[dict[str, Any]]:
-    """Scan repo paths for demo candidates and return metadata for UI selection."""
+    """Scan repo paths for app candidates and return metadata for UI selection."""
     results: list[dict[str, Any]] = []
     scan_excludes = list({*exclude_patterns, *DEFAULT_SCAN_EXCLUDES})
     resolved_base_path = base_path.resolve()
@@ -346,7 +346,7 @@ def scan_repo_for_demos(
             if not analyzer.has_executor:
                 continue
 
-            demo = _build_demo_config_from_analyzer(
+            app = _build_app_config_from_analyzer(
                 analyzer,
                 py_file,
                 resolved_base_path,
@@ -354,12 +354,12 @@ def scan_repo_for_demos(
             )
             results.append(
                 {
-                    "id": demo.id,
-                    "name": demo.name,
-                    "description": demo.description,
-                    "module": demo.module,
-                    "category": demo.category,
-                    "tags": demo.tags,
+                    "id": app.id,
+                    "name": app.name,
+                    "description": app.description,
+                    "module": app.module,
+                    "category": app.category,
+                    "tags": app.tags,
                     "file_path": str(py_file.relative_to(base_path)),
                     "discovery_path": search_path,
                     "agents": sorted(analyzer.agents),
