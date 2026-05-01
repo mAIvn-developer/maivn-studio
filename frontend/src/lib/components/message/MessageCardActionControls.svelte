@@ -69,7 +69,7 @@
     onclick={onToggleStructuredOutput}
     class="p-1.5 rounded-md transition-colors
            {showStructuredOutput
-      ? 'bg-[var(--color-tertiary)]/20 text-[var(--color-tertiary)]'
+      ? 'bg-[var(--color-secondary)]/20 text-[var(--color-secondary)]'
       : 'hover:bg-white/10 text-[var(--color-text-secondary)]'}"
     title="Toggle structured output"
   >

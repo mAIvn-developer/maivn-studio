@@ -33,7 +33,7 @@
   // MARK: Actions
 
   const actions: ActionItem[] = [
-    { id: "new-thread", label: "New Thread", icon: Plus, shortcut: "Ctrl+N" },
+    { id: "new-thread", label: "New Thread", icon: Plus, shortcut: "Ctrl+Alt+N" },
     {
       id: "toggle-events",
       label: "Toggle Events Panel",
@@ -295,9 +295,8 @@
 
     <!-- Modal -->
     <div
-      class="relative w-full max-w-2xl overflow-hidden rounded-[1.75rem] border
-             border-[var(--color-outline-variant)] bg-[linear-gradient(180deg,rgba(30,31,37,0.98),rgba(18,19,24,0.98))]
-             shadow-2xl animate-in"
+      class="command-palette-modal relative w-full max-w-2xl overflow-hidden rounded-[1.75rem] border
+             border-[var(--color-outline-variant)] shadow-2xl animate-in"
       role="dialog"
       aria-label="Command palette"
     >
@@ -378,7 +377,7 @@
             <button
               class="flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-colors duration-75
                      {index === selectedIndex
-                ? 'border-[var(--color-tertiary)]/30 bg-[var(--color-bg-tertiary)] shadow-[var(--shadow-sm)]'
+                ? 'border-[var(--color-secondary)]/30 bg-[var(--color-bg-tertiary)] shadow-[var(--shadow-sm)]'
                 : 'border-transparent bg-transparent hover:border-[var(--color-outline-variant)] hover:bg-[var(--color-bg-secondary)]/75'}"
               data-command-selected={index === selectedIndex}
               onclick={() => selectItem(item)}
@@ -429,7 +428,7 @@
                       {#if match}
                         <span class="text-sm text-[var(--color-text)] truncate">
                           {match.before}<mark
-                            class="bg-[var(--color-tertiary)]/30 text-[var(--color-tertiary)] rounded-sm px-0.5"
+                            class="bg-[var(--color-secondary)]/30 text-[var(--color-secondary)] rounded-sm px-0.5"
                             >{match.match}</mark
                           >{match.after}
                         </span>
@@ -452,7 +451,7 @@
                       class={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
                         item.demo.source === "discovered"
                           ? "border-[var(--color-primary)]/25 bg-[var(--color-primary)]/10 text-[var(--color-primary)]"
-                          : "border-[var(--color-tertiary)]/25 bg-[var(--color-tertiary)]/10 text-[var(--color-tertiary)]"
+                          : "border-[var(--color-secondary)]/25 bg-[var(--color-secondary)]/10 text-[var(--color-secondary)]"
                       }`}
                     >
                       {getSourceLabel(item.demo)}
@@ -493,3 +492,13 @@
     </div>
   </div>
 {/if}
+
+<style>
+  .command-palette-modal {
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-bg-secondary) 98%, transparent),
+      color-mix(in srgb, var(--color-bg-dim) 98%, transparent)
+    );
+  }
+</style>

@@ -9,7 +9,7 @@
   import MessageCard from "../message/MessageCard.svelte";
   import {
     buildScopeGroups,
-    getLatestMemoryPhaseChip,
+    getMemoryPhaseChipsByPhase,
     getLatestRootPhaseChip,
     resolveScopePhaseChips,
   } from "./exchange-scope-groups";
@@ -39,6 +39,10 @@
     richResultDisplay?: boolean;
     showStructuredOutput?: boolean;
     showSessionDetails?: boolean;
+    /** Origin of the exchange — "schedule" applies the cron badge + tertiary border on its cards. */
+    origin?: import("$lib/types").ChatFlowOrigin;
+    /** Optional fire ID from the schedule. */
+    scheduleFireId?: string;
     onSubmitInterrupt?: (interruptId: string, value: string) => void;
     onCancelInterrupt?: (interruptId: string) => void;
   }
@@ -57,12 +61,14 @@
     richResultDisplay = true,
     showStructuredOutput = false,
     showSessionDetails = false,
+    origin = "user",
+    scheduleFireId,
     onSubmitInterrupt,
     onCancelInterrupt,
   }: Props = $props();
 
   const latestRootPhaseChip = $derived(() => getLatestRootPhaseChip(phaseChips));
-  const latestMemoryPhaseChip = $derived(() => getLatestMemoryPhaseChip(phaseChips));
+  const memoryPhaseChips = $derived(() => getMemoryPhaseChipsByPhase(phaseChips));
   const scopeGroups = $derived(() => buildScopeGroups(toolCards));
   const latestStatusMessage = $derived(() => {
     const latest = statusMessages.at(-1);
@@ -91,14 +97,14 @@
 
 <div class="exchange-container space-y-3">
   <!-- Human Message -->
-  <MessageCard message={humanMessage} />
+  <MessageCard message={humanMessage} {origin} {scheduleFireId} />
 
   <!-- Phase Chips + Tool/Agent Cards -->
   {#if phaseChips.length > 0 || toolCards.length > 0}
     <div class="agent-execution-section max-w-[85%]">
       <ExchangePhasePreamble
         latestRootPhaseChip={latestRootPhaseChip()}
-        latestMemoryPhaseChip={latestMemoryPhaseChip()}
+        memoryPhaseChips={memoryPhaseChips()}
         {isLive}
       />
 
@@ -130,6 +136,8 @@
         <!-- AI has text response - show message card -->
         <MessageCard
           message={aiMessage}
+          {origin}
+          {scheduleFireId}
           structuredOutput={finalResult()}
           autoShowStructuredOutput={showStructuredOutput}
           autoShowSessionDetails={showSessionDetails}

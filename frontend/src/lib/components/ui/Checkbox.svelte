@@ -17,7 +17,7 @@
     <input type="checkbox" {checked} {onchange} {disabled} class="peer sr-only" />
     <div
       class="w-5 h-5 rounded border-2 border-[var(--color-outline)]
-             peer-checked:border-[var(--color-tertiary)] peer-checked:bg-[var(--color-tertiary)]
+             peer-checked:border-[var(--color-secondary)] peer-checked:bg-[var(--color-secondary)]
              transition-colors"
     ></div>
     <div

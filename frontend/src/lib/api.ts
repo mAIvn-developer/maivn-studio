@@ -371,6 +371,8 @@ export async function updateAgent(
     system_prompt?: string;
     tags?: string[];
     memory_config?: import("$lib/types").InvocationMemoryConfig;
+    system_tools_config?: import("$lib/types").InvocationSystemToolsConfig;
+    orchestration_config?: import("$lib/types").InvocationOrchestrationConfig;
     timeout?: number;
     max_results?: number;
     included_nested_synthesis?: boolean | "auto";
@@ -395,6 +397,8 @@ export async function updateSwarm(
     system_prompt?: string;
     tags?: string[];
     memory_config?: import("$lib/types").InvocationMemoryConfig;
+    system_tools_config?: import("$lib/types").InvocationSystemToolsConfig;
+    orchestration_config?: import("$lib/types").InvocationOrchestrationConfig;
     allow_private_in_system_tools?: boolean;
     private_data?: Record<string, unknown>;
   },

@@ -145,7 +145,8 @@ class DemoLoader:
 
         Looks for a module-level ``DEMO_INVOCATION`` dict whose keys match
         InvocationConfig fields (force_final_tool, model, reasoning,
-        targeted_tools, metadata, allow_private_in_system_tools).
+        targeted_tools, metadata, memory_config, system_tools_config,
+        orchestration_config, allow_private_in_system_tools).
         """
         raw = getattr(module, "DEMO_INVOCATION", None)
         if not isinstance(raw, dict):
@@ -158,6 +159,8 @@ class DemoLoader:
             "targeted_tools",
             "metadata",
             "memory_config",
+            "system_tools_config",
+            "orchestration_config",
             "allow_private_in_system_tools",
         }
         return {k: v for k, v in raw.items() if k in allowed_keys}

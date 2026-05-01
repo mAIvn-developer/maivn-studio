@@ -38,13 +38,13 @@
 <div class="loading-state flex flex-col items-center justify-center gap-3 {className}">
   {#if variant === "spinner"}
     <div
-      class="rounded-full border-[var(--color-tertiary)]/30 border-t-[var(--color-tertiary)] animate-spin {currentSize.spinner}"
+      class="rounded-full border-[var(--color-secondary)]/30 border-t-[var(--color-secondary)] animate-spin {currentSize.spinner}"
     ></div>
   {:else if variant === "dots"}
     <div class="flex items-center gap-1.5">
       {#each [0, 1, 2] as i}
         <div
-          class="rounded-full bg-[var(--color-tertiary)] {currentSize.dots}"
+          class="rounded-full bg-[var(--color-secondary)] {currentSize.dots}"
           style="animation: bounce 1.4s infinite ease-in-out; animation-delay: {i * 0.16}s"
         ></div>
       {/each}

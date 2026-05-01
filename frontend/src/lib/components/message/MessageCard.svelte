@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { Message } from "$lib/types";
-  import { Clock } from "lucide-svelte";
+  import type { ChatFlowOrigin, Message } from "$lib/types";
+  import { CalendarClock, Clock } from "lucide-svelte";
   import {
     highlightPrivateData,
     containsPrivateDataPlaceholders,
@@ -16,6 +16,10 @@
     structuredOutput?: unknown;
     autoShowStructuredOutput?: boolean;
     autoShowSessionDetails?: boolean;
+    /** Origin of the message — defaults to user-typed. "schedule" applies a cron badge + border. */
+    origin?: ChatFlowOrigin;
+    /** Optional fire ID from the schedule that triggered this run. */
+    scheduleFireId?: string;
   }
 
   let {
@@ -23,7 +27,11 @@
     structuredOutput,
     autoShowStructuredOutput = false,
     autoShowSessionDetails = false,
+    origin = "user",
+    scheduleFireId,
   }: Props = $props();
+
+  const isFromSchedule = $derived(origin === "schedule");
 
   let showRawContent = $state(false);
   let showStructuredOutput = $state(false);
@@ -99,7 +107,19 @@
     class:user-message={isUser}
     class:assistant-message={isAssistant}
     class:status-message={isStatus}
+    class:scheduled={isFromSchedule}
+    title={isFromSchedule && scheduleFireId
+      ? `Triggered by schedule (fire ${scheduleFireId})`
+      : isFromSchedule
+        ? "Triggered by schedule"
+        : undefined}
   >
+    {#if isFromSchedule}
+      <span class="schedule-ribbon">
+        <CalendarClock size={11} />
+        Scheduled
+      </span>
+    {/if}
     <!-- Subtle gradient overlay for depth -->
     <div
       class="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none"
@@ -134,7 +154,7 @@
               ? 'bg-[var(--color-warning)]/20 text-[var(--color-warning)]'
               : ''}
                    {message.messageType === 'system'
-              ? 'bg-[var(--color-tertiary)]/20 text-[var(--color-tertiary)]'
+              ? 'bg-[var(--color-secondary)]/20 text-[var(--color-secondary)]'
               : ''}"
           >
             {message.messageType}
@@ -143,8 +163,8 @@
 
         {#if isUser && message.metadata?.queuedForNextTurn}
           <span
-            class="inline-flex items-center gap-1 rounded-full bg-[var(--color-tertiary)]/15
-                   px-2 py-0.5 text-[10px] font-semibold text-[var(--color-tertiary)]"
+            class="inline-flex items-center gap-1 rounded-full bg-[var(--color-secondary)]/15
+                   px-2 py-0.5 text-[10px] font-semibold text-[var(--color-secondary)]"
           >
             <Clock size={10} strokeWidth={2} />
             Queued for next turn
@@ -266,18 +286,18 @@
     background: linear-gradient(
       135deg,
       color-mix(in srgb, var(--color-tertiary-container) 80%, var(--color-bg-secondary)) 0%,
-      color-mix(in srgb, var(--color-tertiary) 20%, var(--color-bg-secondary)) 100%
+      color-mix(in srgb, var(--color-secondary) 20%, var(--color-bg-secondary)) 100%
     );
-    border-color: color-mix(in srgb, var(--color-tertiary) 30%, transparent);
+    border-color: color-mix(in srgb, var(--color-secondary) 30%, transparent);
   }
 
   .status-message {
     background: linear-gradient(
       135deg,
       color-mix(in srgb, var(--color-surface-variant) 72%, var(--color-bg-secondary)) 0%,
-      color-mix(in srgb, var(--color-tertiary) 10%, var(--color-bg-secondary)) 100%
+      color-mix(in srgb, var(--color-secondary) 10%, var(--color-bg-secondary)) 100%
     );
-    border-color: color-mix(in srgb, var(--color-tertiary) 16%, var(--color-outline-variant));
+    border-color: color-mix(in srgb, var(--color-secondary) 16%, var(--color-outline-variant));
   }
 
   .user-header {
@@ -285,7 +305,7 @@
   }
 
   .assistant-header {
-    border-color: color-mix(in srgb, var(--color-tertiary) 18%, transparent);
+    border-color: color-mix(in srgb, var(--color-secondary) 18%, transparent);
   }
 
   .status-header {
@@ -298,12 +318,42 @@
   }
 
   .assistant-avatar {
-    background-color: color-mix(in srgb, var(--color-tertiary) 25%, transparent);
-    color: var(--color-tertiary);
+    background-color: color-mix(in srgb, var(--color-secondary) 25%, transparent);
+    color: var(--color-secondary);
   }
 
   .status-avatar {
     background-color: color-mix(in srgb, var(--color-surface-variant) 88%, transparent);
     color: var(--color-text-secondary);
+  }
+
+  /* Cron-triggered card treatment. Uses tertiary (the warm pink/lavender) so
+     scheduled runs read as "different from a user-typed turn" without
+     fighting the cyan secondary that drives most accents. */
+  .message-card.scheduled {
+    border: 1px solid color-mix(in srgb, var(--color-tertiary) 45%, var(--color-outline-variant));
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-tertiary) 18%, transparent),
+      var(--shadow-glow-tertiary);
+    padding-top: 1.4rem;
+  }
+
+  .schedule-ribbon {
+    position: absolute;
+    top: 0.45rem;
+    left: 0.55rem;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: var(--radius-full);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-on-tertiary);
+    background: var(--color-tertiary);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
   }
 </style>

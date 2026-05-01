@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import threading
 from datetime import timedelta
@@ -13,14 +14,38 @@ from maivn import (
     RunRecord,
     ScheduledJob,
 )
+from maivn._internal.utils.reporting.context import (
+    current_reporter,
+    current_sdk_delivery_mode,
+)
 from maivn.messages import HumanMessage
+from pydantic import BaseModel
 
 from maivn_studio.discovery.registry import get_registry
 from maivn_studio.services.demo_loader.loader import get_demo_loader
+from maivn_studio.services.event_bridge import (
+    create_event_bridge,
+    get_event_bridge,
+    remove_event_bridge,
+)
+from maivn_studio.services.session_manager.models import (
+    _STUDIO_EVENT_CATEGORIES,
+    _latest_response_text,
+)
+from maivn_studio.services.studio_reporter.reporter import StudioReporter
 
 from .models import ScheduleConfig, ScheduleJobSummary, ScheduleRunSummary
 
 logger = logging.getLogger(__name__)
+
+
+def _fire_event_session_id(job_id: str, fire_id: str) -> str:
+    """Synthetic session id for a single scheduled fire's event bridge.
+
+    Format is intentionally distinct from real session ids so a stray lookup
+    can be diagnosed in logs.
+    """
+    return f"schedule:{job_id}:{fire_id}"
 
 
 class ScheduleManager:
@@ -30,6 +55,13 @@ class ScheduleManager:
         self._lock = threading.Lock()
         self._jobs_by_demo: dict[str, ScheduledJob] = {}
         self._configs_by_demo: dict[str, ScheduleConfig] = {}
+        # Track in-flight fires so the UI can render a card before the run
+        # completes (history is only populated after _execute_run's finally
+        # block). Keyed by demo_id → {fire_id: RunRecord}.
+        self._active_runs_by_demo: dict[str, dict[str, RunRecord]] = {}
+        # Track all event-session ids we've created per demo so removing a
+        # schedule cleans up bridges instead of leaking them.
+        self._fire_session_ids_by_demo: dict[str, list[str]] = {}
 
     # MARK: - Public API
 
@@ -52,12 +84,48 @@ class ScheduleManager:
         existing = self._jobs_by_demo.get(demo_id)
         if existing is not None and not existing.is_done:
             existing.stop(drain=False, timeout=5)
+        if existing is not None:
+            self._drain_fire_bridges(demo_id)
 
         executor = self._resolve_executor(demo_id)
-        builder = self._build_builder(executor, config)
-        prompt_messages = self._resolve_prompt(demo_id, config)
 
+        # Wrap the executor with events() so each fire's invoke runs through
+        # the EventRouterReporter that chat sessions rely on for tool cards,
+        # assistant chunks, and agent assignments. Without this wrapper, only
+        # phase-change enrichment events reach the bridge — every other UI
+        # event type stays silent.
+        events_factory = getattr(executor, "events", None)
+        scope_for_schedule: Any = executor
+        if callable(events_factory) and config.method in {"invoke", "stream"}:
+            scope_for_schedule = events_factory(
+                include=_STUDIO_EVENT_CATEGORIES,
+                auto_verbose=False,
+            )
+            logger.info(
+                "Schedule for demo %s: wrapped executor with events() (%s)",
+                demo_id,
+                type(scope_for_schedule).__name__,
+            )
+        else:
+            logger.warning(
+                "Schedule for demo %s: executor %s has no events() method; "
+                "tool cards / assistant chunks will not stream to UI",
+                demo_id,
+                type(executor).__name__,
+            )
+
+        builder = self._build_builder(executor, config)
+        # Re-point the runner's scope at the events-wrapped invocable so the
+        # runner's `getattr(scope, method)` resolves to EventInvocationBuilder.
+        # invoke (which sets up the router reporter) instead of bare executor
+        # .invoke. We still pass `executor` to _build_builder() so any APIs
+        # that need the raw scope (jitter, retry) are unaffected.
+        if scope_for_schedule is not executor:
+            builder._scope = scope_for_schedule  # type: ignore[attr-defined]
+
+        prompt_messages = self._resolve_prompt(demo_id, config)
         job = self._invoke_builder(builder, config, prompt_messages)
+        self._wire_fire_event_bridge(job, demo_id, config, prompt_messages)
 
         with self._lock:
             self._jobs_by_demo[demo_id] = job
@@ -71,6 +139,8 @@ class ScheduleManager:
         if job is None or cfg is None:
             return None
         job.stop(drain=drain, timeout=10)
+        # Bridges stay around so the user can scroll back through completed
+        # runs after stopping. They're cleaned up by remove().
         return self._summarize(demo_id, job, cfg)
 
     def pause(self, demo_id: str) -> ScheduleJobSummary | None:
@@ -88,6 +158,7 @@ class ScheduleManager:
             self._configs_by_demo.pop(demo_id, None)
         if job is not None:
             job.stop(drain=False, timeout=5)
+        self._drain_fire_bridges(demo_id)
 
     # MARK: - Helpers
 
@@ -112,6 +183,10 @@ class ScheduleManager:
         return executor
 
     def _resolve_prompt(self, demo_id: str, config: ScheduleConfig) -> list[HumanMessage]:
+        # Inline composer text wins over a saved-prompt reference so the user
+        # can tweak the prompt without picking it from a dropdown.
+        if config.prompt_text and config.prompt_text.strip():
+            return [HumanMessage(content=config.prompt_text)]
         registry = get_registry()
         demo = registry.get(demo_id)
         if demo is None:
@@ -229,7 +304,16 @@ class ScheduleManager:
         job: ScheduledJob,
         config: ScheduleConfig,
     ) -> ScheduleJobSummary:
-        history = [self._summarize_run(record) for record in job.history(limit=20)]
+        completed = job.history(limit=20)
+        completed_ids = {record.fire_id for record in completed}
+        active = list(self._active_runs_by_demo.get(demo_id, {}).values())
+        # An in-flight record may briefly exist in both maps if a callback
+        # races the dispatch loop; trust history's copy so we don't render a
+        # stale "running" pill for a fire that just finished.
+        merged: list[RunRecord] = [r for r in active if r.fire_id not in completed_ids]
+        merged.extend(completed)
+        merged.sort(key=lambda record: record.scheduled_at)
+        history = [self._summarize_run(record) for record in merged[-20:]]
         return ScheduleJobSummary(
             job_id=job.id,
             demo_id=demo_id,
@@ -248,6 +332,7 @@ class ScheduleManager:
         )
 
     def _summarize_run(self, record: RunRecord) -> ScheduleRunSummary:
+        event_session_id = record.metadata.get("event_session_id") if record.metadata else None
         return ScheduleRunSummary(
             fire_id=record.fire_id,
             scheduled_at=record.scheduled_at,
@@ -257,7 +342,201 @@ class ScheduleManager:
             attempt=record.attempt,
             jitter_offset_seconds=record.jitter_offset.total_seconds(),
             error=str(record.error) if record.error is not None else None,
+            event_session_id=event_session_id if isinstance(event_session_id, str) else None,
         )
+
+    # MARK: - Per-fire event bridge
+
+    def _wire_fire_event_bridge(
+        self,
+        job: ScheduledJob,
+        demo_id: str,
+        config: ScheduleConfig,
+        prompt_messages: list[HumanMessage],
+    ) -> None:
+        """Bind a per-fire EventBridge + reporter so the executor's events stream
+        through SSE the same way a chat session would. This is what makes each
+        scheduled run renderable as a full chat exchange in the UI.
+
+        The contextvar is set inside ``on_fire``, which runs in the same asyncio
+        Task as the runner's ``await _invoke_method()``. ContextVars set inside
+        the same Task persist for the rest of that Task, so the executor invoke
+        sees the reporter we bind here.
+        """
+        method = config.method
+        # Used by maivn's reporter delivery dispatch — chat sessions set this
+        # too. ``stream``-family methods need ``stream`` so live token deltas
+        # forward through the bridge.
+        delivery_mode = "stream" if method in {"stream", "astream"} else "invoke"
+
+        prompt_text = prompt_messages[0].content if prompt_messages else ""
+
+        def _on_fire(record: RunRecord) -> None:
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                logger.warning(
+                    "Schedule fire %s: no running loop; cannot bind event bridge",
+                    record.fire_id,
+                )
+                return
+
+            event_session_id = _fire_event_session_id(job.id, record.fire_id)
+            record.metadata["event_session_id"] = event_session_id
+
+            with self._lock:
+                self._active_runs_by_demo.setdefault(demo_id, {})[record.fire_id] = record
+                session_ids = self._fire_session_ids_by_demo.setdefault(demo_id, [])
+                if event_session_id not in session_ids:
+                    session_ids.append(event_session_id)
+
+            bridge = get_event_bridge(event_session_id)
+            if bridge is None:
+                bridge = create_event_bridge(event_session_id)
+            elif bridge._closed:
+                bridge.reopen()
+
+            reporter = StudioReporter(bridge, loop)
+
+            # ContextVars set in this callback persist for the rest of the
+            # runner Task, so the upcoming executor invoke picks up the
+            # reporter and delivery mode.
+            current_reporter.set(reporter)
+            current_sdk_delivery_mode.set(delivery_mode)
+
+            # Mirror the chat panel's session_start event so the frontend's
+            # existing event handlers light up phase chips, tool cards, etc.
+            asyncio.run_coroutine_threadsafe(
+                bridge.emit(
+                    "session_start",
+                    {
+                        "session_id": event_session_id,
+                        "demo_id": demo_id,
+                        "schedule_job_id": job.id,
+                        "schedule_fire_id": record.fire_id,
+                        "scheduled_at": record.scheduled_at.isoformat(),
+                        "fired_at": (record.fired_at.isoformat() if record.fired_at else None),
+                        "attempt": record.attempt,
+                        "method": method,
+                        "prompt": prompt_text,
+                        "origin": "schedule",
+                    },
+                ),
+                loop,
+            )
+
+        def _on_terminal(record: RunRecord, *, terminal: str) -> None:
+            with self._lock:
+                self._active_runs_by_demo.get(demo_id, {}).pop(record.fire_id, None)
+
+            event_session_id = record.metadata.get("event_session_id") if record.metadata else None
+            if not isinstance(event_session_id, str):
+                return
+            bridge = get_event_bridge(event_session_id)
+            if bridge is None:
+                return
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                return
+
+            asyncio.run_coroutine_threadsafe(
+                bridge.emit(
+                    "turn_complete" if terminal == "success" else "error",
+                    _build_terminal_event_data(
+                        session_id=event_session_id,
+                        schedule_fire_id=record.fire_id,
+                        status=record.status,
+                        duration_ms=_duration_ms(record),
+                        error=str(record.error) if record.error else None,
+                        result=record.result,
+                    ),
+                ),
+                loop,
+            )
+
+            # Bridge stays in the registry so a card that subscribes after
+            # the fire completes still gets to replay history. Cleanup
+            # happens when the schedule itself is stopped or removed.
+
+        # Skipped fires (overlap / jitter / misfire) never trigger on_fire,
+        # so on_skip just removes any stale active record for parity.
+        def _on_skip(record: RunRecord) -> None:
+            with self._lock:
+                self._active_runs_by_demo.get(demo_id, {}).pop(record.fire_id, None)
+
+        job.on_fire(_on_fire)
+        job.on_success(lambda record: _on_terminal(record, terminal="success"))
+        job.on_error(lambda record: _on_terminal(record, terminal="error"))
+        job.on_skip(_on_skip)
+
+    def _drain_fire_bridges(self, demo_id: str) -> None:
+        with self._lock:
+            session_ids = self._fire_session_ids_by_demo.pop(demo_id, [])
+            self._active_runs_by_demo.pop(demo_id, None)
+        for session_id in session_ids:
+            remove_event_bridge(session_id)
+
+
+def _duration_ms(record: RunRecord) -> int | None:
+    if record.fired_at is None or record.finished_at is None:
+        return None
+    return int((record.finished_at - record.fired_at).total_seconds() * 1000)
+
+
+def _serialize_structured_result(result: Any) -> Any:
+    if result is None:
+        return None
+    if isinstance(result, BaseModel):
+        return result.model_dump()
+    return result
+
+
+def _serialize_token_usage(token_usage: Any) -> dict[str, int] | None:
+    if token_usage is None:
+        return None
+    return {
+        "total_tokens": getattr(token_usage, "total_tokens", 0),
+        "input_tokens": getattr(token_usage, "input_tokens", 0),
+        "output_tokens": getattr(token_usage, "output_tokens", 0),
+        "cache_read_tokens": getattr(token_usage, "cache_read_tokens", 0),
+        "cache_creation_tokens": getattr(token_usage, "cache_creation_tokens", 0),
+        "reasoning_tokens": getattr(token_usage, "reasoning_tokens", 0),
+    }
+
+
+def _extract_result_payload(result: Any) -> dict[str, Any]:
+    responses = getattr(result, "responses", None)
+    response_text = _latest_response_text(responses)
+    if response_text is None:
+        raw_response = getattr(result, "response", None)
+        response_text = raw_response if isinstance(raw_response, str) else ""
+
+    result_payload = _serialize_structured_result(getattr(result, "result", None))
+    token_usage = _serialize_token_usage(getattr(result, "token_usage", None))
+
+    payload: dict[str, Any] = {
+        "responses": responses if isinstance(responses, list) else [],
+        "response": response_text,
+        "result": result_payload,
+        "token_usage": token_usage,
+    }
+    return {key: value for key, value in payload.items() if value is not None}
+
+
+def _build_terminal_event_data(**base: Any) -> dict[str, Any]:
+    result = base.pop("result", None)
+    result_payload = _extract_result_payload(result)
+    output = {
+        "response": result_payload.get("response"),
+        "result": result_payload.get("result"),
+        "token_usage": result_payload.get("token_usage"),
+    }
+    return {
+        **base,
+        **result_payload,
+        "output": {key: value for key, value in output.items() if value is not None},
+    }
 
 
 _manager: ScheduleManager | None = None

@@ -74,6 +74,22 @@ export function getLatestMemoryPhaseChip(phaseChips: PhaseChipData[]): PhaseChip
   return latest;
 }
 
+// One panel per distinct memory/redaction phase so input redaction (multi-key)
+// is not visually replaced by tool-result redaction (often a single key) when
+// both fire in the same turn.
+export function getMemoryPhaseChipsByPhase(phaseChips: PhaseChipData[]): PhaseChipData[] {
+  const byPhase = new Map<string, PhaseChipData>();
+  const order: string[] = [];
+  for (const chip of phaseChips) {
+    if (!isMemoryPhaseChip(chip)) continue;
+    const key = typeof chip.phase === "string" ? chip.phase.trim().toLowerCase() : "";
+    if (!key) continue;
+    if (!byPhase.has(key)) order.push(key);
+    byPhase.set(key, chip);
+  }
+  return order.map((key) => byPhase.get(key)!).filter((chip): chip is PhaseChipData => !!chip);
+}
+
 function buildLatestScopedPhaseChipByScopeKey(
   phaseChips: PhaseChipData[],
 ): Map<string, PhaseChipData> {

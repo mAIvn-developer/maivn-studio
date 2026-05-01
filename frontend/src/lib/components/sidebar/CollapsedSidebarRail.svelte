@@ -55,8 +55,8 @@
     {#if connecting || loading}
       <div class="flex justify-center py-1">
         <div
-          class="h-4 w-4 rounded-full border-2 border-[var(--color-tertiary)]/30
-                 border-t-[var(--color-tertiary)] animate-spin"
+          class="h-4 w-4 rounded-full border-2 border-[var(--color-secondary)]/30
+                 border-t-[var(--color-secondary)] animate-spin"
         ></div>
       </div>
     {:else if error}
@@ -170,10 +170,10 @@
   .collapsed-active-btn {
     width: 2.25rem;
     height: 2.25rem;
-    color: var(--color-tertiary);
-    background: color-mix(in srgb, var(--color-tertiary) 15%, var(--color-bg-secondary));
-    border-color: color-mix(in srgb, var(--color-tertiary) 38%, var(--color-outline-variant));
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-tertiary) 15%, transparent);
+    color: var(--color-secondary);
+    background: color-mix(in srgb, var(--color-secondary) 15%, var(--color-bg-secondary));
+    border-color: color-mix(in srgb, var(--color-secondary) 38%, var(--color-outline-variant));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-secondary) 15%, transparent);
   }
 
   .collapsed-empty-btn {
@@ -212,10 +212,10 @@
   }
 
   .collapsed-demo-btn.selected {
-    color: var(--color-tertiary);
-    background: color-mix(in srgb, var(--color-tertiary) 14%, var(--color-bg-secondary));
-    border-color: color-mix(in srgb, var(--color-tertiary) 42%, var(--color-outline-variant));
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-tertiary) 18%, transparent);
+    color: var(--color-secondary);
+    background: color-mix(in srgb, var(--color-secondary) 14%, var(--color-bg-secondary));
+    border-color: color-mix(in srgb, var(--color-secondary) 42%, var(--color-outline-variant));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-secondary) 18%, transparent);
   }
 
   .collapsed-demo-btn:active {

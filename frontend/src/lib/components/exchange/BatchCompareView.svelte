@@ -175,7 +175,7 @@
 
   .item-status {
     display: inline-flex;
-    color: var(--color-tertiary);
+    color: var(--color-secondary);
   }
 
   .item-status.failed,

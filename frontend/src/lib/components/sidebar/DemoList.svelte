@@ -89,7 +89,7 @@
 
 <div class="flex h-full flex-col">
   <div
-    class="shrink-0 border-b border-[var(--color-outline-variant)] bg-[linear-gradient(180deg,rgba(30,31,37,0.96),rgba(30,31,37,0.82))] p-3 backdrop-blur-md"
+    class="demo-catalog-header shrink-0 border-b border-[var(--color-outline-variant)] p-3 backdrop-blur-md"
   >
     <div class="mb-2 flex items-center justify-between gap-2">
       <div>
@@ -104,9 +104,9 @@
       </div>
       {#if onScanRepo}
         <button
-          class="rounded-xl border border-[var(--color-tertiary)]/20 px-3 py-1.5 text-[11px] font-medium
-                 bg-[var(--color-tertiary)]/12 text-[var(--color-tertiary)] shadow-[var(--shadow-sm)]
-                 hover:bg-[var(--color-tertiary)]/20 transition-colors"
+          class="rounded-xl border border-[var(--color-secondary)]/20 px-3 py-1.5 text-[11px] font-medium
+                 bg-[var(--color-secondary)]/12 text-[var(--color-secondary)] shadow-[var(--shadow-sm)]
+                 hover:bg-[var(--color-secondary)]/20 transition-colors"
           onclick={onScanRepo}
         >
           Scan Repo
@@ -127,7 +127,7 @@
         placeholder="Search demos, tags, categories..."
         class="w-full rounded-xl border border-[var(--color-outline-variant)] bg-[var(--color-bg-secondary)]/88 py-2.5 pl-10 pr-8 text-sm
                placeholder-[var(--color-text-tertiary)] text-[var(--color-text)]
-               focus:outline-none focus:border-[var(--color-tertiary)]/50
+               focus:outline-none focus:border-[var(--color-secondary)]/50
                focus:shadow-[var(--shadow-glow-tertiary)]
                transition-all duration-200"
         onkeydown={handleKeyDown}
@@ -163,7 +163,7 @@
         > to clear search</span
       >
       {#if searchQuery && filteredCount === 0}
-        <button class="text-[var(--color-tertiary)] hover:underline" onclick={clearSearch}>
+        <button class="text-[var(--color-secondary)] hover:underline" onclick={clearSearch}>
           Clear search
         </button>
       {/if}
@@ -185,9 +185,9 @@
           Try a different search term or rescan the repo.
         </p>
         <button
-          class="mt-4 rounded-xl border border-[var(--color-tertiary)]/20 px-3 py-1.5 text-xs
-                 bg-[var(--color-tertiary)]/12 text-[var(--color-tertiary)]
-                 hover:bg-[var(--color-tertiary)]/20 transition-colors"
+          class="mt-4 rounded-xl border border-[var(--color-secondary)]/20 px-3 py-1.5 text-xs
+                 bg-[var(--color-secondary)]/12 text-[var(--color-secondary)]
+                 hover:bg-[var(--color-secondary)]/20 transition-colors"
           onclick={clearSearch}
         >
           Clear search
@@ -281,6 +281,14 @@
 </div>
 
 <style>
+  .demo-catalog-header {
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-bg-secondary) 96%, transparent),
+      color-mix(in srgb, var(--color-bg-secondary) 82%, transparent)
+    );
+  }
+
   .category-group {
     border-bottom: 1px solid var(--color-outline-variant);
   }
@@ -346,8 +354,8 @@
   }
 
   .demo-item.selected {
-    background: color-mix(in srgb, var(--color-tertiary) 10%, var(--color-bg-secondary));
-    border-color: color-mix(in srgb, var(--color-tertiary) 30%, var(--color-outline-variant));
+    background: color-mix(in srgb, var(--color-secondary) 10%, var(--color-bg-secondary));
+    border-color: color-mix(in srgb, var(--color-secondary) 30%, var(--color-outline-variant));
   }
 
   .demo-title {
@@ -360,7 +368,7 @@
 
   .demo-item:hover .demo-title,
   .demo-item.selected .demo-title {
-    color: var(--color-tertiary);
+    color: var(--color-secondary);
   }
 
   .demo-description {
@@ -407,9 +415,9 @@
   }
 
   .source-badge.configured {
-    border: 1px solid color-mix(in srgb, var(--color-tertiary) 25%, var(--color-outline-variant));
+    border: 1px solid color-mix(in srgb, var(--color-secondary) 25%, var(--color-outline-variant));
     background: rgba(137, 208, 237, 0.12);
-    color: var(--color-tertiary);
+    color: var(--color-secondary);
   }
 
   .source-badge.discovered {

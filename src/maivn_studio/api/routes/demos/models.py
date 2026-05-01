@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from maivn_shared import MemoryConfig
+from maivn_shared import MemoryConfig, SessionOrchestrationConfig, SystemToolsConfig
 from pydantic import BaseModel, Field
 
 from maivn_studio.config.models import DemoVariant, PrivateDataField
@@ -62,6 +62,10 @@ class AgentInfo(BaseModel):
     system_prompt: str | None = None
     tags: list[str] = Field(default_factory=list)
     memory_config: MemoryConfig = Field(default_factory=MemoryConfig)
+    system_tools_config: SystemToolsConfig = Field(default_factory=SystemToolsConfig)
+    orchestration_config: SessionOrchestrationConfig = Field(
+        default_factory=SessionOrchestrationConfig
+    )
     private_data: dict[str, Any] = Field(default_factory=dict)
     tool_count: int = 0
     runtime_tool_count: int = 0
@@ -87,6 +91,10 @@ class SwarmInfo(BaseModel):
     system_prompt: str | None = None
     tags: list[str] = Field(default_factory=list)
     memory_config: MemoryConfig = Field(default_factory=MemoryConfig)
+    system_tools_config: SystemToolsConfig = Field(default_factory=SystemToolsConfig)
+    orchestration_config: SessionOrchestrationConfig = Field(
+        default_factory=SessionOrchestrationConfig
+    )
     allow_private_in_system_tools: bool = False
     private_data: dict[str, Any] = Field(default_factory=dict)
     agent_count: int = 0
@@ -166,6 +174,8 @@ class UpdateAgentRequest(BaseModel):
     system_prompt: str | None = None
     tags: list[str] | None = None
     memory_config: MemoryConfig | None = None
+    system_tools_config: SystemToolsConfig | None = None
+    orchestration_config: SessionOrchestrationConfig | None = None
     timeout: float | None = Field(default=None, ge=0)
     max_results: int | None = Field(default=None, ge=1)
     included_nested_synthesis: bool | Literal["auto"] | None = None
@@ -180,5 +190,7 @@ class UpdateSwarmRequest(BaseModel):
     system_prompt: str | None = None
     tags: list[str] | None = None
     memory_config: MemoryConfig | None = None
+    system_tools_config: SystemToolsConfig | None = None
+    orchestration_config: SessionOrchestrationConfig | None = None
     allow_private_in_system_tools: bool | None = None
     private_data: dict[str, Any] | None = None

@@ -177,7 +177,7 @@
 <section
   class="memory-activity-panel rounded-lg border {isRedactionActivity
     ? 'border-[var(--color-warning)]/20 bg-[var(--color-warning)]/8'
-    : 'border-[var(--color-tertiary)]/20 bg-[var(--color-tertiary)]/8'}"
+    : 'border-[var(--color-secondary)]/20 bg-[var(--color-secondary)]/8'}"
 >
   <button
     type="button"
@@ -188,12 +188,12 @@
     <div
       class="w-5 h-5 rounded-md flex items-center justify-center shrink-0 {isRedactionActivity
         ? 'bg-[var(--color-warning)]/18'
-        : 'bg-[var(--color-tertiary)]/18'}"
+        : 'bg-[var(--color-secondary)]/18'}"
     >
       {#if isRedactionActivity}
         <Shield size={12} class="text-[var(--color-warning)]" />
       {:else}
-        <BrainCircuit size={12} class="text-[var(--color-tertiary)]" />
+        <BrainCircuit size={12} class="text-[var(--color-secondary)]" />
       {/if}
     </div>
     <div class="min-w-0 flex-1">
@@ -201,7 +201,7 @@
         <div
           class="text-[10px] font-semibold uppercase tracking-wide {isRedactionActivity
             ? 'text-[var(--color-warning)]'
-            : 'text-[var(--color-tertiary)]'}"
+            : 'text-[var(--color-secondary)]'}"
         >
           {isRedactionActivity ? "Redaction Activity" : "Memory Activity"}
         </div>
@@ -217,12 +217,12 @@
         <span
           class="inline-flex items-center gap-1 text-[9px] {isRedactionActivity
             ? 'text-[var(--color-warning)]'
-            : 'text-[var(--color-tertiary)]'}"
+            : 'text-[var(--color-secondary)]'}"
         >
           <span
             class="h-1.5 w-1.5 rounded-full animate-pulse {isRedactionActivity
               ? 'bg-[var(--color-warning)]'
-              : 'bg-[var(--color-tertiary)]'}"
+              : 'bg-[var(--color-secondary)]'}"
           ></span>
           Live
         </span>

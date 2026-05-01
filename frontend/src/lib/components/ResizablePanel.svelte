@@ -153,14 +153,14 @@
   .resize-handle.hovering .resize-indicator,
   .resize-handle:focus-visible .resize-indicator {
     height: 48px;
-    background-color: var(--color-tertiary);
+    background-color: var(--color-secondary);
   }
 
   /* Active state - larger indicator */
   .resize-handle.active .resize-indicator {
     height: 64px;
     width: 4px;
-    background-color: var(--color-tertiary);
+    background-color: var(--color-secondary);
     box-shadow: var(--shadow-glow-tertiary);
   }
 
@@ -195,6 +195,6 @@
   .resize-handle.hovering::before,
   .resize-handle.active::before,
   .resize-handle:focus-visible::before {
-    background-color: var(--color-tertiary);
+    background-color: var(--color-secondary);
   }
 </style>

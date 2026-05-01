@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { DemoDetails, SessionStatus } from "$lib/types";
-  import { ChevronRight, PanelRight, RotateCw, Square, Timer } from "lucide-svelte";
+  import { ChevronRight, Menu, PanelRight, RotateCw, Square, Timer } from "lucide-svelte";
+  import ThemeToggle from "../ui/ThemeToggle.svelte";
   import Tooltip from "../ui/Tooltip.svelte";
 
   interface Props {
@@ -10,16 +11,26 @@
     showEvents: boolean;
     onNewThread: () => void;
     onToggleEvents: () => void;
+    /** Optional: only wired in mobile/tablet shells where the sidebar is a slide-in overlay. */
+    onOpenMobileSidebar?: () => void;
   }
 
-  let { demo, sessionStatus, isActive, showEvents, onNewThread, onToggleEvents }: Props = $props();
+  let {
+    demo,
+    sessionStatus,
+    isActive,
+    showEvents,
+    onNewThread,
+    onToggleEvents,
+    onOpenMobileSidebar,
+  }: Props = $props();
 
   // Status styling
   const statusStyles: Record<string, { bg: string; text: string; dot: string }> = {
     ready: {
-      bg: "bg-[var(--color-tertiary)]/15",
-      text: "text-[var(--color-tertiary)]",
-      dot: "bg-[var(--color-tertiary)]",
+      bg: "bg-[var(--color-secondary)]/15",
+      text: "text-[var(--color-secondary)]",
+      dot: "bg-[var(--color-secondary)]",
     },
     running: {
       bg: "bg-[var(--color-primary)]/15",
@@ -108,15 +119,29 @@
 </script>
 
 <header
-  class="flex min-h-16 items-center justify-between border-b border-[var(--color-outline-variant)]
-         bg-[linear-gradient(180deg,rgba(30,31,37,0.96),rgba(30,31,37,0.84))] px-4 py-2.5 shrink-0 backdrop-blur-md"
+  class="studio-toolbar flex min-h-16 items-center justify-between
+         border-b border-[var(--color-outline-variant)]
+         px-4 py-2.5 shrink-0 backdrop-blur-md"
   role="toolbar"
   aria-label="Session controls"
 >
   <div class="flex min-w-0 items-center gap-3">
+    {#if onOpenMobileSidebar}
+      <button
+        type="button"
+        class="mobile-sidebar-trigger inline-flex h-9 w-9 items-center justify-center
+               rounded-xl border border-[var(--color-outline-variant)]
+               bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]
+               hover:bg-[var(--color-surface-variant)] transition-colors lg:hidden"
+        onclick={onOpenMobileSidebar}
+        aria-label="Open demo catalog"
+      >
+        <Menu size={16} />
+      </button>
+    {/if}
     {#if demo}
       <div
-        class="hidden h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[var(--color-outline-variant)] bg-[var(--color-bg-tertiary)]/85 text-sm font-semibold text-[var(--color-tertiary)] shadow-[var(--shadow-sm)] sm:flex"
+        class="hidden h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[var(--color-outline-variant)] bg-[var(--color-bg-tertiary)]/85 text-sm font-semibold text-[var(--color-secondary)] shadow-[var(--shadow-sm)] sm:flex"
       >
         {demo.name.slice(0, 2).toUpperCase()}
       </div>
@@ -184,8 +209,10 @@
   </div>
 
   <div class="flex items-center gap-2">
+    <ThemeToggle compact class="hidden sm:inline-flex" />
+
     {#if isActive}
-      <Tooltip text="End session & start new" shortcut="Ctrl+N">
+      <Tooltip text="End session & start new" shortcut="Ctrl+Alt+N">
         <button
           class="flex items-center gap-1.5 rounded-xl border border-[var(--color-error)]/20 px-3 py-2 text-xs font-medium
                  bg-[var(--color-error)]/12 text-[var(--color-error)] shadow-[var(--shadow-sm)]
@@ -196,8 +223,11 @@
           <span class="hidden sm:inline">New Thread</span>
         </button>
       </Tooltip>
-    {:else if sessionStatus}
-      <Tooltip text="Start a new thread" shortcut="Ctrl+N">
+    {:else if demo}
+      <!-- Show New Thread whenever a demo is loaded so users always have a
+           reset affordance — even before the first session, and especially
+           in Schedule mode where they may want to clear the runs panel. -->
+      <Tooltip text="Start a new thread" shortcut="Ctrl+Alt+N">
         <button
           class="flex items-center gap-1.5 rounded-xl border border-[var(--color-outline-variant)] px-3 py-2 text-xs font-medium
                  bg-[var(--color-bg-tertiary)]/88 text-[var(--color-text-secondary)] shadow-[var(--shadow-sm)]
@@ -214,7 +244,7 @@
       <button
         class={`flex h-10 w-10 items-center justify-center rounded-xl border transition-colors ${
           showEvents
-            ? "border-[var(--color-tertiary)]/30 bg-[var(--color-tertiary)] text-[var(--color-on-tertiary)]"
+            ? "border-[var(--color-secondary)]/30 bg-[var(--color-secondary)] text-[var(--color-on-secondary)]"
             : "border-[var(--color-outline-variant)] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-variant)]"
         }`}
         onclick={onToggleEvents}
@@ -226,3 +256,15 @@
     </Tooltip>
   </div>
 </header>
+
+<style>
+  .studio-toolbar {
+    position: relative;
+    z-index: 80;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-bg-secondary) 96%, transparent),
+      color-mix(in srgb, var(--color-bg-secondary) 84%, transparent)
+    );
+  }
+</style>

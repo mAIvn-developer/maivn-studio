@@ -123,6 +123,15 @@ class TestBuildInvocationKwargs:
         result = _build_invocation_kwargs(config)
         assert result["metadata"] == {"key": "value"}
 
+    def test_includes_typed_session_configs(self) -> None:
+        config = InvocationConfig(
+            system_tools_config={"allowed_tools": ["web_search"]},
+            orchestration_config={"max_cycles": 2},
+        )
+        result = _build_invocation_kwargs(config)
+        assert result["system_tools_config"].allowed_tools == ["web_search"]
+        assert result["orchestration_config"].max_cycles == 2
+
     def test_includes_allow_private_in_system_tools(self) -> None:
         config = InvocationConfig(allow_private_in_system_tools=True)
         result = _build_invocation_kwargs(config)
@@ -137,6 +146,8 @@ class TestBuildInvocationKwargs:
             status_messages=True,
             targeted_tools=["t1"],
             metadata={"m": 1},
+            system_tools_config={"allowed_tools": ["web_search"]},
+            orchestration_config={"max_cycles": 2},
             allow_private_in_system_tools=False,
         )
         result = _build_invocation_kwargs(config)
@@ -147,6 +158,8 @@ class TestBuildInvocationKwargs:
         assert result["status_messages"] is True
         assert result["targeted_tools"] == ["t1"]
         assert result["metadata"] == {"m": 1}
+        assert result["system_tools_config"].allowed_tools == ["web_search"]
+        assert result["orchestration_config"].max_cycles == 2
         assert result["allow_private_in_system_tools"] is False
 
 

@@ -17,8 +17,8 @@
   <div class="px-4 py-3">
     <div class="flex items-center justify-between mb-2">
       <div class="flex items-center gap-2">
-        <FileText size={16} class="text-[var(--color-tertiary)]" strokeWidth={1.5} />
-        <span class="text-xs font-medium text-[var(--color-tertiary)]">Structured Output</span>
+        <FileText size={16} class="text-[var(--color-secondary)]" strokeWidth={1.5} />
+        <span class="text-xs font-medium text-[var(--color-secondary)]">Structured Output</span>
       </div>
 
       <button

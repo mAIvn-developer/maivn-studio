@@ -22,7 +22,7 @@
     default: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
     primary: "bg-[var(--color-primary)]/15 text-[var(--color-primary)]",
     secondary: "bg-[var(--color-secondary)]/15 text-[var(--color-secondary)]",
-    tertiary: "bg-[var(--color-tertiary)]/15 text-[var(--color-tertiary)]",
+    tertiary: "bg-[var(--color-secondary)]/15 text-[var(--color-secondary)]",
     error: "bg-[var(--color-error)]/15 text-[var(--color-error)]",
     warning: "bg-[var(--color-warning)]/15 text-[var(--color-warning)]",
     success: "bg-[var(--color-success)]/15 text-[var(--color-success)]",

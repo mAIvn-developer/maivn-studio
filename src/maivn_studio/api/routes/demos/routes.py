@@ -425,6 +425,10 @@ async def update_agent(
         agent.tags = request.tags
     if request.memory_config is not None:
         agent.memory_config = request.memory_config
+    if request.system_tools_config is not None:
+        agent.system_tools_config = request.system_tools_config
+    if request.orchestration_config is not None:
+        agent.orchestration_config = request.orchestration_config
     if request.timeout is not None:
         agent.timeout = request.timeout
     if request.max_results is not None:
@@ -495,6 +499,10 @@ async def update_swarm(
         swarm.tags = request.tags
     if request.memory_config is not None:
         swarm.memory_config = request.memory_config
+    if request.system_tools_config is not None:
+        swarm.system_tools_config = request.system_tools_config
+    if request.orchestration_config is not None:
+        swarm.orchestration_config = request.orchestration_config
     if request.allow_private_in_system_tools is not None:
         swarm.allow_private_in_system_tools = request.allow_private_in_system_tools
     if request.private_data is not None:

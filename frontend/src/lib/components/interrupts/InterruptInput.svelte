@@ -85,7 +85,7 @@
       borderColor: "rgb(245, 158, 11)",
     },
     submitting: {
-      color: "var(--color-tertiary)",
+      color: "var(--color-secondary)",
       bg: "rgba(137, 208, 237, 0.1)",
       borderColor: "rgb(96, 165, 250)",
     },
@@ -330,9 +330,9 @@
   }
 
   .choice-option-btn {
-    border-color: var(--color-tertiary);
+    border-color: var(--color-secondary);
     background: rgba(137, 208, 237, 0.1);
-    color: var(--color-tertiary);
+    color: var(--color-secondary);
   }
 
   .choice-option-btn:hover:not(:disabled) {

@@ -1,61 +1,88 @@
 @import "tailwindcss";
 
-/* MAIVN Material Design 3 Dark Theme */
+/*
+ * mAIvn Material Design 3 color tokens (kept in sync with portal/website
+ * via `apps/maivn-portal/frontend/scripts/generate-m3-tokens.mjs`).
+ *
+ * Seed colors:
+ *   light  P #1A3554 / S #1F8DA8 / T #7A5AA3
+ *   dark   P #C2C3DE / S #75C8DA / T #D2BADA
+ *
+ * Re-run the portal's generator if the brand seeds change; do not hand-edit
+ * the per-token hex values below.
+ */
+
 :root {
-  /* Surface/Background Layers */
-  --color-bg: #121318;
-  --color-bg-secondary: #1e1f25;
-  --color-bg-tertiary: #282a2f;
-  --color-bg-elevated: #33343a;
-  --color-bg-dim: #0d0e13;
-  --color-bg-bright: #38393f;
+  color-scheme: dark;
 
-  /* Text Colors */
-  --color-text: #e2e2e9;
-  --color-text-secondary: #c5c6d0;
-  --color-text-tertiary: #8f9099;
+  /* Surface / Background layers */
+  --color-bg: #131316;
+  --color-bg-secondary: #1f1f23;
+  --color-bg-tertiary: #2a2a2d;
+  --color-bg-elevated: #353438;
+  --color-bg-dim: #0e0e11;
+  --color-bg-bright: #39393c;
 
-  /* Primary (Lavender Blue) */
-  --color-primary: #b1c5ff;
-  --color-primary-container: #304578;
-  --color-on-primary: #172e60;
-  --color-on-primary-container: #dae2ff;
+  /* Text */
+  --color-text: #e4e1e6;
+  --color-text-secondary: #c8c5ca;
+  --color-text-tertiary: #91909a;
 
-  /* Secondary (Purple) */
-  --color-secondary: #d3bcfd;
-  --color-secondary-container: #4f3d74;
-  --color-on-secondary: #38265c;
-  --color-on-secondary-container: #ebddff;
+  /* Primary */
+  --color-primary: #c3c4df;
+  --color-primary-container: #43455b;
+  --color-on-primary: #2d2f44;
+  --color-on-primary-container: #e0e0fc;
 
-  /* Tertiary (Cyan - accent for actions) */
-  --color-tertiary: #89d0ed;
-  --color-tertiary-container: #004d62;
-  --color-on-tertiary: #003544;
-  --color-on-tertiary-container: #baeaff;
+  /*
+   * Canonical M3 mapping (matches portal/website/booth):
+   *   primary   = lavender blue (lowercase letters of the wordmark)
+   *   secondary = cyan (the "I")
+   *   tertiary  = pink/lavender (the "A")
+   *
+   * Studio's heavy historical "accent" usage references `--color-secondary`
+   * (cyan) — that's the action / focus / highlight color across the app.
+   * Tertiary is reserved for special states only.
+   */
 
-  /* Semantic Colors */
+  /* Secondary (cyan) */
+  --color-secondary: #80d3e5;
+  --color-secondary-container: #004e5a;
+  --color-on-secondary: #00363f;
+  --color-on-secondary-container: #a4eeff;
+
+  /* Tertiary (pink / lavender) */
+  --color-tertiary: #d2c1d6;
+  --color-tertiary-container: #4f4254;
+  --color-on-tertiary: #382c3d;
+  --color-on-tertiary-container: #efddf3;
+
+  /* Semantic */
   --color-error: #ffb4ab;
   --color-error-container: #93000a;
   --color-on-error: #690005;
   --color-on-error-container: #ffdad6;
-  --color-success: #89d0ed;
+  --color-success: #80d3e5;
   --color-warning: #f59e0b;
 
-  /* Surface Variants & Outlines */
-  --color-surface-variant: #44464f;
-  --color-outline: #8f9099;
-  --color-outline-variant: #44464f;
+  /* Surface variants */
+  --color-surface-variant: #46464f;
+  --color-outline: #91909a;
+  --color-outline-variant: #46464f;
 
-  /* Legacy aliases for compatibility */
-  --color-accent: var(--color-tertiary);
+  /* Legacy aliases for compatibility — accent points at the cyan secondary
+     because studio's app surfaces (focus rings, highlight chips, etc.) read
+     as cyan. Tertiary is the warm accent. */
+  --color-accent: var(--color-secondary);
   --color-accent-hover: #6bc4e8;
 
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
-  --shadow-glow-primary: 0 0 20px rgba(177, 197, 255, 0.15);
-  --shadow-glow-tertiary: 0 0 20px rgba(137, 208, 237, 0.15);
+  --shadow-glow-primary: 0 0 20px rgba(195, 196, 223, 0.18);
+  --shadow-glow-secondary: 0 0 20px rgba(128, 211, 229, 0.18);
+  --shadow-glow-tertiary: 0 0 20px rgba(210, 193, 214, 0.18);
 
   /* Border Radius */
   --radius-sm: 0.375rem;
@@ -69,6 +96,65 @@
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Light theme — opt-in via data-theme="light" */
+html[data-theme="light"] {
+  color-scheme: light;
+
+  --color-bg: #fdfcff;
+  --color-bg-secondary: #f4f3f7;
+  --color-bg-tertiary: #e8e8eb;
+  --color-bg-elevated: #ffffff;
+  --color-bg-dim: #dad9dd;
+  --color-bg-bright: #ffffff;
+
+  --color-text: #1a1c1e;
+  --color-text-secondary: #46474a;
+  --color-text-tertiary: #5a5e66;
+
+  --color-primary: #476081;
+  --color-primary-container: #d3e4ff;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #001c38;
+
+  /* See note in dark scheme above — both secondary and tertiary point at
+     cyan so studio's heavy --color-tertiary usage stays cyan. The warm
+     pink/lavender stays available via --color-accent-warm. */
+  --color-secondary: #00677d;
+  --color-secondary-container: #b3ebff;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #001f27;
+
+  --color-tertiary: #00677d;
+  --color-tertiary-container: #b3ebff;
+  --color-on-tertiary: #ffffff;
+  --color-on-tertiary-container: #001f27;
+
+  --color-accent-warm: #6a5583;
+  --color-accent-warm-container: #eedcff;
+  --color-on-accent-warm: #ffffff;
+  --color-on-accent-warm-container: #24123c;
+
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error: #ffffff;
+  --color-on-error-container: #410002;
+  --color-success: #00677d;
+  --color-warning: #b35900;
+
+  --color-surface-variant: #dfe2eb;
+  --color-outline: #73777f;
+  --color-outline-variant: #c3c6cf;
+
+  --color-accent: var(--color-tertiary);
+  --color-accent-hover: #00566a;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.12);
+  --shadow-glow-primary: 0 0 24px rgba(71, 96, 129, 0.18);
+  --shadow-glow-tertiary: 0 0 24px rgba(0, 103, 125, 0.18);
 }
 
 /* Base Styles */

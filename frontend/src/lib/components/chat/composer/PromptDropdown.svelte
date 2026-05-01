@@ -83,10 +83,7 @@
     type="button"
     onclick={() => (isOpen = !isOpen)}
     {disabled}
-    class="prompt-button flex items-center gap-1.5 rounded-full px-3 py-1.5
-           bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-surface-variant)]
-           border border-transparent hover:border-[var(--color-outline-variant)]
-           text-sm text-[var(--color-text-secondary)] transition-all duration-200"
+    class="prompt-button"
     class:opacity-50={disabled}
     class:cursor-not-allowed={disabled}
     class:is-open={isOpen}
@@ -101,7 +98,7 @@
     {#if totalCount > 0}
       <span
         class="flex items-center justify-center min-w-[18px] h-[18px] px-1
-               rounded-full bg-[var(--color-tertiary)]/20 text-[var(--color-tertiary)]
+               rounded-full bg-[var(--color-secondary)]/20 text-[var(--color-secondary)]
                text-[10px] font-bold tabular-nums"
       >
         {totalCount}
@@ -138,8 +135,8 @@
             class="w-full rounded-lg border border-[var(--color-outline-variant)]
                    bg-[var(--color-bg)] pl-10 pr-3 py-2 text-sm text-[var(--color-text)]
                    placeholder-[var(--color-text-tertiary)]
-                   focus:border-[var(--color-tertiary)] focus:outline-none
-                   focus:ring-2 focus:ring-[var(--color-tertiary)]/20 transition-all"
+                   focus:border-[var(--color-secondary)] focus:outline-none
+                   focus:ring-2 focus:ring-[var(--color-secondary)]/20 transition-all"
           />
         </div>
       </div>
@@ -249,7 +246,7 @@
               <button
                 type="button"
                 onclick={() => (searchQuery = "")}
-                class="mt-2 text-xs text-[var(--color-tertiary)] hover:underline"
+                class="mt-2 text-xs text-[var(--color-secondary)] hover:underline"
               >
                 Clear search
               </button>
@@ -268,8 +265,8 @@
               isOpen = false;
             }}
             class="w-full flex items-center justify-center gap-2 rounded-lg px-3 py-2.5
-                   text-sm font-medium text-[var(--color-tertiary)]
-                   bg-[var(--color-tertiary)]/10 hover:bg-[var(--color-tertiary)]/20
+                   text-sm font-medium text-[var(--color-secondary)]
+                   bg-[var(--color-secondary)]/10 hover:bg-[var(--color-secondary)]/20
                    transition-colors"
           >
             <Plus size={16} />
@@ -282,13 +279,46 @@
 </div>
 
 <style>
+  .prompt-dropdown {
+    z-index: 2;
+  }
+
+  .prompt-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    box-sizing: border-box;
+    height: var(--composer-control-height, 2.35rem);
+    min-height: var(--composer-control-height, 2.35rem);
+    border: 1px solid var(--color-outline-variant);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    color: var(--color-text-secondary);
+    padding: 0 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    transition:
+      background-color var(--transition-fast),
+      border-color var(--transition-fast),
+      box-shadow var(--transition-fast),
+      color var(--transition-fast);
+  }
+
+  .prompt-button:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--color-secondary) 52%, var(--color-outline-variant));
+    background: color-mix(in srgb, var(--color-secondary) 8%, var(--color-bg));
+    color: var(--color-text);
+  }
+
   .prompt-button.is-open {
-    background-color: var(--color-surface-variant);
-    box-shadow: 0 0 0 2px rgba(137, 208, 237, 0.3);
+    border-color: color-mix(in srgb, var(--color-secondary) 58%, var(--color-outline-variant));
+    background: color-mix(in srgb, var(--color-secondary) 10%, var(--color-bg));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-secondary) 18%, transparent);
   }
 
   .dropdown-panel {
     animation: slideUp 0.15s ease-out;
+    z-index: 120;
   }
 
   @keyframes slideUp {

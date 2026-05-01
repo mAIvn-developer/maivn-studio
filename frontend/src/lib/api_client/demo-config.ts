@@ -1,4 +1,12 @@
-import type { AgentInfo, Demo, DemoVariant, InvocationMemoryConfig, SwarmInfo } from "../types";
+import type {
+  AgentInfo,
+  Demo,
+  DemoVariant,
+  InvocationMemoryConfig,
+  InvocationOrchestrationConfig,
+  InvocationSystemToolsConfig,
+  SwarmInfo,
+} from "../types";
 
 import { API_BASE } from "./shared";
 
@@ -31,6 +39,8 @@ export async function updateAgent(
     system_prompt?: string;
     tags?: string[];
     memory_config?: InvocationMemoryConfig;
+    system_tools_config?: InvocationSystemToolsConfig;
+    orchestration_config?: InvocationOrchestrationConfig;
     timeout?: number;
     max_results?: number;
     included_nested_synthesis?: boolean | "auto";
@@ -55,6 +65,8 @@ export async function updateSwarm(
     system_prompt?: string;
     tags?: string[];
     memory_config?: InvocationMemoryConfig;
+    system_tools_config?: InvocationSystemToolsConfig;
+    orchestration_config?: InvocationOrchestrationConfig;
     allow_private_in_system_tools?: boolean;
     private_data?: Record<string, unknown>;
   },

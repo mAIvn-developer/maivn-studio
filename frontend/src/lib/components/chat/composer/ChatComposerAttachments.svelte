@@ -47,7 +47,7 @@
         type="button"
         class="inline-flex items-center rounded-md border border-[var(--color-outline-variant)]
              px-2 py-1 text-[10px] text-[var(--color-text-secondary)]
-             hover:border-[var(--color-tertiary)]/50 hover:text-[var(--color-text)] transition-colors"
+             hover:border-[var(--color-secondary)]/50 hover:text-[var(--color-text)] transition-colors"
         onclick={onClearAttachments}
         title="Clear attachments"
       >

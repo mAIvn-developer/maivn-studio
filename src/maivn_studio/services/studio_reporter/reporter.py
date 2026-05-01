@@ -85,8 +85,24 @@ class StudioReporter(BaseReporter):
         return
 
     def print_final_response(self, response: str) -> None:
-        _ = response
-        return
+        # Invoke-mode flows never call ``report_response_chunk`` — the SDK only
+        # delivers the full response string here. Without forwarding it the UI
+        # sees enrichment chips but no actual response text. The delta check
+        # makes this a no-op in stream mode where chunks were already pushed.
+        if not isinstance(response, str) or not response:
+            return
+        source_id = "assistant"
+        previous = self._response_stream_text_by_assistant_id.get(source_id, "")
+        delta = self._compute_stream_delta(previous, response)
+        if not delta:
+            return
+        self._response_stream_text_by_assistant_id[source_id] = response
+        self._submit(
+            self._bridge.emit_assistant_chunk(
+                assistant_id=source_id,
+                text=delta,
+            )
+        )
 
     def print_error_summary(self, error: str) -> None:
         _ = error

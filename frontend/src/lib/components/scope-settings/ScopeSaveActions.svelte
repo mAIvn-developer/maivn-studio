@@ -56,13 +56,13 @@
   }
 
   .save-btn {
-    background: var(--color-tertiary);
+    background: var(--color-secondary);
     color: var(--color-on-tertiary);
-    border: 1px solid color-mix(in srgb, var(--color-tertiary) 74%, white);
+    border: 1px solid color-mix(in srgb, var(--color-secondary) 74%, white);
   }
 
   .save-btn:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--color-tertiary) 86%, white);
+    background: color-mix(in srgb, var(--color-secondary) 86%, white);
   }
 
   .discard-btn {

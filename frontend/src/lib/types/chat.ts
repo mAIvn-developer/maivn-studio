@@ -76,11 +76,25 @@ export interface PhaseChipData {
 
 // MARK: Chat Flow Item
 
+/**
+ * What triggered this item to enter the flow. Default `"user"` covers the
+ * normal case (the developer typing in the composer). `"schedule"` marks
+ * fires that came from a cron schedule so the renderer can apply a badge
+ * and a distinct border. The server is expected to populate this on
+ * messages whose session was created by a scheduled fire — until that
+ * lands, the field stays unset and the UI degrades to the user origin.
+ */
+export type ChatFlowOrigin = "user" | "schedule";
+
 export interface ChatFlowItem {
   id: string;
   type: ChatFlowItemType;
   timestamp: string;
   data: Message | ToolCard | InterruptData | PhaseChipData | BatchResult;
+  /** Optional — defaults to "user". Set to "schedule" for cron-triggered items. */
+  origin?: ChatFlowOrigin;
+  /** Optional — fire ID from the schedule that triggered this item, if any. */
+  scheduleFireId?: string;
 }
 
 // MARK: Batch Result Types

@@ -4,7 +4,6 @@
     InterruptStyle,
     InvocationConfig,
     MemoryConfig,
-    ModelToolOption,
     PrivateDataField,
     StructuredOutputConfig,
     SwarmInfo,
@@ -14,7 +13,6 @@
   import InvocationSettings from "../settings/InvocationSettings.svelte";
   import MemorySettings from "../settings/MemorySettings.svelte";
   import PrivateDataConfig from "../settings/PrivateDataConfig.svelte";
-  import StructuredOutputSelector from "../settings/StructuredOutputSelector.svelte";
   import SwarmSettings from "../settings/SwarmSettings.svelte";
   import CollapsibleConfigSection from "./CollapsibleConfigSection.svelte";
 
@@ -28,14 +26,15 @@
     demoId?: string;
     invocationConfig?: InvocationConfig;
     availableTools?: string[];
+    // Structured output now lives in the composer's Advanced disclosure;
+    // keep the prop so InvocationSettings can dim model fields when it's
+    // enabled, but don't render the selector here.
     structuredOutputConfig?: StructuredOutputConfig;
-    availableModelTools?: ModelToolOption[];
     interruptStyle?: InterruptStyle;
     memoryConfig?: MemoryConfig;
     onPrivateDataChange?: (data: Record<string, unknown>) => void;
     onDemoRefresh?: () => void;
     onInvocationChange?: (config: InvocationConfig) => void;
-    onStructuredOutputChange?: (config: StructuredOutputConfig) => void;
     onInterruptStyleChange?: (style: InterruptStyle) => void;
     onMemoryConfigChange?: (config: MemoryConfig) => void;
   }
@@ -51,20 +50,17 @@
     invocationConfig,
     availableTools = [],
     structuredOutputConfig,
-    availableModelTools = [],
     interruptStyle = "inline",
     memoryConfig,
     onPrivateDataChange,
     onDemoRefresh,
     onInvocationChange,
-    onStructuredOutputChange,
     onInterruptStyleChange,
     onMemoryConfigChange,
   }: Props = $props();
 
   type SectionKey =
     | "privateData"
-    | "structuredOutput"
     | "interruptStyle"
     | "agents"
     | "swarms"
@@ -73,7 +69,6 @@
 
   let sectionOpen = $state<Record<SectionKey, boolean>>({
     privateData: true,
-    structuredOutput: true,
     interruptStyle: true,
     agents: true,
     swarms: true,
@@ -104,23 +99,6 @@
         fallbackValues={privateDataDefaults}
         onchange={onPrivateDataChange}
         disabled={hasActiveSession}
-      />
-    </CollapsibleConfigSection>
-  {/if}
-
-  <!-- Structured Output -->
-  {#if demoId && structuredOutputConfig && onStructuredOutputChange}
-    <CollapsibleConfigSection
-      title="Structured Output"
-      subtitle="Tool model and schema"
-      open={sectionOpen.structuredOutput}
-      onToggle={() => toggleSection("structuredOutput")}
-    >
-      <StructuredOutputSelector
-        config={structuredOutputConfig}
-        availableTools={availableModelTools}
-        disabled={hasActiveSession}
-        onConfigChange={onStructuredOutputChange}
       />
     </CollapsibleConfigSection>
   {/if}

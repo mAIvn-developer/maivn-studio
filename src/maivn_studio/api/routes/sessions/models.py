@@ -6,7 +6,7 @@ import base64
 import binascii
 from typing import Any
 
-from maivn_shared import MemoryConfig
+from maivn_shared import MemoryConfig, SessionOrchestrationConfig, SystemToolsConfig
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 # MARK: Invocation Models
@@ -32,6 +32,8 @@ class InvocationConfig(BaseModel):
     targeted_tools: list[str] | None = None
     metadata: dict[str, Any] | None = None
     memory_config: MemoryConfig | None = None
+    system_tools_config: SystemToolsConfig | None = None
+    orchestration_config: SessionOrchestrationConfig | None = None
     allow_private_in_system_tools: bool | None = None
 
 

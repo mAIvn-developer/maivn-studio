@@ -1,7 +1,7 @@
 <script lang="ts">
-  import MaivnIcon from "$lib/assets/maivn_icon_dark_mode.svg";
-  import MaivnLogo from "$lib/assets/maivn_logo_dark_mode.svg";
-  import { Command, PanelLeftClose } from "lucide-svelte";
+  import ThemeLogo from "$lib/components/ui/ThemeLogo.svelte";
+  import { externalLinks } from "$lib/utils/external-links";
+  import { Command, ExternalLink, PanelLeftClose } from "lucide-svelte";
 
   interface Props {
     collapsed?: boolean;
@@ -16,6 +16,46 @@
     onToggleCollapse,
     onOpenCommandPalette,
   }: Props = $props();
+
+  let appSwitcherOpen = $state(false);
+  let appSwitcherEl = $state<HTMLDivElement | null>(null);
+
+  const appSwitcherLinks = [
+    { label: "Developer Portal", href: externalLinks.developerPortal() },
+    { label: "Documentation", href: externalLinks.developerPortalDocs() },
+    { label: "mAIvn home", href: externalLinks.marketingSite() },
+  ];
+
+  function toggleAppSwitcher() {
+    appSwitcherOpen = !appSwitcherOpen;
+  }
+
+  function closeAppSwitcher() {
+    appSwitcherOpen = false;
+  }
+
+  function handleDocumentClick(event: MouseEvent) {
+    if (!appSwitcherEl) return;
+    if (!appSwitcherEl.contains(event.target as Node)) {
+      closeAppSwitcher();
+    }
+  }
+
+  function handleDocumentKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      closeAppSwitcher();
+    }
+  }
+
+  $effect(() => {
+    if (!appSwitcherOpen) return;
+    document.addEventListener("mousedown", handleDocumentClick);
+    document.addEventListener("keydown", handleDocumentKeydown);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentClick);
+      document.removeEventListener("keydown", handleDocumentKeydown);
+    };
+  });
 </script>
 
 <div
@@ -28,7 +68,7 @@
   {#if !collapsed}
     <!-- Expanded: logo + Studio label + status + actions -->
     <div class="flex min-w-0 flex-1 items-center gap-2">
-      <img src={MaivnLogo} alt="mAIvn" class="h-4.5 shrink-0" />
+      <ThemeLogo alt="mAIvn" class="h-4.5 shrink-0" />
 
       <span class="text-sm font-semibold tracking-tight text-[var(--color-text)]">Studio</span>
 
@@ -39,7 +79,38 @@
       ></span>
     </div>
 
-    <div class="flex items-center">
+    <div class="flex items-center" bind:this={appSwitcherEl}>
+      <div class="relative">
+        <button
+          type="button"
+          class="sidebar-btn"
+          onclick={toggleAppSwitcher}
+          title="Switch app"
+          aria-haspopup="menu"
+          aria-expanded={appSwitcherOpen}
+        >
+          <ExternalLink size={14} />
+        </button>
+        {#if appSwitcherOpen}
+          <div class="app-switcher-menu" role="menu">
+            <p class="app-switcher-label">Open elsewhere</p>
+            {#each appSwitcherLinks as link (link.href)}
+              <a
+                class="app-switcher-link"
+                href={link.href}
+                target="_blank"
+                rel="noreferrer"
+                role="menuitem"
+                onclick={closeAppSwitcher}
+              >
+                <span>{link.label}</span>
+                <ExternalLink size={11} class="text-[var(--color-text-tertiary)]" />
+              </a>
+            {/each}
+          </div>
+        {/if}
+      </div>
+
       {#if onOpenCommandPalette}
         <button
           type="button"
@@ -71,7 +142,7 @@
         onclick={onToggleCollapse}
         title="Expand sidebar"
       >
-        <img src={MaivnIcon} alt="mAIvn" class="h-6 w-6 object-contain" />
+        <ThemeLogo icon alt="mAIvn" class="h-6 w-6 object-contain" />
         <span class="status-dot-mini" class:connected></span>
       </button>
     </div>
@@ -135,5 +206,49 @@
 
   .status-dot-mini.connected {
     background: var(--color-success);
+  }
+
+  .app-switcher-menu {
+    position: absolute;
+    top: calc(100% + 0.35rem);
+    right: 0;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 12rem;
+    padding: 0.4rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-outline-variant);
+    background: var(--color-bg-secondary);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .app-switcher-label {
+    padding: 0.35rem 0.5rem 0.5rem;
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
+  }
+
+  .app-switcher-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.45rem 0.55rem;
+    border-radius: var(--radius-md);
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+    transition:
+      background-color 150ms,
+      color 150ms;
+  }
+
+  .app-switcher-link:hover {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text);
   }
 </style>

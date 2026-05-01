@@ -63,8 +63,8 @@
   }
 
   .chip-tertiary {
-    color: var(--color-tertiary);
-    background: color-mix(in srgb, var(--color-tertiary) 16%, transparent);
+    color: var(--color-secondary);
+    background: color-mix(in srgb, var(--color-secondary) 16%, transparent);
   }
 
   .chip-warning {

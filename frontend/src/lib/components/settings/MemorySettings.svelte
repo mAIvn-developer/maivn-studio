@@ -187,7 +187,7 @@
   }
 
   .peer:checked ~ .switch-track {
-    background: var(--color-tertiary);
+    background: var(--color-secondary);
   }
 
   .peer:checked ~ .switch-thumb {
@@ -220,7 +220,7 @@
   }
 
   .select-input:focus {
-    outline: 1px solid var(--color-tertiary);
-    border-color: var(--color-tertiary);
+    outline: 1px solid var(--color-secondary);
+    border-color: var(--color-secondary);
   }
 </style>

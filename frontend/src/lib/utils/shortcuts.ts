@@ -8,6 +8,7 @@
 export interface ShortcutAction {
   key: string;
   ctrl?: boolean;
+  alt?: boolean;
   shift?: boolean;
   label: string;
   shortcutDisplay: string;
@@ -73,6 +74,9 @@ export function handleGlobalKeydown(event: KeyboardEvent): void {
     const ctrlRequired = shortcut.ctrl ?? false;
     const ctrlPressed = event.metaKey || event.ctrlKey;
     if (ctrlRequired !== ctrlPressed) continue;
+
+    const altRequired = shortcut.alt ?? false;
+    if (altRequired !== event.altKey) continue;
 
     const shiftRequired = shortcut.shift ?? false;
     if (shiftRequired !== event.shiftKey) continue;

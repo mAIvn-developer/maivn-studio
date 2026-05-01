@@ -81,6 +81,10 @@ def _build_invocation_kwargs(invocation: InvocationConfig | None) -> dict[str, A
         kwargs["metadata"] = invocation.metadata
     if invocation.memory_config is not None:
         kwargs["memory_config"] = invocation.memory_config
+    if invocation.system_tools_config is not None:
+        kwargs["system_tools_config"] = invocation.system_tools_config
+    if invocation.orchestration_config is not None:
+        kwargs["orchestration_config"] = invocation.orchestration_config
     if invocation.allow_private_in_system_tools is not None:
         kwargs["allow_private_in_system_tools"] = invocation.allow_private_in_system_tools
 

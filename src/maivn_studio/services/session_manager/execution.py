@@ -20,7 +20,7 @@ from maivn.events import (
 from maivn_shared import FINAL_EVENT_NAME
 from maivn_shared import SessionResponse as SDKSessionResponse
 
-from .messages import resolve_structured_output_metadata_fallback
+from .messages import resolve_structured_output_invocation_fallbacks
 from .models import _STUDIO_EVENT_CATEGORIES, SessionStatus, StudioSession, _latest_response_text
 
 # MARK: Capability Helpers
@@ -357,13 +357,12 @@ def _build_base_invoke_kwargs(
     }
 
     user_invoke_kwargs = session.metadata.get("invocation_kwargs")
-    fallback_metadata = resolve_structured_output_metadata_fallback(
+    fallback_invocation_kwargs = resolve_structured_output_invocation_fallbacks(
         loaded_demo=loaded,
         structured_output_model=structured_output_model,
         user_invoke_kwargs=user_invoke_kwargs,
     )
-    if fallback_metadata is not None:
-        invoke_kwargs["metadata"] = fallback_metadata
+    invoke_kwargs.update(fallback_invocation_kwargs)
     if user_invoke_kwargs:
         invoke_kwargs.update(user_invoke_kwargs)
 
@@ -821,13 +820,12 @@ async def execute_session(manager: Any, session: StudioSession, logger: Any) -> 
                 }
 
                 user_invoke_kwargs = session.metadata.get("invocation_kwargs")
-                fallback_metadata = resolve_structured_output_metadata_fallback(
+                fallback_invocation_kwargs = resolve_structured_output_invocation_fallbacks(
                     loaded_demo=loaded,
                     structured_output_model=structured_output_model,
                     user_invoke_kwargs=user_invoke_kwargs,
                 )
-                if fallback_metadata is not None:
-                    invoke_kwargs["metadata"] = fallback_metadata
+                invoke_kwargs.update(fallback_invocation_kwargs)
                 if user_invoke_kwargs:
                     invoke_kwargs.update(user_invoke_kwargs)
 

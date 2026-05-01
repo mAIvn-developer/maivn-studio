@@ -36,25 +36,14 @@
   }
 </script>
 
-<div
-  class="message-type-selector inline-flex rounded-lg p-0.5 bg-[var(--color-bg-tertiary)]"
-  class:opacity-50={disabled}
-  class:pointer-events-none={disabled}
->
+<div class="message-type-selector" class:opacity-50={disabled} class:pointer-events-none={disabled}>
   {#each baseOptions as option}
     <button
       type="button"
       onclick={() => selectOption(option.value)}
       title={option.baseTooltip}
-      class="segment flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium
-             transition-all duration-200"
+      class="segment"
       class:active={value === option.value}
-      class:text-[var(--color-on-tertiary)]={value === option.value}
-      class:bg-[var(--color-tertiary)]={value === option.value}
-      class:shadow-sm={value === option.value}
-      class:text-[var(--color-text-secondary)]={value !== option.value}
-      class:hover:text-[var(--color-text)]={value !== option.value}
-      class:hover:bg-[var(--color-bg-secondary)]={value !== option.value}
     >
       <option.icon size={14} />
       <span class="hidden sm:inline">{option.label}</span>
@@ -64,16 +53,51 @@
 
 <style>
   .message-type-selector {
-    border: 1px solid var(--color-outline-variant);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    box-sizing: border-box;
+    height: var(--composer-control-height, 2.35rem);
+    min-height: var(--composer-control-height, 2.35rem);
+    border-radius: var(--radius-md);
+    border: 0;
+    background: var(--color-bg);
+    padding: 0;
+    box-shadow: inset 0 0 0 1px var(--color-outline-variant);
   }
 
   .segment {
-    min-width: 32px;
+    display: flex;
+    align-items: center;
     justify-content: center;
+    gap: 0.35rem;
+    box-sizing: border-box;
+    height: var(--composer-control-height, 2.35rem);
+    min-height: var(--composer-control-height, 2.35rem);
+    min-width: 2rem;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-secondary);
+    padding: 0 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 650;
+    cursor: pointer;
+    transition:
+      background-color var(--transition-fast),
+      color var(--transition-fast),
+      transform var(--transition-fast);
+  }
+
+  .segment:hover:not(.active) {
+    background: color-mix(in srgb, var(--color-bg-tertiary) 44%, transparent);
+    color: var(--color-text);
   }
 
   .segment.active {
-    transform: scale(1.02);
+    background: var(--color-secondary);
+    color: var(--color-on-secondary);
+    justify-content: center;
   }
 
   /* Show tooltip on hover */
