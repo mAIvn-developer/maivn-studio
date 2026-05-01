@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from maivn_shared import MemoryConfig
+from maivn_shared import MemoryConfig, SessionOrchestrationConfig, SystemToolsConfig
 
 from maivn_studio.config.models import DemoConfig
 
@@ -138,6 +138,12 @@ def build_agent_info(
         system_prompt=extract_system_prompt(agent),
         tags=list(getattr(agent, "tags", []) or []),
         memory_config=getattr(agent, "memory_config", MemoryConfig()),
+        system_tools_config=getattr(agent, "system_tools_config", SystemToolsConfig()),
+        orchestration_config=getattr(
+            agent,
+            "orchestration_config",
+            SessionOrchestrationConfig(),
+        ),
         private_data=dict(getattr(agent, "private_data", {}) or {}),
         tool_count=tool_count,
         runtime_tool_count=runtime_tool_count,
@@ -200,6 +206,12 @@ def build_swarm_info(swarm: Any) -> SwarmInfo:
         system_prompt=extract_system_prompt(swarm),
         tags=list(getattr(swarm, "tags", []) or []),
         memory_config=getattr(swarm, "memory_config", MemoryConfig()),
+        system_tools_config=getattr(swarm, "system_tools_config", SystemToolsConfig()),
+        orchestration_config=getattr(
+            swarm,
+            "orchestration_config",
+            SessionOrchestrationConfig(),
+        ),
         allow_private_in_system_tools=getattr(swarm, "allow_private_in_system_tools", False),
         private_data=dict(getattr(swarm, "private_data", {}) or {}),
         agent_count=len(agent_names),

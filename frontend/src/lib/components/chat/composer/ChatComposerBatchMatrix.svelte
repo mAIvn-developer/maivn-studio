@@ -223,6 +223,56 @@
             />
           </label>
         </div>
+
+        <!--
+          SDK overrides per row. Tri-state checkboxes feel ambiguous in
+          batch UI, so we use 3-way selects instead: Global = inherit the
+          batch-level invocation config; True/False = explicit per-row
+          override.
+        -->
+        <div class="row-grid">
+          <label>
+            <span>Force final tool</span>
+            <select
+              value={row.force_final_tool === undefined
+                ? ""
+                : row.force_final_tool
+                  ? "true"
+                  : "false"}
+              onchange={(event) => {
+                const v = (event.target as HTMLSelectElement).value;
+                updateRow(row.id, {
+                  force_final_tool: v === "" ? undefined : v === "true",
+                });
+              }}
+            >
+              <option value="">Global</option>
+              <option value="true">On</option>
+              <option value="false">Off</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Stream response</span>
+            <select
+              value={row.stream_response === undefined
+                ? ""
+                : row.stream_response
+                  ? "true"
+                  : "false"}
+              onchange={(event) => {
+                const v = (event.target as HTMLSelectElement).value;
+                updateRow(row.id, {
+                  stream_response: v === "" ? undefined : v === "true",
+                });
+              }}
+            >
+              <option value="">Global</option>
+              <option value="true">Stream</option>
+              <option value="false">Invoke</option>
+            </select>
+          </label>
+        </div>
       </article>
     {/each}
   </div>
@@ -267,8 +317,8 @@
     border-radius: var(--radius-full);
     padding: 0.08rem 0.45rem;
     font-size: 0.625rem;
-    color: var(--color-tertiary);
-    background: color-mix(in srgb, var(--color-tertiary) 14%, transparent);
+    color: var(--color-secondary);
+    background: color-mix(in srgb, var(--color-secondary) 14%, transparent);
   }
 
   .matrix-add,
@@ -290,9 +340,9 @@
 
   .matrix-add:hover,
   .row-actions button:hover {
-    border-color: color-mix(in srgb, var(--color-tertiary) 44%, var(--color-outline-variant));
-    color: var(--color-tertiary);
-    background: color-mix(in srgb, var(--color-tertiary) 10%, transparent);
+    border-color: color-mix(in srgb, var(--color-secondary) 44%, var(--color-outline-variant));
+    color: var(--color-secondary);
+    background: color-mix(in srgb, var(--color-secondary) 10%, transparent);
   }
 
   .matrix-rows {
@@ -378,7 +428,7 @@
   input:focus,
   select:focus,
   textarea:focus {
-    border-color: color-mix(in srgb, var(--color-tertiary) 55%, var(--color-outline-variant));
+    border-color: color-mix(in srgb, var(--color-secondary) 55%, var(--color-outline-variant));
   }
 
   input::placeholder,

@@ -54,6 +54,8 @@
         : []}
       aiMessage={exchange.aiMessage}
       isLive={loading && i === exchanges.length - 1 && !exchange.aiMessage}
+      origin={exchange.origin}
+      scheduleFireId={exchange.scheduleFireId}
       {showToolArgs}
       {expandAllCards}
       {richResultDisplay}
@@ -65,6 +67,8 @@
   {:else if exchange.aiMessage}
     <MessageCard
       message={exchange.aiMessage}
+      origin={exchange.origin}
+      scheduleFireId={exchange.scheduleFireId}
       autoShowStructuredOutput={showStructuredOutput}
       autoShowSessionDetails={showSessionDetails}
     />

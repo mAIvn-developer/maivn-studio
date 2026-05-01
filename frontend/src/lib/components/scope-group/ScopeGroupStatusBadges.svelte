@@ -67,12 +67,12 @@
 {#if displayPhaseMessage}
   <span
     class="inline-flex max-w-full items-center gap-1 rounded
-           bg-[var(--color-tertiary)]/12 px-1.5 py-0.5 text-[10px]
-           text-[var(--color-tertiary)]"
+           bg-[var(--color-secondary)]/12 px-1.5 py-0.5 text-[10px]
+           text-[var(--color-secondary)]"
     title={displayPhaseMessage ?? undefined}
   >
     <span
-      class="h-1.5 w-1.5 rounded-full bg-[var(--color-tertiary)]"
+      class="h-1.5 w-1.5 rounded-full bg-[var(--color-secondary)]"
       class:animate-pulse={aggregateStatus === "executing"}
     ></span>
     <span class="max-w-[22ch] truncate">{displayPhaseMessage}</span>

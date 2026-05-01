@@ -1,7 +1,16 @@
 <script lang="ts">
-  import MaivnLogo from "$lib/assets/maivn_logo_dark_mode.svg";
+  import ThemeLogo from "$lib/components/ui/ThemeLogo.svelte";
   import type { Demo } from "$lib/types";
-  import { Clock, FolderSearch, MessageSquareText } from "lucide-svelte";
+  import { externalLinks } from "$lib/utils/external-links";
+  import {
+    ArrowUpRight,
+    Clock,
+    Code2,
+    FolderSearch,
+    Globe,
+    MessageSquareText,
+    Terminal,
+  } from "lucide-svelte";
 
   interface Props {
     onOpenCommandPalette?: () => void;
@@ -20,6 +29,27 @@
     demoCount = 0,
     connected = true,
   }: Props = $props();
+
+  const ecosystemLinks = [
+    {
+      label: "mAIvn home",
+      description: "The marketing site",
+      href: externalLinks.marketingSite(),
+      icon: Globe,
+    },
+    {
+      label: "Developer Portal",
+      description: "API keys, projects, billing",
+      href: externalLinks.developerPortal(),
+      icon: Terminal,
+    },
+    {
+      label: "Documentation",
+      description: "SDK and REST reference",
+      href: externalLinks.developerPortalDocs(),
+      icon: Code2,
+    },
+  ];
 </script>
 
 <div class="welcome-root">
@@ -29,7 +59,7 @@
     <div class="welcome-grid">
       <div class="welcome-content">
         <div class="mb-6 flex items-center gap-3">
-          <img src={MaivnLogo} alt="mAIvn" class="h-6" />
+          <ThemeLogo alt="mAIvn" class="h-6" />
           <span class="text-xl font-semibold tracking-tight text-[var(--color-text)]">Studio</span>
         </div>
 
@@ -59,8 +89,10 @@
           from one focused workspace.
         </p>
 
-        <!-- Quick action cards -->
-        <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+        <!-- Quick action cards — always stacked. The welcome panel renders inside
+             the content pane which is competing with sidebar + inspector for
+             width, so a horizontal layout reliably squishes the cards. -->
+        <div class="mt-8 flex flex-col gap-3">
           {#if onOpenCommandPalette}
             <button class="welcome-primary-action" onclick={onOpenCommandPalette}>
               <span class="welcome-action-icon welcome-action-icon_primary">
@@ -102,12 +134,38 @@
             <span class="text-xs text-[var(--color-text-secondary)]">Command palette</span>
           </div>
           <div class="welcome-shortcut-chip">
-            <kbd class="welcome-shortcut-key">Ctrl+N</kbd>
+            <kbd class="welcome-shortcut-key">Ctrl+Alt+N</kbd>
             <span class="text-xs text-[var(--color-text-secondary)]">New thread</span>
           </div>
           <div class="welcome-shortcut-chip">
             <kbd class="welcome-shortcut-key">Ctrl+Shift+E</kbd>
             <span class="text-xs text-[var(--color-text-secondary)]">Inspector</span>
+          </div>
+        </div>
+
+        <!-- Cross-app footer -->
+        <div class="welcome-ecosystem">
+          <div class="welcome-ecosystem-label">
+            <span class="welcome-ecosystem-dot"></span>
+            More from mAIvn
+          </div>
+          <div class="welcome-ecosystem-links">
+            {#each ecosystemLinks as link (link.label)}
+              <a class="welcome-ecosystem-link" href={link.href} target="_blank" rel="noreferrer">
+                <span class="welcome-ecosystem-icon">
+                  <link.icon size={14} />
+                </span>
+                <span class="min-w-0 flex-1">
+                  <span class="block text-sm font-medium text-[var(--color-text)]"
+                    >{link.label}</span
+                  >
+                  <span class="block text-xs text-[var(--color-text-tertiary)]"
+                    >{link.description}</span
+                  >
+                </span>
+                <ArrowUpRight size={14} class="text-[var(--color-text-tertiary)]" />
+              </a>
+            {/each}
           </div>
         </div>
       </div>
@@ -189,9 +247,21 @@
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(circle at top left, rgba(177, 197, 255, 0.16), transparent 38%),
-      radial-gradient(circle at 82% 18%, rgba(137, 208, 237, 0.14), transparent 32%),
-      linear-gradient(180deg, rgba(18, 19, 24, 0.12), rgba(18, 19, 24, 0));
+      radial-gradient(
+        circle at top left,
+        color-mix(in srgb, var(--color-primary) 16%, transparent),
+        transparent 38%
+      ),
+      radial-gradient(
+        circle at 82% 18%,
+        color-mix(in srgb, var(--color-secondary) 14%, transparent),
+        transparent 32%
+      ),
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--color-bg-dim) 12%, transparent),
+        color-mix(in srgb, var(--color-bg-dim) 0%, transparent)
+      );
     pointer-events: none;
   }
 
@@ -210,7 +280,11 @@
   .welcome-side-panel {
     border: 1px solid color-mix(in srgb, var(--color-outline) 24%, var(--color-outline-variant));
     background:
-      linear-gradient(180deg, rgba(30, 31, 37, 0.96), rgba(18, 19, 24, 0.94)),
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--color-bg-secondary) 96%, transparent),
+        color-mix(in srgb, var(--color-bg-dim) 94%, transparent)
+      ),
       var(--color-bg-secondary);
     box-shadow: var(--shadow-lg);
     backdrop-filter: blur(16px);
@@ -262,8 +336,8 @@
   }
 
   .welcome-pill_connected {
-    border-color: color-mix(in srgb, var(--color-tertiary) 28%, var(--color-outline-variant));
-    color: var(--color-tertiary);
+    border-color: color-mix(in srgb, var(--color-secondary) 28%, var(--color-outline-variant));
+    color: var(--color-secondary);
   }
 
   .welcome-pill_disconnected {
@@ -275,7 +349,7 @@
     height: 0.45rem;
     width: 0.45rem;
     border-radius: 9999px;
-    background: var(--color-tertiary);
+    background: var(--color-secondary);
     box-shadow: 0 0 0 4px rgba(137, 208, 237, 0.12);
   }
 
@@ -315,8 +389,8 @@
   }
 
   .welcome-primary-action:hover {
-    border-color: color-mix(in srgb, var(--color-tertiary) 36%, var(--color-outline-variant));
-    background: color-mix(in srgb, var(--color-tertiary) 10%, var(--color-bg-secondary));
+    border-color: color-mix(in srgb, var(--color-secondary) 36%, var(--color-outline-variant));
+    background: color-mix(in srgb, var(--color-secondary) 10%, var(--color-bg-secondary));
     box-shadow: var(--shadow-md);
   }
 
@@ -337,7 +411,7 @@
 
   .welcome-action-icon_primary {
     background: rgba(137, 208, 237, 0.14);
-    color: var(--color-tertiary);
+    color: var(--color-secondary);
   }
 
   .welcome-action-icon_secondary {
@@ -365,8 +439,8 @@
   }
 
   .welcome-recent-item:hover {
-    border-color: color-mix(in srgb, var(--color-tertiary) 28%, var(--color-outline-variant));
-    background: color-mix(in srgb, var(--color-tertiary) 8%, var(--color-bg-secondary));
+    border-color: color-mix(in srgb, var(--color-secondary) 28%, var(--color-outline-variant));
+    background: color-mix(in srgb, var(--color-secondary) 8%, var(--color-bg-secondary));
   }
 
   .welcome-open-pill {
@@ -376,7 +450,7 @@
     padding: 0.35rem 0.7rem;
     font-size: 0.6875rem;
     font-weight: 600;
-    color: var(--color-tertiary);
+    color: var(--color-secondary);
     background: rgba(137, 208, 237, 0.12);
   }
 
@@ -395,9 +469,79 @@
     justify-content: center;
     border-radius: 9999px;
     background: rgba(137, 208, 237, 0.14);
-    color: var(--color-tertiary);
+    color: var(--color-secondary);
     font-size: 0.75rem;
     font-weight: 700;
+  }
+
+  .welcome-ecosystem {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid color-mix(in srgb, var(--color-outline) 20%, var(--color-outline-variant));
+  }
+
+  .welcome-ecosystem-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
+  }
+
+  .welcome-ecosystem-dot {
+    height: 0.4rem;
+    width: 0.4rem;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--color-primary) 70%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 16%, transparent);
+  }
+
+  /*
+   * Stack ecosystem links vertically. The 3-column layout we used to
+   * trigger at 640px viewport overflowed because the welcome panel
+   * itself renders inside a much narrower content pane (sidebar +
+   * inspector eat most of the viewport). Stacking is reliable.
+   */
+  .welcome-ecosystem-links {
+    display: grid;
+    gap: 0.65rem;
+    margin-top: 0.85rem;
+    grid-template-columns: 1fr;
+  }
+
+  .welcome-ecosystem-link {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.85rem;
+    border: 1px solid color-mix(in srgb, var(--color-outline) 22%, var(--color-outline-variant));
+    background: color-mix(in srgb, var(--color-bg-secondary) 90%, transparent);
+    transition:
+      transform var(--transition-fast),
+      border-color var(--transition-fast),
+      background-color var(--transition-fast);
+  }
+
+  .welcome-ecosystem-link:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--color-primary) 32%, var(--color-outline-variant));
+    background: color-mix(in srgb, var(--color-primary) 6%, var(--color-bg-secondary));
+  }
+
+  .welcome-ecosystem-icon {
+    display: inline-flex;
+    height: 1.85rem;
+    width: 1.85rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.55rem;
+    background: rgba(177, 197, 255, 0.14);
+    color: var(--color-primary);
+    flex-shrink: 0;
   }
 
   @media (min-width: 1024px) {

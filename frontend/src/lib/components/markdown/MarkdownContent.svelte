@@ -98,11 +98,11 @@
     font-size: 0.875rem;
     line-height: 1.6;
     word-wrap: break-word;
-    --md-accent: var(--color-tertiary);
-    --md-accent-muted: color-mix(in srgb, var(--color-tertiary) 22%, transparent);
+    --md-accent: var(--color-secondary);
+    --md-accent-muted: color-mix(in srgb, var(--color-secondary) 22%, transparent);
     --md-accent-strong: color-mix(in srgb, var(--color-primary) 55%, var(--color-text));
     --md-accent-warm: color-mix(in srgb, var(--color-secondary) 55%, var(--color-text));
-    --md-code-text: color-mix(in srgb, var(--color-tertiary) 70%, var(--color-text));
+    --md-code-text: color-mix(in srgb, var(--color-secondary) 70%, var(--color-text));
     --md-surface: color-mix(in srgb, var(--color-bg-tertiary) 85%, transparent);
   }
 
@@ -131,13 +131,13 @@
     font-size: 1.5rem;
     padding-bottom: 0.35rem;
     border-bottom: 1px solid var(--md-accent-muted);
-    color: color-mix(in srgb, var(--color-tertiary) 70%, var(--color-text));
+    color: color-mix(in srgb, var(--color-secondary) 70%, var(--color-text));
   }
 
   .markdown-content :global(h2) {
     font-size: 1.25rem;
     padding: 0.2rem 0 0.25rem 0.75rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-tertiary) 18%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-secondary) 18%, transparent);
     position: relative;
   }
 
@@ -151,14 +151,14 @@
     border-radius: 999px;
     background: linear-gradient(
       180deg,
-      color-mix(in srgb, var(--color-tertiary) 70%, transparent),
+      color-mix(in srgb, var(--color-secondary) 70%, transparent),
       color-mix(in srgb, var(--color-secondary) 40%, transparent)
     );
   }
 
   .markdown-content :global(h3) {
     font-size: 1.125rem;
-    color: color-mix(in srgb, var(--color-tertiary) 65%, var(--color-text));
+    color: color-mix(in srgb, var(--color-secondary) 65%, var(--color-text));
   }
 
   .markdown-content :global(h4) {
@@ -172,7 +172,7 @@
     border-radius: 999px;
     font-family: monospace;
     font-size: 0.8125rem;
-    border: 1px solid color-mix(in srgb, var(--color-tertiary) 20%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-secondary) 20%, transparent);
     color: var(--md-code-text);
   }
 
@@ -187,7 +187,7 @@
     right: 0.5rem;
     padding: 0.4rem;
     background: color-mix(in srgb, var(--color-bg-secondary) 90%, transparent);
-    border: 1px solid color-mix(in srgb, var(--color-tertiary) 25%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-secondary) 25%, transparent);
     border-radius: 0.375rem;
     color: var(--color-text-tertiary);
     cursor: pointer;
@@ -211,11 +211,11 @@
   .markdown-content :global(.copy-btn:hover) {
     background: var(--color-bg-secondary);
     color: var(--color-text);
-    border-color: color-mix(in srgb, var(--color-tertiary) 40%, transparent);
+    border-color: color-mix(in srgb, var(--color-secondary) 40%, transparent);
   }
 
   .markdown-content :global(.copy-btn:focus-visible) {
-    outline: 2px solid color-mix(in srgb, var(--color-tertiary) 45%, transparent);
+    outline: 2px solid color-mix(in srgb, var(--color-secondary) 45%, transparent);
     outline-offset: 2px;
   }
 
@@ -242,7 +242,7 @@
     border-radius: 0.5rem;
     overflow-x: auto;
     margin: 0;
-    border: 1px solid color-mix(in srgb, var(--color-tertiary) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-secondary) 18%, transparent);
     position: relative;
   }
 
@@ -303,8 +303,8 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--md-accent);
-    background: color-mix(in srgb, var(--color-tertiary) 18%, transparent);
-    border: 1px solid color-mix(in srgb, var(--color-tertiary) 30%, transparent);
+    background: color-mix(in srgb, var(--color-secondary) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-secondary) 30%, transparent);
     padding: 0.1rem 0.4rem;
     border-radius: 999px;
   }
@@ -357,14 +357,14 @@
     margin: 0.75rem 0;
     padding: 0.6rem 0.8rem;
     border-left: 3px solid var(--md-accent);
-    background: color-mix(in srgb, var(--color-tertiary) 14%, transparent);
+    background: color-mix(in srgb, var(--color-secondary) 14%, transparent);
     border-radius: 0.4rem;
     color: var(--color-text);
   }
 
   .markdown-content :global(hr) {
     border: none;
-    border-top: 1px solid color-mix(in srgb, var(--color-tertiary) 25%, transparent);
+    border-top: 1px solid color-mix(in srgb, var(--color-secondary) 25%, transparent);
     margin: 1rem 0;
   }
 
@@ -372,7 +372,7 @@
     margin: 0.85rem 0 1rem;
     overflow-x: auto;
     border-radius: 0.6rem;
-    border: 1px solid color-mix(in srgb, var(--color-tertiary) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-secondary) 18%, transparent);
     background: color-mix(in srgb, var(--color-bg-tertiary) 85%, transparent);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
@@ -389,7 +389,7 @@
 
   .markdown-content :global(.md-table th),
   .markdown-content :global(.md-table td) {
-    border-bottom: 1px solid color-mix(in srgb, var(--color-tertiary) 16%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-secondary) 16%, transparent);
     padding: 0.5rem 0.7rem;
     text-align: left;
   }
@@ -397,17 +397,17 @@
   .markdown-content :global(.md-table th) {
     background: linear-gradient(
       135deg,
-      color-mix(in srgb, var(--color-tertiary) 20%, var(--color-bg-tertiary)),
+      color-mix(in srgb, var(--color-secondary) 20%, var(--color-bg-tertiary)),
       color-mix(in srgb, var(--color-secondary) 10%, var(--color-bg-tertiary))
     );
-    color: color-mix(in srgb, var(--color-tertiary) 65%, var(--color-text));
+    color: color-mix(in srgb, var(--color-secondary) 65%, var(--color-text));
     font-weight: 600;
     text-transform: none;
     white-space: nowrap;
   }
 
   .markdown-content :global(.md-table thead th) {
-    border-bottom: 1px solid color-mix(in srgb, var(--color-tertiary) 30%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-secondary) 30%, transparent);
   }
 
   .markdown-content :global(.md-table tbody tr:nth-child(even)) {
@@ -415,7 +415,7 @@
   }
 
   .markdown-content :global(.md-table tbody tr:hover) {
-    background: color-mix(in srgb, var(--color-tertiary) 14%, transparent);
+    background: color-mix(in srgb, var(--color-secondary) 14%, transparent);
   }
 
   .markdown-content :global(.md-table_no-header) {

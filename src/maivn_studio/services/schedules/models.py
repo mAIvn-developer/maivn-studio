@@ -25,7 +25,12 @@ class ScheduleConfig(BaseModel):
     jitter_seed: int | None = None
     jitter_skip_if_overruns_next: bool = True
 
-    method: Literal["invoke", "stream", "batch", "abatch", "ainvoke", "astream"] = "invoke"
+    method: Literal["invoke", "stream", "batch", "abatch", "ainvoke", "astream"] = "stream"
+    # Inline prompt text. When set, this is the prompt every fire sends —
+    # mirrors what the user typed into the composer when they switched the
+    # composer to "Schedule" mode. Takes precedence over prompt_id so users
+    # can edit the prompt mid-run via "Update schedule".
+    prompt_text: str | None = None
     prompt_id: str | None = None
 
     misfire: Literal["skip", "fire_now", "coalesce"] = "coalesce"
@@ -52,6 +57,11 @@ class ScheduleRunSummary(BaseModel):
     attempt: int
     jitter_offset_seconds: float
     error: str | None = None
+    # Synthetic session id used to subscribe to this fire's event stream.
+    # Set when the fire actually runs (i.e., once an EventBridge has been
+    # registered for it). The frontend hits /api/schedules/{demo}/fires/
+    # {fire_id}/events to stream the same events a chat session emits.
+    event_session_id: str | None = None
 
 
 class ScheduleJobSummary(BaseModel):

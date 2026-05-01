@@ -96,7 +96,7 @@
       case "optimization":
         return "var(--color-secondary)";
       default:
-        return "var(--color-tertiary)";
+        return "var(--color-secondary)";
     }
   }
 
@@ -224,7 +224,7 @@
                   <div class="card-header">
                     <span class="card-name">{skill.name}</span>
                     {#if skill.confidence > 0}
-                      <span class="card-badge" style="color: var(--color-tertiary)">
+                      <span class="card-badge" style="color: var(--color-secondary)">
                         {confidencePercent(skill.confidence)}
                       </span>
                     {/if}

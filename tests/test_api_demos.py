@@ -535,6 +535,8 @@ def test_demo_loader_invocation_config_keeps_targeted_tools_and_metadata() -> No
         "reasoning": {"effort": "medium"},
         "targeted_tools": ["demo_agent.memory_lookup"],
         "metadata": {"source": "test-suite"},
+        "system_tools_config": {"allowed_tools": ["web_search"]},
+        "orchestration_config": {"max_cycles": 2},
         "allow_private_in_system_tools": True,
         "unexpected_key": "ignored",
     }
@@ -548,6 +550,8 @@ def test_demo_loader_invocation_config_keeps_targeted_tools_and_metadata() -> No
         "reasoning": {"effort": "medium"},
         "targeted_tools": ["demo_agent.memory_lookup"],
         "metadata": {"source": "test-suite"},
+        "system_tools_config": {"allowed_tools": ["web_search"]},
+        "orchestration_config": {"max_cycles": 2},
         "allow_private_in_system_tools": True,
     }
 

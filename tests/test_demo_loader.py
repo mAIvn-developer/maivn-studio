@@ -155,6 +155,8 @@ class TestFindInvocationConfig:
                     "model": "gpt-4",
                     "reasoning": True,
                     "force_final_tool": "my_tool",
+                    "system_tools_config": {"allowed_tools": ["web_search"]},
+                    "orchestration_config": {"max_cycles": 2},
                     "garbage_key": "ignored",
                 }
             }
@@ -166,6 +168,8 @@ class TestFindInvocationConfig:
         assert result["model"] == "gpt-4"
         assert result["reasoning"] is True
         assert result["force_final_tool"] == "my_tool"
+        assert result["system_tools_config"] == {"allowed_tools": ["web_search"]}
+        assert result["orchestration_config"] == {"max_cycles": 2}
         assert "garbage_key" not in result
 
     def test_returns_none_for_non_dict(self) -> None:

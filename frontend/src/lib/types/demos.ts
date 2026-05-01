@@ -1,4 +1,8 @@
-import type { InvocationConfig } from "./config";
+import type {
+  InvocationConfig,
+  InvocationOrchestrationConfig,
+  InvocationSystemToolsConfig,
+} from "./config";
 import type { InvocationMemoryConfig } from "./memory";
 import type { PrivateDataField } from "./config";
 
@@ -53,6 +57,8 @@ export interface AgentInfo {
   system_prompt?: string;
   tags: string[];
   memory_config?: InvocationMemoryConfig;
+  system_tools_config?: InvocationSystemToolsConfig;
+  orchestration_config?: InvocationOrchestrationConfig;
   private_data?: Record<string, unknown>;
   tool_count: number;
   runtime_tool_count: number;
@@ -76,6 +82,8 @@ export interface SwarmInfo {
   system_prompt?: string;
   tags: string[];
   memory_config?: InvocationMemoryConfig;
+  system_tools_config?: InvocationSystemToolsConfig;
+  orchestration_config?: InvocationOrchestrationConfig;
   allow_private_in_system_tools: boolean;
   private_data?: Record<string, unknown>;
   agent_count: number;

@@ -18,6 +18,12 @@ from .models import QueuedMessage, StudioSession
 
 # MARK: Turn Configuration
 
+_STRUCTURED_OUTPUT_DEFAULT_INVOCATION_KEYS = (
+    "metadata",
+    "system_tools_config",
+    "orchestration_config",
+)
+
 
 def apply_turn_configuration(
     session: StudioSession,
@@ -65,6 +71,33 @@ def resolve_structured_output_metadata_fallback(
         return None
 
     return dict(default_metadata)
+
+
+def resolve_structured_output_invocation_fallbacks(
+    *,
+    loaded_demo: Any,
+    structured_output_model: type[Any] | None,
+    user_invoke_kwargs: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Reuse demo-level typed invocation defaults when structured output turns omit them."""
+    if structured_output_model is None:
+        return {}
+
+    default_invocation = getattr(loaded_demo, "default_invocation", None)
+    if not isinstance(default_invocation, dict):
+        return {}
+
+    user_kwargs = user_invoke_kwargs if isinstance(user_invoke_kwargs, dict) else {}
+    fallback: dict[str, Any] = {}
+    for key in _STRUCTURED_OUTPUT_DEFAULT_INVOCATION_KEYS:
+        if key in user_kwargs:
+            continue
+        value = default_invocation.get(key)
+        if isinstance(value, dict):
+            fallback[key] = dict(value)
+        elif value is not None:
+            fallback[key] = value
+    return fallback
 
 
 # MARK: Message Queue

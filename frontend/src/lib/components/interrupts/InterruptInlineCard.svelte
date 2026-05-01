@@ -48,7 +48,7 @@
       label: "INPUT REQUIRED",
     },
     submitting: {
-      color: "var(--color-tertiary)",
+      color: "var(--color-secondary)",
       bg: "rgba(137, 208, 237, 0.1)",
       borderColor: "rgb(96, 165, 250)",
       icon: RefreshCw,

@@ -26,19 +26,19 @@
 {#if memoryIndexedToast}
   <div
     class="fixed right-4 z-40 animate-in overflow-hidden rounded-xl shadow-lg
-           bg-[var(--color-tertiary-container)] border border-[var(--color-tertiary)]/25"
+           bg-[var(--color-tertiary-container)] border border-[var(--color-secondary)]/25"
     style="bottom: {error ? '6.5rem' : '1rem'}; min-width: 320px; max-width: 480px;"
   >
     <div class="flex items-start gap-3 p-4">
       <div
         class="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-lg
-               bg-[var(--color-tertiary)]/20"
+               bg-[var(--color-secondary)]/20"
       >
-        <Database size={18} class="text-[var(--color-tertiary)]" />
+        <Database size={18} class="text-[var(--color-secondary)]" />
       </div>
 
       <div class="flex-1 min-w-0">
-        <p class="text-sm font-medium text-[var(--color-tertiary)]">
+        <p class="text-sm font-medium text-[var(--color-secondary)]">
           {#if memoryIndexedToast?.details?.mode === "extract_skills"}
             Skills Extracted
           {:else if memoryIndexedToast?.details?.mode === "extract_insights"}

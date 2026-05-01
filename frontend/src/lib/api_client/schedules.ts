@@ -20,6 +20,12 @@ export interface ScheduleConfig {
   jitter_seed?: number | null;
   jitter_skip_if_overruns_next: boolean;
   method: ScheduleMethod;
+  /**
+   * Inline prompt text. When set, this is the message every fire sends —
+   * mirrors what the user typed into the composer's textarea while in
+   * Schedule mode. Takes precedence over prompt_id.
+   */
+  prompt_text?: string | null;
   prompt_id?: string | null;
   misfire: Misfire;
   overlap_policy: OverlapPolicy;
@@ -43,6 +49,13 @@ export interface ScheduleRunSummary {
   attempt: number;
   jitter_offset_seconds: number;
   error: string | null;
+  /**
+   * Synthetic session id for this fire's event bridge. Set once the fire
+   * has actually started executing (via the schedule manager's on_fire
+   * callback). The frontend uses this to subscribe to the fire's chat-style
+   * SSE stream at /api/schedules/{demoId}/fires/{fire_id}/events.
+   */
+  event_session_id: string | null;
 }
 
 export interface ScheduleJobSummary {
@@ -74,7 +87,8 @@ export const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
   jitter_align_seconds: null,
   jitter_seed: null,
   jitter_skip_if_overruns_next: true,
-  method: "invoke",
+  method: "stream",
+  prompt_text: null,
   prompt_id: null,
   misfire: "coalesce",
   overlap_policy: "skip",
@@ -103,10 +117,8 @@ export async function listSchedules(): Promise<ScheduleJobSummary[]> {
 }
 
 export async function getSchedule(demoId: string): Promise<ScheduleJobSummary | null> {
-  const res = await fetch(`${API_BASE}/schedules/${demoId}`);
-  if (res.status === 404) return null;
-  await ensureOk(res, `Failed to load schedule ${demoId}`);
-  return res.json();
+  const schedules = await listSchedules();
+  return schedules.find((schedule) => schedule.demo_id === demoId) ?? null;
 }
 
 export async function upsertSchedule(

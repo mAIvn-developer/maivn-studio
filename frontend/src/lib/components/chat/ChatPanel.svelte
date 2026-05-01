@@ -7,12 +7,18 @@
     InterruptData,
     InterruptStyle,
     MessageAttachmentPayload,
+    ModelToolOption,
     SavedPrompt,
     SendableMessageType,
     StructuredOutputConfig,
   } from "$lib/types";
   import { ChevronDown } from "lucide-svelte";
+  import { onDestroy } from "svelte";
+
+  import { useSchedule } from "$lib/stores/schedule.svelte";
+
   import InterruptContainer from "../interrupts/InterruptContainer.svelte";
+  import ScheduleRunsView from "../schedule/ScheduleRunsView.svelte";
   import type { PendingAttachment } from "./chat-attachments";
   import {
     buildAttachmentPayloads,
@@ -46,12 +52,14 @@
     // for message submission and writes it when a prompt auto-selects a tool.
     structuredOutputConfig: StructuredOutputConfig;
     onStructuredOutputChange: (config: StructuredOutputConfig) => void;
+    availableModelTools?: ModelToolOption[];
     selectedVariant?: string | undefined;
     showToolArgs?: boolean;
     expandAllCards?: boolean;
     richResultDisplay?: boolean;
     showStructuredOutput?: boolean;
     showSessionDetails?: boolean;
+    threadResetRevision?: number;
     // Enrichment props
     currentPhaseMessage?: string | null;
     // Interrupt props
@@ -97,12 +105,14 @@
     // Structured output (UI in ConfigTab; used here for submit + prompt auto-select)
     structuredOutputConfig,
     onStructuredOutputChange,
+    availableModelTools = [],
     selectedVariant = $bindable<string | undefined>(undefined),
     showToolArgs = true,
     expandAllCards = false,
     richResultDisplay = true,
     showStructuredOutput = false,
     showSessionDetails = false,
+    threadResetRevision = 0,
     // Enrichment props
     currentPhaseMessage = null,
     // Interrupt props
@@ -134,6 +144,123 @@
   let pendingVariantPromptSync = $state<{ seed: string; promptSignature: string } | null>(null);
 
   let pendingAttachments = $state<PendingAttachment[]>([]);
+  // Tracks whether a schedule is configured for the current demo. ScheduleRunsView
+  // tells us via onActiveChange so we can hide the chat empty state — when the
+  // user is in cron mode, the welcome scaffolding would just be in the way.
+  let scheduleActive = $state(false);
+
+  // Composer mode toggle. "schedule" reveals cadence config + replaces the
+  // Send button with start/update/pause/stop controls.
+  let composerMode = $state<"chat" | "schedule">("chat");
+
+  // Per-demo schedule store (reference-counted, polls on its own). Held
+  // here so the composer's submit handler can write config + prompt_text.
+  type ScheduleHandle = ReturnType<typeof useSchedule>;
+
+  let schedule = $state<ScheduleHandle | null>(null);
+  let scheduleDemoId = $state<string | null>(null);
+  let seenThreadResetRevision = $state<number | null>(null);
+  let scheduleResetRevision = $state(0);
+
+  function ensureScheduleStore(): ScheduleHandle | null {
+    const demoId = demo?.id ?? null;
+    if (!demoId) return null;
+    if (schedule && scheduleDemoId === demoId) return schedule;
+    if (schedule) schedule.dispose();
+    scheduleDemoId = demoId;
+    schedule = useSchedule(demoId);
+    return schedule;
+  }
+
+  function clearConfiguredSchedule(): void {
+    scheduleActive = false;
+    scheduleResetRevision += 1;
+    const activeSchedule = schedule;
+    schedule = null;
+    if (activeSchedule) {
+      void activeSchedule.remove().finally(() => activeSchedule.dispose());
+    }
+  }
+
+  function resetLocalThreadState(): void {
+    inputValue = "";
+    localSystemMessage = "";
+    showSystemInput = false;
+    batchMode = false;
+    batchRunsPerInput = 1;
+    batchMaxConcurrency = 3;
+    batchAsyncMode = true;
+    batchRows = [];
+    wasBatchMode = false;
+    pendingAttachments = clearPendingAttachments();
+    scheduleActive = false;
+    composerMode = "chat";
+    pendingVariantPromptSync = null;
+  }
+
+  $effect(() => {
+    const newDemoId = demo?.id ?? null;
+    if (newDemoId === scheduleDemoId) return;
+    if (schedule) {
+      schedule.dispose();
+      schedule = null;
+    }
+    scheduleDemoId = newDemoId;
+    if (newDemoId) {
+      schedule = useSchedule(newDemoId);
+    }
+  });
+
+  onDestroy(() => {
+    if (schedule) schedule.dispose();
+  });
+
+  $effect(() => {
+    const revision = threadResetRevision;
+    if (seenThreadResetRevision === null) {
+      seenThreadResetRevision = revision;
+      return;
+    }
+    if (revision === seenThreadResetRevision) return;
+    seenThreadResetRevision = revision;
+    resetLocalThreadState();
+    clearConfiguredSchedule();
+  });
+
+  function handleComposerModeChange(mode: "chat" | "schedule"): void {
+    composerMode = mode;
+    if (mode === "chat") {
+      clearConfiguredSchedule();
+    } else {
+      ensureScheduleStore();
+    }
+  }
+
+  // Tracks whether the textarea differs from the prompt the schedule was
+  // last saved with. When dirty, the action bar's Update button highlights.
+  const schedulePromptDirty = $derived.by(() => {
+    if (!schedule?.summary) return false;
+    const saved = schedule.summary.config.prompt_text ?? "";
+    return inputValue.trim() !== saved.trim();
+  });
+
+  // Hydrate the textarea with the schedule's saved prompt when entering
+  // schedule mode (so the user sees what's currently running). Skipped if
+  // they've typed something the schedule doesn't yet know about.
+  $effect(() => {
+    if (composerMode !== "schedule") return;
+    const saved = schedule?.summary?.config.prompt_text;
+    if (typeof saved === "string" && saved.trim() && !inputValue.trim()) {
+      inputValue = saved;
+    }
+  });
+
+  async function handleScheduleStart(): Promise<void> {
+    const activeSchedule = ensureScheduleStore();
+    if (!activeSchedule) return;
+    activeSchedule.setConfig({ ...activeSchedule.config, prompt_text: inputValue });
+    await activeSchedule.start();
+  }
 
   // Auto-scroll to bottom when new items arrive
   function updateScrollIndicator() {
@@ -441,9 +568,17 @@
       aria-live="polite"
     >
       <div class="chat-content-lane">
-        {#if chatFlowItems.length === 0 && !hasActiveSession}
+        {#if demo}
+          <ScheduleRunsView
+            demoId={demo.id}
+            {chatFlowItems}
+            resetRevision={threadResetRevision + scheduleResetRevision}
+            onActiveChange={(active) => (scheduleActive = active)}
+          />
+        {/if}
+        {#if chatFlowItems.length === 0 && !hasActiveSession && !scheduleActive}
           <ChatEmptyState {demo} {prompts} onSelectPrompt={selectPrompt} />
-        {:else}
+        {:else if chatFlowItems.length > 0 || hasActiveSession}
           <ChatExchangeList
             exchanges={exchanges()}
             {loading}
@@ -469,7 +604,7 @@
         type="button"
         onclick={scrollToBottom}
         class="absolute bottom-4 right-6 z-10 flex items-center justify-center w-10 h-10 rounded-full
-               bg-[var(--color-tertiary)] text-[var(--color-on-tertiary)]
+               bg-[var(--color-secondary)] text-[var(--color-on-secondary)]
                shadow-lg shadow-black/30 hover:bg-[var(--color-accent-hover)]
                transition-all duration-200"
         aria-label="Scroll to bottom"
@@ -516,6 +651,23 @@
     bind:batchMaxConcurrency
     bind:batchAsyncMode
     bind:batchRows
+    {composerMode}
+    scheduleSummary={schedule?.summary ?? null}
+    scheduleConfig={schedule?.config}
+    scheduleBusy={schedule?.busy ?? false}
+    {schedulePromptDirty}
+    promptOptions={prompts.map((p) => ({ id: p.id, name: p.name }))}
+    {structuredOutputConfig}
+    {availableModelTools}
+    {onStructuredOutputChange}
+    onComposerModeChange={handleComposerModeChange}
+    onScheduleConfigChange={(next) => schedule?.setConfig(next)}
+    onScheduleStart={handleScheduleStart}
+    onSchedulePause={() => schedule?.pause()}
+    onScheduleResume={() => schedule?.resume()}
+    onScheduleTrigger={() => schedule?.trigger()}
+    onScheduleStop={() => schedule?.stop()}
+    onScheduleRemove={() => schedule?.remove()}
     onSelectedVariantChange={handleSelectedVariantChange}
     onSubmit={handleSubmit}
     {onMessageTypeChange}

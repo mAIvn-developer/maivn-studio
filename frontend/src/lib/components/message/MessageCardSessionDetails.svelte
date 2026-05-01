@@ -22,9 +22,9 @@
       {#if message.sessionDetails?.duration_ms !== undefined}
         <div class="bg-[var(--color-bg-tertiary)] rounded-lg p-2.5 flex items-center gap-2.5">
           <div
-            class="w-8 h-8 rounded-lg bg-[var(--color-tertiary)]/15 flex items-center justify-center"
+            class="w-8 h-8 rounded-lg bg-[var(--color-secondary)]/15 flex items-center justify-center"
           >
-            <Clock size={16} class="text-[var(--color-tertiary)]" strokeWidth={1.5} />
+            <Clock size={16} class="text-[var(--color-secondary)]" strokeWidth={1.5} />
           </div>
           <div>
             <span class="text-xs text-[var(--color-text-tertiary)] block">Duration</span>

@@ -129,11 +129,11 @@
   }
 
   .diff-table tr.changed {
-    background: color-mix(in srgb, var(--color-tertiary) 7%, transparent);
+    background: color-mix(in srgb, var(--color-secondary) 7%, transparent);
   }
 
   .diff-table td.changed {
-    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--color-tertiary) 62%, transparent);
+    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--color-secondary) 62%, transparent);
   }
 
   .diff-table td.missing {

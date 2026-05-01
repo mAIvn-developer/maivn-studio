@@ -1,8 +1,29 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark" data-theme-preference="system">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+      // Resolve theme preference before first paint to avoid FOUC.
+      // Mirrors the logic in $lib/stores/theme.svelte.ts so the JS-driven
+      // store stays in sync with whatever this script writes to <html>.
+      (function () {
+        try {
+          var key = "maivn-theme-preference";
+          var stored = window.localStorage.getItem(key);
+          var pref =
+            stored === "system" || stored === "light" || stored === "dark" ? stored : "system";
+          var systemDark =
+            window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var resolved = pref === "system" ? (systemDark ? "dark" : "light") : pref;
+          var root = document.documentElement;
+          root.dataset.themePreference = pref;
+          root.dataset.theme = resolved;
+        } catch (e) {
+          /* fall through to default theme */
+        }
+      })();
+    </script>
     <title>mAIvn Studio</title>
     %sveltekit.head%
   </head>

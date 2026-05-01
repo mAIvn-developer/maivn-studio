@@ -1,10 +1,4 @@
 <script lang="ts">
-  import { Settings, Search, BrainCircuit, Clock } from "lucide-svelte";
-  import Badge from "../ui/Badge.svelte";
-  import ConfigTab from "./ConfigTab.svelte";
-  import InspectTab from "./InspectTab.svelte";
-  import MemoryTab from "./MemoryTab.svelte";
-  import ScheduleTab from "./ScheduleTab.svelte";
   import type {
     AgentInfo,
     ChatFlowFilters,
@@ -21,6 +15,12 @@
     SwarmInfo,
     UIEvent,
   } from "$lib/types";
+  import { BrainCircuit, Clock, Search, Settings } from "lucide-svelte";
+  import Badge from "../ui/Badge.svelte";
+  import ConfigTab from "./ConfigTab.svelte";
+  import InspectTab from "./InspectTab.svelte";
+  import MemoryTab from "./MemoryTab.svelte";
+  import ScheduleTab from "./ScheduleTab.svelte";
 
   // AccumulatedStats tracks aggregated stats across all SDK invocations (sessions) in the thread
   interface AccumulatedStats {
@@ -81,7 +81,6 @@
     invocationConfig,
     availableTools = [],
     structuredOutputConfig,
-    availableModelTools = [],
     interruptStyle = "inline",
     extractedSkills = [],
     extractedInsights = [],
@@ -91,7 +90,6 @@
     onPrivateDataChange,
     onDemoRefresh,
     onInvocationChange,
-    onStructuredOutputChange,
     onInterruptStyleChange,
     onMemoryConfigChange,
   }: Props = $props();
@@ -190,13 +188,11 @@
         {invocationConfig}
         {availableTools}
         {structuredOutputConfig}
-        {availableModelTools}
         {interruptStyle}
         {memoryConfig}
         {onPrivateDataChange}
         {onDemoRefresh}
         {onInvocationChange}
-        {onStructuredOutputChange}
         {onInterruptStyleChange}
         {onMemoryConfigChange}
       />
@@ -218,8 +214,8 @@
   }
 
   .tab-active {
-    color: var(--color-tertiary);
-    border-bottom-color: var(--color-tertiary);
+    color: var(--color-secondary);
+    border-bottom-color: var(--color-secondary);
     background-color: var(--color-bg-secondary);
   }
 

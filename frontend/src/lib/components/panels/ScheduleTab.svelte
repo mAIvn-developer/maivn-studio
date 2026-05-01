@@ -1,324 +1,255 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
 
+  import { useSchedule } from "$lib/stores/schedule.svelte";
   import {
-    DEFAULT_SCHEDULE_CONFIG,
-    deleteSchedule,
-    getSchedule,
-    pauseSchedule,
-    resumeSchedule,
-    stopSchedule,
-    triggerScheduleNow,
-    upsertSchedule,
-    type ScheduleConfig,
-    type ScheduleJobSummary,
-  } from "$lib/api_client/schedules";
+    AlertCircle,
+    CalendarClock,
+    History,
+    LoaderCircle,
+    Pause,
+    Play,
+    Square,
+    Trash2,
+    Zap,
+  } from "lucide-svelte";
 
   interface Props {
     demoId: string;
-    promptOptions?: Array<{ id: string; name: string }>;
   }
 
-  let { demoId, promptOptions = [] }: Props = $props();
+  let { demoId }: Props = $props();
 
-  let config = $state<ScheduleConfig>({ ...DEFAULT_SCHEDULE_CONFIG });
-  let summary = $state<ScheduleJobSummary | null>(null);
-  let busy = $state(false);
-  let lastError = $state<string | null>(null);
-  let pollHandle: ReturnType<typeof setInterval> | null = null;
-
-  async function refresh(): Promise<void> {
-    try {
-      const result = await getSchedule(demoId);
-      summary = result;
-      if (result) {
-        config = { ...config, ...result.config };
-      }
-    } catch (err) {
-      lastError = err instanceof Error ? err.message : String(err);
-    }
-  }
+  // Insights-only view: setup (cadence, jitter, retry, etc.) lives in the
+  // composer's Advanced disclosure now. This tab focuses on observing what
+  // a configured schedule is doing — status pill, run stats, history, plus
+  // the lifecycle actions the user reaches for after the schedule's
+  // running.
+  let store = $state<ReturnType<typeof useSchedule> | null>(null);
+  let nowTick = $state(Date.now());
+  let nowTickHandle: ReturnType<typeof setInterval> | null = null;
 
   onMount(() => {
-    void refresh();
-    pollHandle = setInterval(() => void refresh(), 4000);
+    store = useSchedule(demoId);
+    nowTickHandle = setInterval(() => {
+      nowTick = Date.now();
+    }, 1000);
   });
 
   onDestroy(() => {
-    if (pollHandle !== null) clearInterval(pollHandle);
+    if (nowTickHandle !== null) clearInterval(nowTickHandle);
+    if (store) store.dispose();
   });
 
-  async function action<T>(fn: () => Promise<T>): Promise<T | null> {
-    busy = true;
-    lastError = null;
-    try {
-      return await fn();
-    } catch (err) {
-      lastError = err instanceof Error ? err.message : String(err);
-      return null;
-    } finally {
-      busy = false;
+  const summary = $derived(store?.summary ?? null);
+  const busy = $derived(store?.busy ?? false);
+  const lastError = $derived(store?.lastError ?? null);
+
+  const stateLabel = $derived.by(() => {
+    if (!summary) return "Not scheduled";
+    if (summary.is_done) return "Done";
+    if (summary.is_paused) return "Paused";
+    if (summary.is_running) return "Running";
+    return "Idle (waiting)";
+  });
+  const stateTone = $derived.by(() => {
+    if (!summary) return "neutral";
+    if (summary.is_done) return "neutral";
+    if (summary.is_paused) return "warning";
+    if (summary.is_running) return "success";
+    return "tertiary";
+  });
+  const cadenceSummary = $derived.by(() => {
+    if (!summary) return "no schedule configured";
+    const c = summary.config;
+    if (c.schedule_type === "cron") {
+      const expr = (c.cron_expression ?? "").trim() || "(unset)";
+      return `cron · ${expr} · ${c.tz || "UTC"}`;
     }
-  }
-
-  async function handleStart(): Promise<void> {
-    const next = await action(() => upsertSchedule(demoId, config));
-    if (next) summary = next;
-  }
-
-  async function handleStop(): Promise<void> {
-    const next = await action(() => stopSchedule(demoId, true));
-    if (next) summary = next;
-  }
-
-  async function handlePause(): Promise<void> {
-    const next = await action(() => pauseSchedule(demoId));
-    if (next) summary = next;
-  }
-
-  async function handleResume(): Promise<void> {
-    const next = await action(() => resumeSchedule(demoId));
-    if (next) summary = next;
-  }
-
-  async function handleTrigger(): Promise<void> {
-    const next = await action(() => triggerScheduleNow(demoId));
-    if (next) summary = next;
-  }
-
-  async function handleRemove(): Promise<void> {
-    await action(() => deleteSchedule(demoId));
-    summary = null;
-  }
+    if (c.schedule_type === "interval") {
+      return `every ${c.interval_seconds ?? 0}s`;
+    }
+    return `at ${c.fire_at || "(unset)"} · ${c.tz || "UTC"}`;
+  });
 
   function formatTime(iso: string | null | undefined): string {
     if (!iso) return "—";
     return new Date(iso).toLocaleString();
   }
+
+  function formatRelative(iso: string | null | undefined): string {
+    if (!iso) return "—";
+    const ts = new Date(iso).getTime();
+    if (Number.isNaN(ts)) return iso;
+    const diffMs = ts - nowTick;
+    const sign = diffMs >= 0 ? "in " : "";
+    const abs = Math.abs(diffMs);
+    const seconds = Math.round(abs / 1000);
+    if (seconds < 60) return diffMs >= 0 ? `${sign}${seconds}s` : `${seconds}s ago`;
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) return diffMs >= 0 ? `${sign}${minutes}m` : `${minutes}m ago`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return diffMs >= 0 ? `${sign}${hours}h` : `${hours}h ago`;
+    const days = Math.round(hours / 24);
+    return diffMs >= 0 ? `${sign}${days}d` : `${days}d ago`;
+  }
 </script>
 
 <div class="schedule-panel">
-  <h3 class="section-title">Cron Schedule</h3>
-
-  <div class="grid">
-    <label class="field">
-      <span>Schedule type</span>
-      <select bind:value={config.schedule_type}>
-        <option value="cron">cron expression</option>
-        <option value="interval">interval (seconds)</option>
-        <option value="at">one-shot at time</option>
-      </select>
-    </label>
-
-    {#if config.schedule_type === "cron"}
-      <label class="field">
-        <span>Cron expression</span>
-        <input type="text" bind:value={config.cron_expression} placeholder="*/5 * * * *" />
-      </label>
-    {:else if config.schedule_type === "interval"}
-      <label class="field">
-        <span>Interval (seconds)</span>
-        <input type="number" min="1" step="1" bind:value={config.interval_seconds} />
-      </label>
-    {:else}
-      <label class="field">
-        <span>Fire at (ISO 8601)</span>
-        <input type="datetime-local" bind:value={config.fire_at} />
-      </label>
-    {/if}
-
-    <label class="field">
-      <span>Timezone</span>
-      <input type="text" bind:value={config.tz} placeholder="UTC" />
-    </label>
-
-    <label class="field">
-      <span>Method</span>
-      <select bind:value={config.method}>
-        <option value="invoke">invoke</option>
-        <option value="ainvoke">ainvoke</option>
-        <option value="stream">stream</option>
-        <option value="astream">astream</option>
-        <option value="batch">batch</option>
-        <option value="abatch">abatch</option>
-      </select>
-    </label>
-
-    {#if promptOptions.length}
-      <label class="field">
-        <span>Prompt</span>
-        <select bind:value={config.prompt_id}>
-          <option value={null}>(default)</option>
-          {#each promptOptions as opt}
-            <option value={opt.id}>{opt.name}</option>
-          {/each}
-        </select>
-      </label>
-    {/if}
-  </div>
-
-  <h4 class="section-subtitle">Jitter</h4>
-  <div class="grid">
-    <label class="field">
-      <span>Jitter min (s)</span>
-      <input type="number" step="0.1" bind:value={config.jitter_min_seconds} />
-    </label>
-    <label class="field">
-      <span>Jitter max (s)</span>
-      <input type="number" step="0.1" bind:value={config.jitter_max_seconds} />
-    </label>
-    <label class="field">
-      <span>Distribution</span>
-      <select bind:value={config.jitter_distribution}>
-        <option value="uniform">uniform</option>
-        <option value="normal">normal</option>
-        <option value="triangular">triangular</option>
-      </select>
-    </label>
-    <label class="field">
-      <span>Align to (s, optional)</span>
-      <input type="number" step="0.1" bind:value={config.jitter_align_seconds} />
-    </label>
-    <label class="field">
-      <span>Seed (deterministic)</span>
-      <input type="number" step="1" bind:value={config.jitter_seed} />
-    </label>
-    <label class="field-checkbox">
-      <input type="checkbox" bind:checked={config.jitter_skip_if_overruns_next} />
-      <span>Skip when jitter overruns next run</span>
-    </label>
-  </div>
-
-  <h4 class="section-subtitle">Reliability</h4>
-  <div class="grid">
-    <label class="field">
-      <span>Misfire policy</span>
-      <select bind:value={config.misfire}>
-        <option value="coalesce">coalesce</option>
-        <option value="skip">skip</option>
-        <option value="fire_now">fire now</option>
-      </select>
-    </label>
-    <label class="field">
-      <span>Overlap policy</span>
-      <select bind:value={config.overlap_policy}>
-        <option value="skip">skip</option>
-        <option value="queue">queue</option>
-        <option value="replace">replace</option>
-      </select>
-    </label>
-    <label class="field">
-      <span>Max overlap</span>
-      <input type="number" min="0" step="1" bind:value={config.max_overlap} />
-    </label>
-    <label class="field">
-      <span>Max runs (blank = unbounded)</span>
-      <input type="number" min="0" step="1" bind:value={config.max_runs} />
-    </label>
-    <label class="field">
-      <span>End at (optional)</span>
-      <input type="datetime-local" bind:value={config.end_at} />
-    </label>
-  </div>
-
-  <h4 class="section-subtitle">Retry</h4>
-  <div class="grid">
-    <label class="field">
-      <span>Max attempts</span>
-      <input type="number" min="1" step="1" bind:value={config.retry_max_attempts} />
-    </label>
-    <label class="field">
-      <span>Backoff</span>
-      <select bind:value={config.retry_backoff}>
-        <option value="constant">constant</option>
-        <option value="linear">linear</option>
-        <option value="exponential">exponential</option>
-      </select>
-    </label>
-    <label class="field">
-      <span>Base (s)</span>
-      <input type="number" min="0" step="0.5" bind:value={config.retry_base_seconds} />
-    </label>
-    <label class="field">
-      <span>Factor</span>
-      <input type="number" min="1" step="0.1" bind:value={config.retry_factor} />
-    </label>
-    <label class="field">
-      <span>Max delay (s)</span>
-      <input type="number" min="0" step="1" bind:value={config.retry_max_delay_seconds} />
-    </label>
-  </div>
-
-  {#if lastError}
-    <div class="error">{lastError}</div>
-  {/if}
-
-  <div class="actions">
-    <button class="primary" onclick={handleStart} disabled={busy}>
-      {summary && !summary.is_done ? "Update schedule" : "Start schedule"}
-    </button>
-    <button onclick={handlePause} disabled={busy || !summary || summary.is_paused}>Pause</button>
-    <button onclick={handleResume} disabled={busy || !summary || !summary.is_paused}>Resume</button>
-    <button onclick={handleTrigger} disabled={busy || !summary}>Trigger now</button>
-    <button onclick={handleStop} disabled={busy || !summary || summary.is_done}>Stop</button>
-    <button onclick={handleRemove} disabled={busy || !summary}>Remove</button>
-  </div>
-
-  {#if summary}
-    <div class="status">
-      <div>Job: <strong>{summary.name}</strong> <span class="muted">({summary.job_id})</span></div>
-      <div>
-        State: {summary.is_done
-          ? "done"
-          : summary.is_paused
-            ? "paused"
-            : summary.is_running
-              ? "running"
-              : "idle"}
+  <header class="panel-header">
+    <div class="header-left">
+      <div class="state-pill" data-tone={stateTone}>
+        {#if summary?.is_running}
+          <LoaderCircle size={12} class="pill-spin" />
+        {:else if summary?.is_paused}
+          <Pause size={12} />
+        {:else if summary?.is_done}
+          <Square size={12} />
+        {:else}
+          <CalendarClock size={12} />
+        {/if}
+        {stateLabel}
       </div>
-      <div>
-        Fires: {summary.fire_count} · OK: {summary.success_count} · Skip: {summary.skip_count} · Fail:
-        {summary.failure_count}
-      </div>
-      <div>Next run: {formatTime(summary.next_run_at)}</div>
-      {#if summary.upcoming.length}
-        <div>
-          Upcoming:
-          <ul>
-            {#each summary.upcoming as t}
-              <li>{formatTime(t)}</li>
-            {/each}
-          </ul>
-        </div>
-      {/if}
-      {#if summary.history.length}
-        <h4 class="section-subtitle">Recent runs</h4>
-        <table>
-          <thead>
-            <tr>
-              <th>Scheduled</th>
-              <th>Fired</th>
-              <th>Status</th>
-              <th>Attempt</th>
-              <th>Jitter (s)</th>
-              <th>Error</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each summary.history.slice(-10).reverse() as run}
-              <tr>
-                <td>{formatTime(run.scheduled_at)}</td>
-                <td>{formatTime(run.fired_at)}</td>
-                <td>{run.status}</td>
-                <td>{run.attempt}</td>
-                <td>{run.jitter_offset_seconds.toFixed(1)}</td>
-                <td>{run.error ?? ""}</td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      {/if}
+      <div class="cadence-summary">{cadenceSummary}</div>
     </div>
+    {#if summary?.next_run_at && !summary.is_done && !summary.is_paused}
+      <div class="next-run">
+        <span class="next-run-label">Next run</span>
+        <span class="next-run-value" title={formatTime(summary.next_run_at)}>
+          {formatRelative(summary.next_run_at)}
+        </span>
+      </div>
+    {/if}
+  </header>
+
+  {#if !summary}
+    <p class="empty-hint">
+      No schedule configured. Switch the composer to <strong>Schedule</strong> mode to set one up.
+    </p>
+  {:else}
+    <section class="run-stats">
+      <div class="stat">
+        <span class="stat-value">{summary.fire_count}</span>
+        <span class="stat-label">fires</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value success">{summary.success_count}</span>
+        <span class="stat-label">ok</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value warning">{summary.skip_count}</span>
+        <span class="stat-label">skipped</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value error">{summary.failure_count}</span>
+        <span class="stat-label">failed</span>
+      </div>
+    </section>
+
+    <footer class="action-bar">
+      {#if !summary.is_done}
+        <button
+          class="btn"
+          onclick={() => (summary.is_paused ? store?.resume() : store?.pause())}
+          disabled={busy}
+          title={summary.is_paused ? "Resume" : "Pause"}
+        >
+          {#if summary.is_paused}
+            <Play size={13} /> Resume
+          {:else}
+            <Pause size={13} /> Pause
+          {/if}
+        </button>
+        <button class="btn" onclick={() => store?.trigger()} disabled={busy} title="Run once now">
+          <Zap size={13} /> Trigger now
+        </button>
+        <button class="btn" onclick={() => store?.stop()} disabled={busy} title="Stop scheduling">
+          <Square size={13} /> Stop
+        </button>
+      {/if}
+      <button
+        class="btn destructive"
+        onclick={() => store?.remove()}
+        disabled={busy}
+        title="Remove schedule"
+      >
+        <Trash2 size={13} />
+      </button>
+    </footer>
+
+    {#if lastError}
+      <div class="error" role="alert">
+        <AlertCircle size={14} class="error-icon" />
+        <span>{lastError}</span>
+      </div>
+    {/if}
+
+    <section class="runs-section">
+      <header class="runs-header">
+        <span class="runs-title">
+          <History size={12} /> Runs
+        </span>
+        <span class="runs-hint">
+          {summary.history.length} fired · {summary.upcoming.length} upcoming
+        </span>
+      </header>
+
+      {#if summary.upcoming.length}
+        <p class="muted-label">Next fires</p>
+        <ul class="upcoming-list">
+          {#each summary.upcoming.slice(0, 5) as t}
+            <li>
+              <span class="upcoming-relative">{formatRelative(t)}</span>
+              <span class="upcoming-abs">{formatTime(t)}</span>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+
+      {#if summary.history.length}
+        <p class="muted-label">Recent runs</p>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Scheduled</th>
+                <th>Fired</th>
+                <th>Status</th>
+                <th>Attempt</th>
+                <th>Jitter</th>
+                <th>Error</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each summary.history.slice(-10).reverse() as run (run.fire_id)}
+                <tr>
+                  <td title={formatTime(run.scheduled_at)}>{formatRelative(run.scheduled_at)}</td>
+                  <td>{formatRelative(run.fired_at)}</td>
+                  <td>
+                    <span class="status-pill" data-status={run.status}>{run.status}</span>
+                  </td>
+                  <td>{run.attempt}</td>
+                  <td>{run.jitter_offset_seconds.toFixed(1)}s</td>
+                  <td class="run-error" title={run.error ?? ""}>{run.error ?? ""}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      {:else if summary.upcoming.length === 0}
+        <p class="empty-runs">
+          Schedule is configured but hasn't fired yet. Click <strong>Trigger now</strong>
+          to fire once, or wait for the next scheduled time.
+        </p>
+      {/if}
+    </section>
+
+    <footer class="job-footer">
+      Job <code>{summary.job_id}</code>
+      {#if summary.name && summary.name !== summary.job_id}
+        · <span>{summary.name}</span>
+      {/if}
+    </footer>
   {/if}
 </div>
 
@@ -327,97 +258,326 @@
     padding: 1rem;
     overflow-y: auto;
     height: 100%;
-    color: var(--color-text-primary);
-  }
-  .section-title {
-    font-size: 0.95rem;
-    font-weight: 600;
-    margin: 0 0 0.5rem 0;
-  }
-  .section-subtitle {
-    font-size: 0.8rem;
-    font-weight: 600;
-    margin: 1rem 0 0.5rem 0;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--color-text-secondary);
-  }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 0.5rem 0.75rem;
-  }
-  .field {
+    color: var(--color-text);
     display: flex;
     flex-direction: column;
-    font-size: 0.75rem;
-    gap: 0.25rem;
+    gap: 1rem;
   }
-  .field input,
-  .field select {
-    padding: 0.3rem 0.4rem;
-    border: 1px solid var(--color-outline-variant);
-    border-radius: 4px;
-    background: var(--color-bg-secondary);
-    color: inherit;
-    font-size: 0.8rem;
+
+  .panel-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
   }
-  .field-checkbox {
+  .header-left {
     display: flex;
     align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+  }
+  .state-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: var(--radius-full);
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 1px solid var(--color-outline-variant);
+    background: color-mix(in srgb, var(--color-bg-secondary) 70%, transparent);
+    color: var(--color-text-secondary);
+    text-transform: lowercase;
+    letter-spacing: 0.02em;
+  }
+  .state-pill[data-tone="success"] {
+    border-color: color-mix(in srgb, var(--color-success) 40%, transparent);
+    background: color-mix(in srgb, var(--color-success) 12%, transparent);
+    color: var(--color-success);
+  }
+  .state-pill[data-tone="warning"] {
+    border-color: color-mix(in srgb, var(--color-warning) 40%, transparent);
+    background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+    color: var(--color-warning);
+  }
+  .state-pill[data-tone="tertiary"] {
+    border-color: color-mix(in srgb, var(--color-secondary) 40%, transparent);
+    background: color-mix(in srgb, var(--color-secondary) 12%, transparent);
+    color: var(--color-secondary);
+  }
+  :global(.pill-spin) {
+    animation: pill-spin 1s linear infinite;
+  }
+  @keyframes pill-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  .cadence-summary {
+    font-size: 0.72rem;
+    color: var(--color-text-tertiary);
+    font-family: "JetBrains Mono", "SF Mono", monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .next-run {
+    display: flex;
+    align-items: baseline;
     gap: 0.4rem;
     font-size: 0.75rem;
   }
-  .actions {
+  .next-run-label {
+    color: var(--color-text-tertiary);
+  }
+  .next-run-value {
+    font-weight: 600;
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .empty-hint {
+    margin: 0;
+    padding: 0.85rem 0.95rem;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--color-text-secondary);
+    border: 1px dashed var(--color-outline-variant);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--color-bg-secondary) 50%, transparent);
+  }
+  .empty-hint strong {
+    color: var(--color-text);
+    font-weight: 600;
+  }
+
+  .run-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.5rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--color-outline-variant);
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--color-bg-secondary) 60%, transparent);
+  }
+  .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.05rem;
+  }
+  .stat-value {
+    font-size: 1.05rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text);
+  }
+  .stat-value.success {
+    color: var(--color-success);
+  }
+  .stat-value.warning {
+    color: var(--color-warning);
+  }
+  .stat-value.error {
+    color: var(--color-error);
+  }
+  .stat-label {
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-tertiary);
+  }
+
+  .action-bar {
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
-    margin-top: 1rem;
   }
-  .actions button {
-    padding: 0.35rem 0.65rem;
-    font-size: 0.8rem;
-    border: 1px solid var(--color-outline-variant);
-    border-radius: 4px;
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.7rem;
+    border-radius: var(--radius-md);
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--color-text);
     background: var(--color-bg-secondary);
-    color: inherit;
+    border: 1px solid var(--color-outline-variant);
     cursor: pointer;
+    transition:
+      background-color var(--transition-fast),
+      border-color var(--transition-fast);
   }
-  .actions button.primary {
-    background: var(--color-tertiary);
-    color: var(--color-on-tertiary, #fff);
-    border-color: transparent;
+  .btn:hover:not(:disabled) {
+    background: var(--color-bg-tertiary);
   }
-  .actions button:disabled {
-    opacity: 0.5;
+  .btn:disabled {
+    opacity: 0.45;
     cursor: not-allowed;
   }
-  .status {
-    margin-top: 1rem;
-    font-size: 0.8rem;
-    line-height: 1.5;
+  .btn.destructive {
+    color: var(--color-error);
+    border-color: color-mix(in srgb, var(--color-error) 30%, var(--color-outline-variant));
   }
-  .muted {
+  .btn.destructive:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  }
+
+  .runs-section {
+    border: 1px solid var(--color-outline-variant);
+    border-radius: var(--radius-md);
+    padding: 0.75rem 0.85rem 0.85rem;
+    background: color-mix(in srgb, var(--color-bg-secondary) 50%, transparent);
+  }
+  .runs-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.55rem;
+  }
+  .runs-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
     color: var(--color-text-secondary);
   }
-  .error {
-    margin-top: 0.75rem;
-    padding: 0.5rem;
-    border-radius: 4px;
-    background: var(--color-error-container, #fee);
-    color: var(--color-on-error-container, #900);
-    font-size: 0.8rem;
+  .runs-hint {
+    font-size: 0.68rem;
+    color: var(--color-text-tertiary);
+    font-family: "JetBrains Mono", "SF Mono", monospace;
+  }
+  .empty-runs {
+    margin: 0.5rem 0 0;
+    padding: 0.65rem 0.75rem;
+    border: 1px dashed var(--color-outline-variant);
+    border-radius: var(--radius-sm);
+    font-size: 0.72rem;
+    line-height: 1.5;
+    color: var(--color-text-tertiary);
+    background: color-mix(in srgb, var(--color-bg) 40%, transparent);
+  }
+  .empty-runs strong {
+    color: var(--color-text);
+    font-weight: 600;
+  }
+  .upcoming-list {
+    list-style: none;
+    margin: 0;
+    padding: 0.4rem 0.75rem;
+    display: grid;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+  }
+  .upcoming-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.6rem;
+    color: var(--color-text-secondary);
+  }
+  .upcoming-relative {
+    font-weight: 500;
+    color: var(--color-text);
+  }
+  .upcoming-abs {
+    color: var(--color-text-tertiary);
+    font-family: "JetBrains Mono", "SF Mono", monospace;
+    font-size: 0.7rem;
+  }
+  .muted-label {
+    margin: 0 0 0.25rem;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-tertiary);
+  }
+  .table-wrapper {
+    overflow-x: auto;
   }
   table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.75rem;
-    margin-top: 0.4rem;
+    font-size: 0.72rem;
   }
   th,
   td {
-    padding: 0.25rem 0.4rem;
+    padding: 0.3rem 0.4rem;
     text-align: left;
     border-bottom: 1px solid var(--color-outline-variant);
+    white-space: nowrap;
+  }
+  th {
+    text-transform: uppercase;
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    color: var(--color-text-tertiary);
+    font-weight: 600;
+  }
+  .status-pill {
+    display: inline-block;
+    padding: 0.05rem 0.35rem;
+    border-radius: var(--radius-full);
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: color-mix(in srgb, var(--color-bg-tertiary) 70%, transparent);
+    color: var(--color-text-secondary);
+  }
+  .status-pill[data-status="succeeded"],
+  .status-pill[data-status="success"],
+  .status-pill[data-status="ok"] {
+    background: color-mix(in srgb, var(--color-success) 16%, transparent);
+    color: var(--color-success);
+  }
+  .status-pill[data-status="failed"],
+  .status-pill[data-status="error"] {
+    background: color-mix(in srgb, var(--color-error) 16%, transparent);
+    color: var(--color-error);
+  }
+  .status-pill[data-status^="skipped"],
+  .status-pill[data-status="skip"] {
+    background: color-mix(in srgb, var(--color-warning) 16%, transparent);
+    color: var(--color-warning);
+  }
+  .run-error {
+    max-width: 16rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-text-tertiary);
+  }
+
+  .error {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    padding: 0.5rem 0.65rem;
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--color-error) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-error) 40%, var(--color-outline-variant));
+    color: var(--color-error);
+    font-size: 0.75rem;
+  }
+  :global(.error-icon) {
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+  }
+
+  .job-footer {
+    margin-top: -0.25rem;
+    font-size: 0.65rem;
+    color: var(--color-text-tertiary);
+    font-family: "JetBrains Mono", "SF Mono", monospace;
+  }
+  .job-footer code {
+    font-family: inherit;
+    color: var(--color-text-secondary);
   }
 </style>

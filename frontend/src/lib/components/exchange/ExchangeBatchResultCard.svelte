@@ -372,8 +372,8 @@
     width: 1.875rem;
     height: 1.875rem;
     border-radius: var(--radius-md);
-    color: var(--color-tertiary);
-    background: color-mix(in srgb, var(--color-tertiary) 16%, transparent);
+    color: var(--color-secondary);
+    background: color-mix(in srgb, var(--color-secondary) 16%, transparent);
     flex: 0 0 auto;
   }
 
@@ -401,14 +401,14 @@
   }
 
   .batch-status {
-    border: 1px solid color-mix(in srgb, var(--color-tertiary) 42%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-secondary) 42%, transparent);
     border-radius: var(--radius-full);
     padding: 0.1rem 0.45rem;
     font-size: 0.625rem;
     font-weight: 700;
     text-transform: uppercase;
-    color: var(--color-tertiary);
-    background: color-mix(in srgb, var(--color-tertiary) 10%, transparent);
+    color: var(--color-secondary);
+    background: color-mix(in srgb, var(--color-secondary) 10%, transparent);
   }
 
   .batch-status.failed {
@@ -486,7 +486,7 @@
   .compare-check input {
     width: 0.875rem;
     height: 0.875rem;
-    accent-color: var(--color-tertiary);
+    accent-color: var(--color-secondary);
   }
 
   .batch-tab {
@@ -512,8 +512,8 @@
   }
 
   .batch-tab.active {
-    border-color: color-mix(in srgb, var(--color-tertiary) 44%, var(--color-outline-variant));
-    background: color-mix(in srgb, var(--color-tertiary) 12%, transparent);
+    border-color: color-mix(in srgb, var(--color-secondary) 44%, var(--color-outline-variant));
+    background: color-mix(in srgb, var(--color-secondary) 12%, transparent);
     color: var(--color-text);
   }
 
@@ -563,8 +563,8 @@
   }
 
   .view-toggle button.active {
-    background: color-mix(in srgb, var(--color-tertiary) 18%, transparent);
-    color: var(--color-tertiary);
+    background: color-mix(in srgb, var(--color-secondary) 18%, transparent);
+    color: var(--color-secondary);
   }
 
   .detail-header {
@@ -654,8 +654,8 @@
   }
 
   .detail-nav button:hover:not(:disabled) {
-    border-color: color-mix(in srgb, var(--color-tertiary) 44%, var(--color-outline-variant));
-    background: color-mix(in srgb, var(--color-tertiary) 12%, transparent);
+    border-color: color-mix(in srgb, var(--color-secondary) 44%, var(--color-outline-variant));
+    background: color-mix(in srgb, var(--color-secondary) 12%, transparent);
   }
 
   .detail-nav button:disabled {
@@ -666,7 +666,7 @@
   .item-status {
     display: inline-flex;
     align-items: center;
-    color: var(--color-tertiary);
+    color: var(--color-secondary);
   }
 
   .item-status.failed {

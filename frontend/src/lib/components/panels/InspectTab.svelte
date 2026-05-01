@@ -49,8 +49,8 @@
   const toolStatusOptions: { value: ToolStatusFilter; label: string; color?: string }[] = [
     { value: "all", label: "All" },
     { value: "pending", label: "Pending", color: "var(--color-warning)" },
-    { value: "executing", label: "Running", color: "var(--color-tertiary)" },
-    { value: "completed", label: "Done", color: "var(--color-tertiary)" },
+    { value: "executing", label: "Running", color: "var(--color-secondary)" },
+    { value: "completed", label: "Done", color: "var(--color-secondary)" },
     { value: "failed", label: "Failed", color: "var(--color-error)" },
   ];
 
@@ -58,7 +58,7 @@
 
   function getEventColor(type: string): string {
     if (type.includes("error") || type.includes("fail")) return "var(--color-error)";
-    if (type.includes("complete") || type.includes("success")) return "var(--color-tertiary)";
+    if (type.includes("complete") || type.includes("success")) return "var(--color-secondary)";
     if (type.includes("start") || type.includes("executing")) return "var(--color-secondary)";
     if (type.includes("pending") || type.includes("queue")) return "var(--color-warning)";
     return "var(--color-text-tertiary)";
@@ -85,8 +85,8 @@
       </div>
 
       <div class="stat-card">
-        <div class="stat-icon bg-[var(--color-tertiary)]/15">
-          <Wrench size={16} class="text-[var(--color-tertiary)]" />
+        <div class="stat-icon bg-[var(--color-secondary)]/15">
+          <Wrench size={16} class="text-[var(--color-secondary)]" />
         </div>
         <div>
           <span class="text-lg font-semibold text-[var(--color-text)]">
@@ -129,18 +129,18 @@
               {/if}
               {#if eventSummary.executingTools > 0}
                 <div class="status-row">
-                  <div class="w-2 h-2 rounded-full bg-[var(--color-tertiary)] animate-pulse"></div>
+                  <div class="w-2 h-2 rounded-full bg-[var(--color-secondary)] animate-pulse"></div>
                   <span class="flex-1 text-xs text-[var(--color-text-secondary)]">Running</span>
-                  <span class="text-xs font-medium text-[var(--color-tertiary)]">
+                  <span class="text-xs font-medium text-[var(--color-secondary)]">
                     {eventSummary.executingTools}
                   </span>
                 </div>
               {/if}
               {#if eventSummary.completedTools > 0}
                 <div class="status-row">
-                  <div class="w-2 h-2 rounded-full bg-[var(--color-tertiary)]"></div>
+                  <div class="w-2 h-2 rounded-full bg-[var(--color-secondary)]"></div>
                   <span class="flex-1 text-xs text-[var(--color-text-secondary)]">Completed</span>
-                  <span class="text-xs font-medium text-[var(--color-tertiary)]">
+                  <span class="text-xs font-medium text-[var(--color-secondary)]">
                     {eventSummary.completedTools}
                   </span>
                 </div>
@@ -215,8 +215,8 @@
       <div class="grid grid-cols-2 gap-2 mb-3">
         <!-- Total Duration -->
         <div class="stat-card">
-          <div class="stat-icon bg-[var(--color-tertiary)]/15">
-            <Clock size={16} class="text-[var(--color-tertiary)]" />
+          <div class="stat-icon bg-[var(--color-secondary)]/15">
+            <Clock size={16} class="text-[var(--color-secondary)]" />
           </div>
           <div>
             <span class="text-lg font-semibold text-[var(--color-text)] tabular-nums">

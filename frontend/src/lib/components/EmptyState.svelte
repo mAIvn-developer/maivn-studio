@@ -39,7 +39,7 @@
   {#if actionLabel && onAction}
     <button
       class="mt-4 px-4 py-2 rounded-lg text-sm font-medium
-             bg-[var(--color-tertiary)] text-[var(--color-on-tertiary)]
+             bg-[var(--color-secondary)] text-[var(--color-on-secondary)]
              hover:bg-[var(--color-accent-hover)] transition-colors"
       onclick={onAction}
     >

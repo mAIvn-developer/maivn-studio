@@ -87,8 +87,8 @@
           </button>
           <button
             class="rounded-lg px-3 py-1.5 text-xs font-medium
-                   bg-[var(--color-tertiary)]/15 text-[var(--color-tertiary)]
-                   hover:bg-[var(--color-tertiary)]/25 transition-colors"
+                   bg-[var(--color-secondary)]/15 text-[var(--color-secondary)]
+                   hover:bg-[var(--color-secondary)]/25 transition-colors"
             onclick={onSelectAll}
             disabled={loading || items.length === 0}
           >
@@ -116,8 +116,8 @@
         {:else if loading}
           <div class="flex items-center justify-center gap-3 py-10">
             <div
-              class="h-8 w-8 rounded-full border-2 border-[var(--color-tertiary)]/30
-                     border-t-[var(--color-tertiary)] animate-spin"
+              class="h-8 w-8 rounded-full border-2 border-[var(--color-secondary)]/30
+                     border-t-[var(--color-secondary)] animate-spin"
             ></div>
             <p class="text-sm text-[var(--color-text-secondary)]">Scanning...</p>
           </div>
@@ -146,7 +146,7 @@
                                flex items-center justify-center"
                       >
                         {#if selectedKeys.has(key)}
-                          <div class="h-3 w-3 rounded-sm bg-[var(--color-tertiary)]"></div>
+                          <div class="h-3 w-3 rounded-sm bg-[var(--color-secondary)]"></div>
                         {/if}
                       </div>
                       <div class="text-sm font-semibold text-[var(--color-text)]">{item.name}</div>
@@ -214,8 +214,8 @@
           </button>
           <button
             class="rounded-lg px-4 py-2 text-sm font-medium
-                   bg-[var(--color-tertiary)] text-[var(--color-on-tertiary)]
-                   hover:bg-[var(--color-tertiary)]/90 transition-colors"
+                   bg-[var(--color-secondary)] text-[var(--color-on-secondary)]
+                   hover:bg-[var(--color-secondary)]/90 transition-colors"
             onclick={onApply}
             disabled={selectedCount === 0 || loading}
           >

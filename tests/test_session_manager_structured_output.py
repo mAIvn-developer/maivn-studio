@@ -353,7 +353,7 @@ async def test_execute_session_uses_default_invocation_metadata_for_structured_o
         swarms=[],
         default_invocation={
             "force_final_tool": True,
-            "metadata": {"allowed_system_tools": []},
+            "system_tools_config": {"allowed_tools": []},
         },
     )
 
@@ -384,7 +384,7 @@ async def test_execute_session_uses_default_invocation_metadata_for_structured_o
     assert session.status == SessionStatus.READY
     invoke_kwargs = executor.event_invocable.last_invoke_kwargs
     assert invoke_kwargs.get("structured_output") is _StructuredPayload
-    assert invoke_kwargs.get("metadata") == {"allowed_system_tools": []}
+    assert invoke_kwargs.get("system_tools_config") == {"allowed_tools": []}
     assert invoke_kwargs.get("force_final_tool") is True
 
 
@@ -415,7 +415,7 @@ async def test_execute_session_preserves_metadata_on_legacy_structured_output_pa
             "invocation_kwargs": {
                 "force_final_tool": True,
                 "targeted_tools": ["alpha_tool"],
-                "metadata": {"allowed_system_tools": []},
+                "system_tools_config": {"allowed_tools": []},
                 "allow_private_in_system_tools": True,
             },
         },
@@ -434,7 +434,7 @@ async def test_execute_session_preserves_metadata_on_legacy_structured_output_pa
     assert session.status == SessionStatus.READY
     invoke_kwargs = executor.structured_invocable.last_invoke_kwargs
     assert invoke_kwargs.get("force_final_tool") is True
-    assert invoke_kwargs.get("metadata") == {"allowed_system_tools": []}
+    assert invoke_kwargs.get("system_tools_config") == {"allowed_tools": []}
     assert invoke_kwargs.get("allow_private_in_system_tools") is True
     assert "targeted_tools" not in invoke_kwargs
 

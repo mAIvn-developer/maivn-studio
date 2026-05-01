@@ -443,8 +443,8 @@
   }
 
   .settings-card.dirty {
-    border-color: color-mix(in srgb, var(--color-tertiary) 45%, var(--color-outline-variant));
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-tertiary) 18%, transparent);
+    border-color: color-mix(in srgb, var(--color-secondary) 45%, var(--color-outline-variant));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-secondary) 18%, transparent);
   }
 
   .settings-header {
@@ -522,8 +522,8 @@
     font-size: 0.625rem;
     font-weight: 600;
     letter-spacing: 0.03em;
-    color: var(--color-tertiary);
-    background: color-mix(in srgb, var(--color-tertiary) 16%, transparent);
+    color: var(--color-secondary);
+    background: color-mix(in srgb, var(--color-secondary) 16%, transparent);
   }
 
   :global(.expand-icon) {

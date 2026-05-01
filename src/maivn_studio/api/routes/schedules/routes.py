@@ -5,7 +5,9 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, HTTPException
+from sse_starlette.sse import EventSourceResponse
 
+from maivn_studio.services.event_bridge import create_event_bridge, get_event_bridge
 from maivn_studio.services.schedules import (
     ScheduleConfig,
     ScheduleJobSummary,
@@ -72,3 +74,39 @@ async def trigger_now(demo_id: str) -> ScheduleJobSummary:
 @router.delete("/{demo_id}", status_code=204)
 async def remove_job(demo_id: str) -> None:
     get_schedule_manager().remove(demo_id)
+
+
+@router.get("/{demo_id}/fires/{fire_id}/events")
+async def get_fire_events(
+    demo_id: str,
+    fire_id: str,
+    last_event_id: str | None = None,
+) -> EventSourceResponse:
+    """Stream the same SSE events a chat session emits, but for a single
+    scheduled fire. The event bridge is created lazily by the schedule
+    manager's on_fire callback; if a frontend connects before that callback
+    runs we still create an empty bridge so reconnects (with last_event_id)
+    can resume cleanly once events start landing.
+    """
+    summary = get_schedule_manager().get(demo_id)
+    if summary is None:
+        raise HTTPException(status_code=404, detail=f"No schedule for demo {demo_id}")
+
+    record = next((r for r in summary.history if r.fire_id == fire_id), None)
+    if record is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Fire {fire_id} not found for demo {demo_id}",
+        )
+
+    if not record.event_session_id:
+        raise HTTPException(
+            status_code=409,
+            detail="Fire has not started executing yet — no event stream available",
+        )
+
+    bridge = get_event_bridge(record.event_session_id)
+    if bridge is None:
+        bridge = create_event_bridge(record.event_session_id)
+
+    return EventSourceResponse(bridge.generate_sse(last_event_id=last_event_id))
