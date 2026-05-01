@@ -4,23 +4,42 @@ build-backend = "hatchling.build"
 
 [project]
 name = "maivn-studio"
-version = "0.1.0"
-description = "UI/UX developer tool for MAIVN SDK demos"
+dynamic = ["version"]
+description = "Local developer studio for discovering, running, and debugging mAIvn SDK apps"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { file = "LICENSE" }
+license = "LicenseRef-BSL-1.1"
+license-files = ["LICENSE"]
 authors = [{ name = "Chad Heathcote", email = "developer@maivn.io" }]
-keywords = ["maivn", "studio", "developer-tool", "fastapi"]
+keywords = ["maivn", "studio", "developer-tool", "fastapi", "ai", "agents"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: Other/Proprietary License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
 dependencies = [
     # Workspace packages
-    "maivn>=0.1.0,<0.2.0",
-    "maivn-shared>=0.1.0,<0.2.0",
+    "maivn>=0.2.0,<0.3.0",
+    "maivn-shared>=0.2.0,<0.3.0",
     # Studio API runtime
     "fastapi>=0.136.1",
     "pydantic>=2.13.3",
     "sse-starlette>=2.1.3",
     "uvicorn[standard]>=0.46.0",
 ]
+
+[project.urls]
+Homepage = "https://maivn.io"
+Repository = "https://github.com/mAIvn-developer/maivn-studio"
+Issues = "https://github.com/mAIvn-developer/maivn-studio/issues"
+Changelog = "https://github.com/mAIvn-developer/maivn-studio/blob/master/CHANGELOG.md"
 
 [dependency-groups]
 dev = [
@@ -33,11 +52,15 @@ dev = [
 [project.scripts]
 maivn-studio = "maivn_studio.main:main"
 
+[tool.hatch.version]
+path = "src/maivn_studio/__version__.py"
+
 [tool.hatch.build]
 artifacts = ["src/maivn_studio/static/**"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/maivn_studio"]
+include = ["src/maivn_studio/py.typed"]
 
 [tool.ruff]
 target-version = "py310"
