@@ -26,7 +26,7 @@
 {#if memoryIndexedToast}
   <div
     class="fixed right-4 z-40 animate-in overflow-hidden rounded-xl shadow-lg
-           bg-[var(--color-tertiary-container)] border border-[var(--color-secondary)]/25"
+           bg-[var(--color-secondary-container)] border border-[var(--color-secondary)]/25"
     style="bottom: {error ? '6.5rem' : '1rem'}; min-width: 320px; max-width: 480px;"
   >
     <div class="flex items-start gap-3 p-4">

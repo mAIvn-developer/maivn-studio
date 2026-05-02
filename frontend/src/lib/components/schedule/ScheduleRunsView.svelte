@@ -203,9 +203,9 @@
     flex-direction: column;
     gap: 0.55rem;
     padding: 0.6rem 0.75rem 0.75rem;
-    border: 1px solid color-mix(in srgb, var(--color-tertiary) 28%, var(--color-outline-variant));
+    border: 1px solid color-mix(in srgb, var(--color-secondary) 28%, var(--color-outline-variant));
     border-radius: var(--radius-lg);
-    background: color-mix(in srgb, var(--color-tertiary) 6%, transparent);
+    background: color-mix(in srgb, var(--color-secondary) 6%, transparent);
   }
 
   .runs-shell-header {
@@ -223,7 +223,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: var(--color-tertiary);
+    color: var(--color-secondary);
   }
 
   .runs-shell-count {
@@ -241,9 +241,9 @@
   /* Ghost card for the next-up run, before any fire has actually started.
      Lighter and dashed to read as "preview, not yet a run". */
   .upcoming-card {
-    border: 1px dashed color-mix(in srgb, var(--color-tertiary) 40%, var(--color-outline-variant));
+    border: 1px dashed color-mix(in srgb, var(--color-secondary) 40%, var(--color-outline-variant));
     border-radius: var(--radius-lg);
-    background: color-mix(in srgb, var(--color-tertiary) 4%, transparent);
+    background: color-mix(in srgb, var(--color-secondary) 4%, transparent);
   }
 
   .upcoming-header {
@@ -268,7 +268,7 @@
 
   .upcoming-countdown {
     font-variant-numeric: tabular-nums;
-    color: var(--color-tertiary);
+    color: var(--color-secondary);
     font-weight: 600;
   }
 
@@ -280,7 +280,7 @@
 
   :global(.upcoming-spinner) {
     animation: upcoming-spin 1s linear infinite;
-    color: var(--color-tertiary);
+    color: var(--color-secondary);
   }
 
   @keyframes upcoming-spin {

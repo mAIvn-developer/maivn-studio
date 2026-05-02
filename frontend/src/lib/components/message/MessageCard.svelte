@@ -285,7 +285,7 @@
   .assistant-message {
     background: linear-gradient(
       135deg,
-      color-mix(in srgb, var(--color-tertiary-container) 80%, var(--color-bg-secondary)) 0%,
+      color-mix(in srgb, var(--color-secondary-container) 80%, var(--color-bg-secondary)) 0%,
       color-mix(in srgb, var(--color-secondary) 20%, var(--color-bg-secondary)) 100%
     );
     border-color: color-mix(in srgb, var(--color-secondary) 30%, transparent);
@@ -327,14 +327,11 @@
     color: var(--color-text-secondary);
   }
 
-  /* Cron-triggered card treatment. Uses tertiary (the warm pink/lavender) so
-     scheduled runs read as "different from a user-typed turn" without
-     fighting the cyan secondary that drives most accents. */
   .message-card.scheduled {
-    border: 1px solid color-mix(in srgb, var(--color-tertiary) 45%, var(--color-outline-variant));
+    border: 1px solid color-mix(in srgb, var(--color-secondary) 45%, var(--color-outline-variant));
     box-shadow:
-      0 0 0 1px color-mix(in srgb, var(--color-tertiary) 18%, transparent),
-      var(--shadow-glow-tertiary);
+      0 0 0 1px color-mix(in srgb, var(--color-secondary) 18%, transparent),
+      var(--shadow-glow-secondary);
     padding-top: 1.4rem;
   }
 
@@ -352,8 +349,8 @@
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--color-on-tertiary);
-    background: var(--color-tertiary);
+    color: var(--color-on-secondary);
+    background: var(--color-secondary);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
   }
 </style>

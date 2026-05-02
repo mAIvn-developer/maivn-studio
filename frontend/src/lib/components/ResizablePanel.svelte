@@ -161,7 +161,7 @@
     height: 64px;
     width: 4px;
     background-color: var(--color-secondary);
-    box-shadow: var(--shadow-glow-tertiary);
+    box-shadow: var(--shadow-glow-secondary);
   }
 
   /* Focus visible ring */
@@ -170,7 +170,7 @@
   }
 
   .resize-handle:focus-visible .resize-indicator {
-    box-shadow: var(--shadow-glow-tertiary);
+    box-shadow: var(--shadow-glow-secondary);
   }
 
   /* Border line on edge */

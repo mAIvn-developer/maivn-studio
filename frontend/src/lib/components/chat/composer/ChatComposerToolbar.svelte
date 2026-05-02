@@ -217,8 +217,8 @@
   }
 
   .composer-mode-tab.active:nth-of-type(2) {
-    color: var(--color-on-tertiary);
-    background: var(--color-tertiary);
+    color: var(--color-on-secondary);
+    background: var(--color-secondary);
   }
 
   .composer-mode-tab:disabled {

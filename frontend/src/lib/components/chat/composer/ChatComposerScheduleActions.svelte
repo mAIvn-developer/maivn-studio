@@ -126,15 +126,15 @@
     cursor: not-allowed;
   }
   .btn.primary {
-    background: var(--color-tertiary);
-    color: var(--color-on-tertiary);
+    background: var(--color-secondary);
+    color: var(--color-on-secondary);
     border-color: transparent;
   }
   .btn.primary:hover:not(:disabled) {
     filter: brightness(1.05);
   }
   .btn.primary.dirty {
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-tertiary) 35%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-secondary) 35%, transparent);
   }
   .btn.destructive {
     color: var(--color-error);

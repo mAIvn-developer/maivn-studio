@@ -23,7 +23,7 @@
     <div
       class="absolute inset-0 flex items-center justify-center opacity-0 peer-checked:opacity-100 transition-opacity"
     >
-      <Check size={14} strokeWidth={3} class="text-[var(--color-on-tertiary)]" />
+      <Check size={14} strokeWidth={3} class="text-[var(--color-on-secondary)]" />
     </div>
   </div>
   <span class="text-sm text-[var(--color-text-secondary)] group-hover:text-[var(--color-text)]">
