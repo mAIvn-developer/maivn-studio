@@ -57,7 +57,7 @@
 
   .save-btn {
     background: var(--color-secondary);
-    color: var(--color-on-tertiary);
+    color: var(--color-on-secondary);
     border: 1px solid color-mix(in srgb, var(--color-secondary) 74%, white);
   }
 

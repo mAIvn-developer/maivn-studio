@@ -169,8 +169,8 @@
   }
 
   .run-card.running {
-    border-color: color-mix(in srgb, var(--color-tertiary) 50%, var(--color-outline-variant));
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-tertiary) 18%, transparent);
+    border-color: color-mix(in srgb, var(--color-secondary) 50%, var(--color-outline-variant));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-secondary) 18%, transparent);
   }
 
   .run-card[data-status="failed"] {
@@ -232,8 +232,8 @@
   }
   .run-status-pill[data-status="running"],
   .run-status-pill[data-status="pending"] {
-    background: color-mix(in srgb, var(--color-tertiary) 22%, transparent);
-    color: var(--color-tertiary);
+    background: color-mix(in srgb, var(--color-secondary) 22%, transparent);
+    color: var(--color-secondary);
   }
 
   .run-time {
@@ -258,7 +258,7 @@
 
   :global(.run-spinner) {
     animation: run-spin 1s linear infinite;
-    color: var(--color-tertiary);
+    color: var(--color-secondary);
   }
 
   @keyframes run-spin {

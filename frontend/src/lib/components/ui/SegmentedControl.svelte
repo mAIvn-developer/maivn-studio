@@ -20,7 +20,7 @@
     <button
       class="rounded-lg px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-center transition-colors"
       class:bg-[var(--color-secondary)]={value === option.value}
-      class:text-[var(--color-on-tertiary)]={value === option.value}
+      class:text-[var(--color-on-secondary)]={value === option.value}
       class:bg-[var(--color-bg-tertiary)]={value !== option.value}
       class:hover:bg-[var(--color-surface-variant)]={value !== option.value}
       style={value !== option.value && option.color

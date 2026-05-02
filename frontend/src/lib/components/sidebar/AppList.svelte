@@ -128,7 +128,7 @@
         class="w-full rounded-xl border border-[var(--color-outline-variant)] bg-[var(--color-bg-secondary)]/88 py-2.5 pl-10 pr-8 text-sm
                placeholder-[var(--color-text-tertiary)] text-[var(--color-text)]
                focus:outline-none focus:border-[var(--color-secondary)]/50
-               focus:shadow-[var(--shadow-glow-tertiary)]
+               focus:shadow-[var(--shadow-glow-secondary)]
                transition-all duration-200"
         onkeydown={handleKeyDown}
       />

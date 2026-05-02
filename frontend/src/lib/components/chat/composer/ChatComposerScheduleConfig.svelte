@@ -502,9 +502,9 @@
     gap: 0.6rem;
     padding: 0.75rem 0.85rem;
     margin-bottom: 0.75rem;
-    border: 1px solid color-mix(in srgb, var(--color-tertiary) 30%, var(--color-outline-variant));
+    border: 1px solid color-mix(in srgb, var(--color-secondary) 30%, var(--color-outline-variant));
     border-radius: var(--radius-lg);
-    background: color-mix(in srgb, var(--color-tertiary) 4%, var(--color-bg-secondary));
+    background: color-mix(in srgb, var(--color-secondary) 4%, var(--color-bg-secondary));
     color: var(--color-text);
   }
   .section {
@@ -547,9 +547,9 @@
     color: var(--color-text);
   }
   .preset-btn.active {
-    border-color: color-mix(in srgb, var(--color-tertiary) 50%, var(--color-outline-variant));
-    background: color-mix(in srgb, var(--color-tertiary) 18%, var(--color-bg-secondary));
-    color: var(--color-tertiary);
+    border-color: color-mix(in srgb, var(--color-secondary) 50%, var(--color-outline-variant));
+    background: color-mix(in srgb, var(--color-secondary) 18%, var(--color-bg-secondary));
+    color: var(--color-secondary);
   }
   .preset-label {
     font-size: 0.78rem;
@@ -560,13 +560,13 @@
     color: var(--color-text-tertiary);
   }
   .preset-btn.active .preset-desc {
-    color: color-mix(in srgb, var(--color-tertiary) 80%, var(--color-text-tertiary));
+    color: color-mix(in srgb, var(--color-secondary) 80%, var(--color-text-tertiary));
   }
   .custom-block {
     padding: 0.6rem 0.7rem;
-    border: 1px solid color-mix(in srgb, var(--color-tertiary) 35%, var(--color-outline-variant));
+    border: 1px solid color-mix(in srgb, var(--color-secondary) 35%, var(--color-outline-variant));
     border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--color-tertiary) 6%, transparent);
+    background: color-mix(in srgb, var(--color-secondary) 6%, transparent);
   }
   .grid {
     display: grid;
@@ -623,8 +623,8 @@
     font-size: 0.65rem;
     padding: 0.1rem 0.45rem;
     border-radius: var(--radius-full);
-    background: color-mix(in srgb, var(--color-tertiary) 18%, transparent);
-    color: var(--color-tertiary);
+    background: color-mix(in srgb, var(--color-secondary) 18%, transparent);
+    color: var(--color-secondary);
     font-weight: 600;
   }
   .disclosure {
