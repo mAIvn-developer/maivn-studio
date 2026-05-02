@@ -89,8 +89,10 @@ def main() -> None:
     print(f"[STARTUP] MAIVN Studio v{config.studio.version}")
     print(f"[CONFIG] Host: {host}, Port: {port}, Debug: {debug}")
 
-    # Auto-launch browser after short delay to let server start
-    url = f"http://{host}:{port}"
+    # Auto-launch browser after short delay to let server start.
+    # When binding all interfaces, use loopback for the local browser target.
+    browser_host = "127.0.0.1" if host in {"0.0.0.0", "::"} else host  # nosec B104
+    url = f"http://{browser_host}:{port}"
     if not args.no_browser:
 
         def open_browser() -> None:
@@ -100,7 +102,7 @@ def main() -> None:
             # Poll health endpoint until server is ready (up to 15s)
             for _ in range(30):
                 try:
-                    urllib.request.urlopen(f"{url}/health", timeout=0.5)
+                    urllib.request.urlopen(f"{url}/health", timeout=0.5)  # nosec B310
                     break
                 except Exception:
                     time.sleep(0.5)

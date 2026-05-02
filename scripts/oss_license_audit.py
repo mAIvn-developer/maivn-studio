@@ -229,7 +229,8 @@ def fetch_package_metadata(package_name: str, requirement_line: str) -> tuple[st
         if version
         else f"https://pypi.org/pypi/{package_name}/json"
     )
-    with urllib.request.urlopen(url, timeout=20) as response:
+    # Fixed HTTPS PyPI API URL; package_name only fills the package path.
+    with urllib.request.urlopen(url, timeout=20) as response:  # nosec B310
         payload = json.load(response)
 
     info = payload["info"]

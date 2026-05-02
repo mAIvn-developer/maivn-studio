@@ -2,6 +2,10 @@ export function escapeHtml(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+function escapeHtmlAttribute(text: string): string {
+  return escapeHtml(text).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 const PRIVATE_DATA_BADGE = '<span class="private-data-badge">\u{1F6E1} $1</span>';
 
 const PRIVATE_DATA_RE = /\{_\{(?:&quot;)?([^}"]+?)(?:&quot;)?\}_\}/g;
@@ -30,6 +34,49 @@ export function decodeHtml(text: string): string {
     .replace(/&gt;/g, ">")
     .replace(/&lt;/g, "<")
     .replace(/&amp;/g, "&");
+}
+
+const SAFE_ABSOLUTE_LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:", "tel:"]);
+const MARKDOWN_LINK_BASE = "https://maivn.local";
+const UNSAFE_MARKDOWN_HREF_CHARS = new Set(['"', "'", "`", "\\"]);
+
+function hasUnsafeMarkdownHrefCharacter(value: string): boolean {
+  for (const char of value) {
+    const code = char.charCodeAt(0);
+    if (code <= 31 || code === 127 || /\s/.test(char) || UNSAFE_MARKDOWN_HREF_CHARS.has(char)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function sanitizeMarkdownHref(rawHref: string): string | null {
+  const decodedHref = decodeHtml(rawHref).trim();
+  if (!decodedHref || hasUnsafeMarkdownHrefCharacter(decodedHref)) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(decodedHref, MARKDOWN_LINK_BASE);
+    if (parsed.origin === MARKDOWN_LINK_BASE) {
+      return escapeHtmlAttribute(decodedHref);
+    }
+    if (SAFE_ABSOLUTE_LINK_PROTOCOLS.has(parsed.protocol)) {
+      return escapeHtmlAttribute(decodedHref);
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function renderMarkdownLink(_match: string, label: string, rawHref: string): string {
+  const href = sanitizeMarkdownHref(rawHref);
+  if (href === null) {
+    return label;
+  }
+  return `<a href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`;
 }
 
 function splitTableRow(line: string): string[] {
@@ -294,10 +341,7 @@ function formatMarkdownText(text: string): string {
   html = replaceUnderscoreDelimited(html, "_", "em");
 
   html = html
-    .replace(
-      /\[([^\]]+)\]\(([^)]+)\)/g,
-      '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
-    )
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, renderMarkdownLink)
     .replace(/\n\n/g, "</p><p>")
     .replace(/\n/g, "<br>");
 
