@@ -35,38 +35,6 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Check out maivn
-        uses: actions/checkout@v4
-        with:
-          path: .deps/libraries/maivn
-          repository: ${{ vars.MAIVN_REPO || format('{0}/maivn', github.repository_owner) }}
-          ref: ${{ vars.MAIVN_REF || 'master' }}
-          token: ${{ secrets.MAIVN_GITHUB_SUBMODULE_TOKEN || github.token }}
-
-      - name: Check out maivn-shared
-        uses: actions/checkout@v4
-        with:
-          path: .deps/libraries/maivn-shared
-          repository: ${{ vars.MAIVN_SHARED_REPO || format('{0}/maivn-shared', github.repository_owner) }}
-          ref: ${{ vars.MAIVN_SHARED_REF || 'master' }}
-          token: ${{ secrets.MAIVN_GITHUB_SUBMODULE_TOKEN || github.token }}
-
-      - name: Inject local source overrides
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          pyproject = Path("pyproject.toml")
-          text = pyproject.read_text(encoding="utf-8")
-          marker = (
-              "\n[tool.uv.sources]\n"
-              "maivn = { path = \".deps/libraries/maivn\", editable = true }\n"
-              "maivn-shared = { path = \".deps/libraries/maivn-shared\", editable = true }\n"
-          )
-          if "[tool.uv.sources]" not in text:
-              pyproject.write_text(text.rstrip() + marker, encoding="utf-8")
-          PY
-
       - name: Sync environment
         run: uv sync --frozen
 
