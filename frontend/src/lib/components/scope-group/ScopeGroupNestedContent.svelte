@@ -49,7 +49,7 @@
     : 'rgba(0, 0, 0, 0.05)'}"
 >
   {#if scopeType === "swarm" && nestedAgents.length > 0}
-    {#each nestedAgents as agent (agent.agentName)}
+    {#each nestedAgents as agent (agent.invocationId)}
       <Self
         scopeType="agent"
         scopeName={agent.agentName}

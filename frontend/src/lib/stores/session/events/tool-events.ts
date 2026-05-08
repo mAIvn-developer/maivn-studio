@@ -9,21 +9,44 @@ function resolveExistingToolCard(
   rawToolId: string,
   toolType: ToolType,
   agentName: string | undefined,
+  status: ToolCardStatus,
 ): { toolId: string; card: ToolCard | undefined } {
-  let toolId = rawToolId;
-  let card = toolCards.get(toolId);
+  // First: exact tool_id match. Each unique tool_id is its own card so that
+  // multiple invocations of the same SDK agent render as separate cards.
+  const direct = toolCards.get(rawToolId);
+  if (direct) {
+    return { toolId: rawToolId, card: direct };
+  }
 
-  if (!card && toolType === "agent" && agentName) {
+  // Lifecycle-gated fallback for agent-typed cards: a swarm_agent action
+  // emits TWO different events that describe the SAME action — a tool_event
+  // (tool.id = "swarm_tool_<agent>_<random>") and an agent_assignment
+  // (assignment_id = "<action_uuid>"). Without this fallback the studio
+  // would render two cards per action.
+  //
+  // Merge into the most-recent agent-typed card with the same agentName, but
+  // ONLY when that card is still in flight. If the previous card has
+  // completed/failed and this event is "executing", a NEW action is starting
+  // — create a fresh card so supervisor_loop redeployments stay visible as
+  // separate cards.
+  if (toolType === "agent" && agentName) {
+    let lastMatching: { id: string; card: ToolCard } | undefined;
     for (const [existingId, existing] of toolCards) {
       if (existing.toolType === "agent" && existing.agentName === agentName) {
-        toolId = existingId;
-        card = existing;
-        break;
+        lastMatching = { id: existingId, card: existing };
+      }
+    }
+    if (lastMatching) {
+      const lastFinished =
+        lastMatching.card.status === "completed" || lastMatching.card.status === "failed";
+      const startingNew = status === "executing";
+      if (!(lastFinished && startingNew)) {
+        return { toolId: lastMatching.id, card: lastMatching.card };
       }
     }
   }
 
-  return { toolId, card };
+  return { toolId: rawToolId, card: undefined };
 }
 
 function createToolCard(
@@ -120,6 +143,7 @@ export function handleToolEvent(ctx: SessionStoreContext, eventData: Record<stri
     rawToolId,
     toolType,
     agentName,
+    status,
   );
   let card = existingCard;
 

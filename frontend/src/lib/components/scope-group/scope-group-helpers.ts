@@ -2,7 +2,14 @@ import type { PhaseChipData, ToolCard as ToolCardType } from "$lib/types";
 
 export type ScopeType = "agent" | "swarm";
 
+/**
+ * One agent invocation. `invocationId` is the agent tool card's unique
+ * tool_id, so a swarm that redeploys the same agent multiple times produces
+ * separate NestedAgent entries (and therefore separate cards) keyed by
+ * invocation rather than by agent name.
+ */
 export interface NestedAgent {
+  invocationId: string;
   agentName: string;
   agentId?: string;
   tools: ToolCardType[];
