@@ -1,6 +1,15 @@
 import type { PhaseChipData, ToolCard as ToolCardType } from "$lib/types";
 
+// MARK: Types
+
+/**
+ * One agent invocation = one card in the UI. `invocationId` is the agent
+ * tool card's unique tool_id (server-minted UUID per swarm action), so a
+ * supervisor_loop that redeploys the same agent multiple times produces
+ * multiple NestedAgent entries that render as separate cards.
+ */
 export type NestedAgent = {
+  invocationId: string;
   agentName: string;
   agentId?: string;
   tools: ToolCardType[];
@@ -10,9 +19,19 @@ export type ScopeGroup = {
   type: "swarm" | "agent";
   name: string;
   id?: string;
+  // For swarm groups: tools that belong to the swarm root (not to any specific
+  // agent invocation). For agent groups: the invocation's tools (including its
+  // own agent-typed card; nested non-agent tools are filtered for display via
+  // getDisplayTools).
   tools: ToolCardType[];
   nestedAgents: NestedAgent[];
+  // For agent-typed groups, this is the agent card's unique tool_id so the
+  // Svelte {#each} can key cards by invocation rather than by agent name (the
+  // latter collapses repeated invocations of the same agent into one card).
+  invocationId?: string;
 };
+
+// MARK: Phase Chip Helpers
 
 function normalizeScopePart(value: string | undefined): string | undefined {
   if (typeof value !== "string") return undefined;
@@ -120,106 +139,191 @@ function getLatestScopedPhaseChip(
   return null;
 }
 
+// MARK: Invocation Grouping
+
+/**
+ * Per-invocation scope: an agent's tool card plus every nested non-agent tool
+ * that ran inside that invocation's session.
+ */
+type InvocationScope = {
+  invocationId: string;
+  agentName: string;
+  agentId?: string;
+  swarmName?: string;
+  tools: ToolCardType[];
+};
+
+/**
+ * Build scope groups by walking tool cards in chronological order so each
+ * agent invocation card opens a fresh InvocationScope. Subsequent non-agent
+ * tools with matching agentName attach to the most recent open scope for
+ * that name.
+ *
+ * Why this matters: the prior implementation grouped by agentName, so a
+ * supervisor_loop that redeploys `coding_agent` three times merged all three
+ * runs into one card. Each invocation now has its own NestedAgent (or
+ * top-level "agent" ScopeGroup), keyed by the agent card's unique tool_id.
+ */
 export function buildScopeGroups(toolCards: ToolCardType[]): ScopeGroup[] {
   if (toolCards.length === 0) {
     return [];
   }
 
-  const result: ScopeGroup[] = [];
-  const swarms = new Map<
-    string,
-    {
-      tools: ToolCardType[];
-      agents: Map<string, { agentId?: string; tools: ToolCardType[] }>;
-    }
-  >();
-  const standaloneAgents = new Map<string, { agentId?: string; tools: ToolCardType[] }>();
+  // Per-swarm: ordered list of agent invocations seen, plus swarm-root tools
+  // (e.g., the swarm's own progress tools that aren't tied to any agent).
+  const swarmRootTools = new Map<string, ToolCardType[]>();
+  const swarmInvocations = new Map<string, InvocationScope[]>();
+  const standaloneInvocations: InvocationScope[] = [];
+
+  // The most recent open invocation per (swarm, agent_name) key. Nested
+  // non-agent tools route to the matching open scope so a tool emitted
+  // during the second invocation of `coding_agent` lands in the second
+  // card, not the first.
+  const openInvocationByKey = new Map<string, InvocationScope>();
+  const invocationKeyFor = (swarmName: string | undefined, agentName: string): string =>
+    `${swarmName ?? ""}::${agentName}`;
 
   for (const tool of toolCards) {
     const swarmName = tool.swarmName;
     const agentName = tool.agentName;
 
-    if (swarmName) {
-      let swarm = swarms.get(swarmName);
-      if (!swarm) {
-        swarm = { tools: [], agents: new Map() };
-        swarms.set(swarmName, swarm);
-      }
+    if (tool.toolType === "agent" && agentName) {
+      // A new invocation card. Always open a fresh scope — each agent tool
+      // card is its own invocation, even if the agent name repeats.
+      const scope: InvocationScope = {
+        invocationId: tool.toolId,
+        agentName,
+        agentId: extractAgentId(tool),
+        swarmName,
+        tools: [tool],
+      };
 
-      if (agentName) {
-        let agentScope = swarm.agents.get(agentName);
-        if (!agentScope) {
-          agentScope = { tools: [] };
-          swarm.agents.set(agentName, agentScope);
+      if (swarmName) {
+        let invocations = swarmInvocations.get(swarmName);
+        if (!invocations) {
+          invocations = [];
+          swarmInvocations.set(swarmName, invocations);
         }
-        if (!agentScope.agentId) {
-          const agentId = extractAgentId(tool);
-          if (agentId) {
-            agentScope.agentId = agentId;
-          }
-        }
-        agentScope.tools.push(tool);
+        invocations.push(scope);
       } else {
-        swarm.tools.push(tool);
+        standaloneInvocations.push(scope);
       }
-    } else if (agentName) {
-      let agentScope = standaloneAgents.get(agentName);
-      if (!agentScope) {
-        agentScope = { tools: [] };
-        standaloneAgents.set(agentName, agentScope);
+      openInvocationByKey.set(invocationKeyFor(swarmName, agentName), scope);
+      continue;
+    }
+
+    if (agentName) {
+      const scope = openInvocationByKey.get(invocationKeyFor(swarmName, agentName));
+      if (scope) {
+        scope.tools.push(tool);
+        continue;
       }
-      if (!agentScope.agentId) {
-        const agentId = extractAgentId(tool);
-        if (agentId) {
-          agentScope.agentId = agentId;
-        }
+      // No anchor card for this agent yet. For a standalone agent run (no
+      // swarm) the server doesn't emit a `toolType="agent"` tool_event —
+      // those only fire for swarm dispatches. To keep the agent's tool
+      // cards visible we synthesize an InvocationScope keyed by agent name
+      // and attach the tool to it. Subsequent tools for the same agent
+      // will hit `openInvocationByKey` above and merge into this scope.
+      if (!swarmName) {
+        const syntheticInvocationId = `agent:${agentName}`;
+        const synthetic: InvocationScope = {
+          invocationId: syntheticInvocationId,
+          agentName,
+          // No anchor card means no agent_id arg to extract — leave undefined.
+          swarmName: undefined,
+          tools: [tool],
+        };
+        standaloneInvocations.push(synthetic);
+        openInvocationByKey.set(invocationKeyFor(undefined, agentName), synthetic);
+        continue;
       }
-      agentScope.tools.push(tool);
+      // Inside a swarm but no anchor card matched. Fall through to swarm
+      // root tools so the tool is preserved at the swarm level.
+    }
+
+    if (swarmName) {
+      let rootTools = swarmRootTools.get(swarmName);
+      if (!rootTools) {
+        rootTools = [];
+        swarmRootTools.set(swarmName, rootTools);
+      }
+      rootTools.push(tool);
     }
   }
 
-  const processedSwarms = new Set<string>();
-  const processedAgents = new Set<string>();
+  // Build a tool_id -> InvocationScope index so the second pass can find
+  // the owning scope of any tool, including non-agent tools that landed in
+  // a SYNTHETIC standalone scope (created above when there's no
+  // toolType="agent" anchor card — typical for non-swarm runs where the
+  // server only emits func-typed tool_events).
+  const scopeByToolId = new Map<string, InvocationScope>();
+  for (const swarmList of swarmInvocations.values()) {
+    for (const scope of swarmList) {
+      for (const owned of scope.tools) {
+        scopeByToolId.set(owned.toolId, scope);
+      }
+    }
+  }
+  for (const scope of standaloneInvocations) {
+    for (const owned of scope.tools) {
+      scopeByToolId.set(owned.toolId, scope);
+    }
+  }
+
+  // Emit ScopeGroups in the order swarms / standalone-agent invocations
+  // first appear so the chat flow stays chronological.
+  const result: ScopeGroup[] = [];
+  const seenSwarms = new Set<string>();
+  const emittedInvocationIds = new Set<string>();
 
   for (const tool of toolCards) {
     const swarmName = tool.swarmName;
-    const agentName = tool.agentName;
 
-    if (swarmName && !processedSwarms.has(swarmName)) {
-      const swarm = swarms.get(swarmName)!;
-      const nestedAgents: NestedAgent[] = [];
-
-      for (const [name, agentScope] of swarm.agents) {
-        nestedAgents.push({
-          agentName: name,
-          agentId: agentScope.agentId,
-          tools: agentScope.tools,
-        });
-      }
-
+    if (swarmName && !seenSwarms.has(swarmName)) {
+      const invocations = swarmInvocations.get(swarmName) ?? [];
       result.push({
         type: "swarm",
         name: swarmName,
         id: swarmName,
-        tools: swarm.tools,
-        nestedAgents,
+        tools: swarmRootTools.get(swarmName) ?? [],
+        nestedAgents: invocations.map((scope) => ({
+          invocationId: scope.invocationId,
+          agentName: scope.agentName,
+          agentId: scope.agentId,
+          tools: scope.tools,
+        })),
       });
-      processedSwarms.add(swarmName);
-    } else if (!swarmName && agentName && !processedAgents.has(agentName)) {
-      const agentScope = standaloneAgents.get(agentName)!;
-      result.push({
-        type: "agent",
-        name: agentName,
-        id: agentScope.agentId,
-        tools: agentScope.tools,
-        nestedAgents: [],
-      });
-      processedAgents.add(agentName);
+      seenSwarms.add(swarmName);
+      continue;
     }
+
+    if (swarmName) {
+      // Tool already accounted for via the swarm group emitted on first
+      // sighting above.
+      continue;
+    }
+
+    // Standalone path: emit the owning scope (real or synthetic) the first
+    // time any of its tools appears in the chat flow.
+    const ownerScope = scopeByToolId.get(tool.toolId);
+    if (!ownerScope || emittedInvocationIds.has(ownerScope.invocationId)) {
+      continue;
+    }
+    result.push({
+      type: "agent",
+      name: ownerScope.agentName,
+      id: ownerScope.agentId,
+      invocationId: ownerScope.invocationId,
+      tools: ownerScope.tools,
+      nestedAgents: [],
+    });
+    emittedInvocationIds.add(ownerScope.invocationId);
   }
 
   return result;
 }
+
+// MARK: Phase Chip Resolution
 
 export function resolveScopePhaseChips(
   group: ScopeGroup,

@@ -33,17 +33,50 @@ export function handleAgentAssignment(
     (eventData.assignment_id as string | undefined) ??
     "";
   if (!assignmentId) {
-    assignmentId = `agent:${agentName}`;
+    // Defensive: server should always supply a unique action_id per swarm
+    // invocation, but if it ever omits one we mint a per-event UUID rather
+    // than a name-based key. A name-based fallback would collapse every
+    // invocation of the same SDK agent into one card — supervisor_loop runs
+    // that redeploy `coding_agent` would all merge into a single card.
+    assignmentId = `agent:${agentName}:${crypto.randomUUID()}`;
   }
 
   const toolCards = ctx.getToolCards();
   let card = toolCards.get(assignmentId);
-  if (!card) {
-    for (const [toolId, existing] of toolCards) {
+
+  // For swarm_agent invocations the server emits TWO events per action: a
+  // tool_event (tool.id = "swarm_tool_<agent>_<random>") and an
+  // agent_assignment (assignment_id = "<action_uuid>"). They describe the
+  // SAME action with different identifiers, so without a correlation key we
+  // would render two cards per action.
+  //
+  // To merge them into one card, fall back to the most-recent agent-typed
+  // tool card with the same agentName when assignmentId doesn't match
+  // anything. The fallback is gated on action lifecycle so it does NOT
+  // collapse two SEPARATE invocations of the same agent (supervisor_loop
+  // redeployments) into one card:
+  //
+  //   * If the most-recent matching card is still executing/pending, this
+  //     event must belong to the same in-flight action — merge.
+  //   * If that card is already completed/failed AND this event is
+  //     "executing", a fresh action is starting — do NOT merge; create a
+  //     new card.
+  //   * If the matching card is completed/failed AND this event is also
+  //     completed/failed, treat it as an idempotent re-emit for the same
+  //     action — merge.
+  if (!card && agentName) {
+    let lastMatching: ToolCard | undefined;
+    for (const existing of toolCards.values()) {
       if (existing.toolType === "agent" && existing.agentName === agentName) {
-        assignmentId = toolId;
-        card = existing;
-        break;
+        lastMatching = existing;
+      }
+    }
+    if (lastMatching) {
+      const lastFinished = lastMatching.status === "completed" || lastMatching.status === "failed";
+      const startingNew = resolvedStatus === "executing";
+      if (!(lastFinished && startingNew)) {
+        assignmentId = lastMatching.toolId;
+        card = lastMatching;
       }
     }
   }

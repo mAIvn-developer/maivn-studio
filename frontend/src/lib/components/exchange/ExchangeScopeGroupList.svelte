@@ -28,7 +28,7 @@
 
 {#if scopeGroups.length > 0}
   <div class="events-group space-y-2">
-    {#each scopeGroups as group}
+    {#each scopeGroups as group (group.invocationId ?? `${group.type}:${group.id ?? group.name}`)}
       <ScopeGroupCard
         scopeType={group.type}
         scopeName={group.name}

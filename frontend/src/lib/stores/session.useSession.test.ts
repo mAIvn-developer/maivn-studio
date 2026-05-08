@@ -1019,7 +1019,14 @@ describe("useSession - event handling", () => {
       duration_ms: 100,
     });
 
-    expect(s.toolCards.get("agent:Data Analyzer")?.streamContent).toBe("Nested analysis");
+    // The agent_assignment event omits assignment_id, so the studio mints a
+    // per-event UUID (rather than a stable "agent:<name>" key that would
+    // collapse separate invocations of the same agent). Look the card up by
+    // agentName instead of by the synthetic id.
+    const dataAnalyzerCard = Array.from(s.toolCards.values()).find(
+      (card) => card.toolType === "agent" && card.agentName === "Data Analyzer",
+    );
+    expect(dataAnalyzerCard?.streamContent).toBe("Nested analysis");
     expect(s.toolCards.get("final-agent-tool")?.streamContent).toBeUndefined();
   });
 
@@ -1646,6 +1653,139 @@ describe("useSession - end and cancel", () => {
     const s = useSession();
     await s.cancel(); // Should not throw
     expect(s.error).toBeNull();
+  });
+});
+
+// MARK: Swarm action card merging
+
+describe("useSession - swarm action card merging", () => {
+  // For swarm_agent invocations the server emits TWO events per action: a
+  // tool_event (tool.id = "swarm_tool_<agent>_<random>") and an
+  // agent_assignment (assignment_id = "<action_uuid>"). They describe the
+  // SAME action with different identifiers; the studio must collapse them
+  // into one card. AND when the swarm redeploys the same agent for a
+  // follow-up (supervisor_loop), each redeployment must render as its OWN
+  // card — only co-temporal events for the same in-flight action merge.
+
+  it("merges tool_event and agent_assignment for the SAME swarm action into one card", async () => {
+    const es = makeMockEventSource();
+    vi.stubGlobal("EventSource", es.MockEventSource);
+    mockFetchOk(MOCK_SESSION);
+
+    const s = useSession();
+    await s.startSession("d-1", "Run the swarm");
+
+    // Action 1: server sends tool_event(executing) for swarm_tool_<random>.
+    fireEvent(es.listeners, "tool_event", {
+      tool_id: "swarm_tool_coding_agent_aaaa",
+      tool_name: "coding_agent",
+      tool_type: "agent",
+      status: "executing",
+      agent_name: "coding_agent",
+      swarm_name: "creator_swarm",
+      args: { agent_id: "agent-coder" },
+    });
+
+    // ...then the server sends an agent_assignment(executing) for the SAME
+    // action with a DIFFERENT id (the action_uuid). The studio must MERGE
+    // this into the existing executing card, not create a second one.
+    fireEvent(es.listeners, "agent_assignment", {
+      assignment_id: "action-uuid-1",
+      agent_name: "coding_agent",
+      swarm_name: "creator_swarm",
+      status: "in_progress",
+    });
+
+    const agentCards = Array.from(s.toolCards.values()).filter(
+      (c) => c.toolType === "agent" && c.agentName === "coding_agent",
+    );
+    expect(agentCards).toHaveLength(1);
+    expect(agentCards[0].toolId).toBe("swarm_tool_coding_agent_aaaa");
+  });
+
+  it("creates separate cards for two SEPARATE invocations of the same agent", async () => {
+    const es = makeMockEventSource();
+    vi.stubGlobal("EventSource", es.MockEventSource);
+    mockFetchOk(MOCK_SESSION);
+
+    const s = useSession();
+    await s.startSession("d-1", "Run the swarm");
+
+    // Action 1: executing -> completed.
+    fireEvent(es.listeners, "tool_event", {
+      tool_id: "swarm_tool_coding_agent_aaaa",
+      tool_name: "coding_agent",
+      tool_type: "agent",
+      status: "executing",
+      agent_name: "coding_agent",
+      swarm_name: "creator_swarm",
+      args: {},
+    });
+    fireEvent(es.listeners, "tool_event", {
+      tool_id: "swarm_tool_coding_agent_aaaa",
+      tool_name: "coding_agent",
+      tool_type: "agent",
+      status: "completed",
+      agent_name: "coding_agent",
+      swarm_name: "creator_swarm",
+      args: {},
+    });
+
+    // Action 2 (supervisor_loop redeployment): a NEW swarm_tool_<random>
+    // arrives while action 1 is already completed. This must produce a
+    // FRESH card, not merge into action 1's card.
+    fireEvent(es.listeners, "tool_event", {
+      tool_id: "swarm_tool_coding_agent_bbbb",
+      tool_name: "coding_agent",
+      tool_type: "agent",
+      status: "executing",
+      agent_name: "coding_agent",
+      swarm_name: "creator_swarm",
+      args: {},
+    });
+
+    const agentCards = Array.from(s.toolCards.values()).filter(
+      (c) => c.toolType === "agent" && c.agentName === "coding_agent",
+    );
+    expect(agentCards).toHaveLength(2);
+    const ids = agentCards.map((c) => c.toolId).sort();
+    expect(ids).toEqual(["swarm_tool_coding_agent_aaaa", "swarm_tool_coding_agent_bbbb"]);
+  });
+
+  it("merges agent_assignment(completed) into the existing executing card for the same action", async () => {
+    const es = makeMockEventSource();
+    vi.stubGlobal("EventSource", es.MockEventSource);
+    mockFetchOk(MOCK_SESSION);
+
+    const s = useSession();
+    await s.startSession("d-1", "Run the swarm");
+
+    fireEvent(es.listeners, "tool_event", {
+      tool_id: "swarm_tool_coding_agent_xxxx",
+      tool_name: "coding_agent",
+      tool_type: "agent",
+      status: "executing",
+      agent_name: "coding_agent",
+      swarm_name: "creator_swarm",
+      args: {},
+    });
+
+    // Even though this completion event has a different id than the
+    // tool_event, the lifecycle-gated fallback should route it to the
+    // still-executing card so the result lands on one card.
+    fireEvent(es.listeners, "agent_assignment", {
+      assignment_id: "action-uuid-1",
+      agent_name: "coding_agent",
+      swarm_name: "creator_swarm",
+      status: "completed",
+      result: { response: "done" },
+    });
+
+    const agentCards = Array.from(s.toolCards.values()).filter(
+      (c) => c.toolType === "agent" && c.agentName === "coding_agent",
+    );
+    expect(agentCards).toHaveLength(1);
+    expect(agentCards[0].toolId).toBe("swarm_tool_coding_agent_xxxx");
   });
 });
 
