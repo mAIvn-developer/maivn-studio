@@ -560,6 +560,10 @@ describe("useSession - event handling", () => {
     });
     fireEvent(listeners, "update", {
       assistant_id: "assistant-1",
+      streaming_content: "Hello ",
+    });
+    fireEvent(listeners, "update", {
+      assistant_id: "assistant-1",
       streaming_content: "Hello world",
     });
     fireEvent(listeners, "final", {
@@ -655,6 +659,33 @@ describe("useSession - event handling", () => {
     expect(toolCard?.toolName).toBe("compose_artifact");
     expect(toolCard?.toolType).toBe("system");
     expect(toolCard?.args).toEqual({ prompt: "draft artifact" });
+  });
+
+  it("preserves system tool chunk spacing for streamed output", async () => {
+    const { s, listeners } = await startWithEvents();
+
+    fireEvent(listeners, "system_tool_start", {
+      tool_id: "repl-tool-1",
+      tool_type: "repl",
+    });
+    fireEvent(listeners, "system_tool_chunk", {
+      tool_id: "repl-tool-1",
+      text: "line 1",
+    });
+    fireEvent(listeners, "system_tool_chunk", {
+      tool_id: "repl-tool-1",
+      text: " ",
+    });
+    fireEvent(listeners, "system_tool_chunk", {
+      tool_id: "repl-tool-1",
+      text: "\n  indented line",
+    });
+    fireEvent(listeners, "system_tool_complete", {
+      tool_id: "repl-tool-1",
+      result: "ok",
+    });
+
+    expect(s.toolCards.get("repl-tool-1")?.streamContent).toBe("line 1 \n  indented line");
   });
 
   it("uses the embedded event type for default SSE message events", async () => {
@@ -900,7 +931,8 @@ describe("useSession - event handling", () => {
   it("handles progress_update streaming", async () => {
     const { s, listeners } = await startWithEvents();
 
-    fireEvent(listeners, "progress_update", { text: "Hello " });
+    fireEvent(listeners, "progress_update", { text: "Hello" });
+    fireEvent(listeners, "progress_update", { text: " " });
     fireEvent(listeners, "progress_update", { text: "world!" });
 
     // Should have a streaming assistant message
