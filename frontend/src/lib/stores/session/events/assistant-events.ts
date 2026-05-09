@@ -41,7 +41,7 @@ function resolveAssistantChunkText(
 
   const chunkText =
     (assistantData?.delta as string | undefined) ?? (eventData.text as string | undefined);
-  if (typeof chunkText !== "string" || !chunkText.trim()) {
+  if (typeof chunkText !== "string" || chunkText.length === 0) {
     return null;
   }
 

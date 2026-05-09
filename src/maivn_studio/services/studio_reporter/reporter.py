@@ -9,6 +9,7 @@ import uuid
 from collections.abc import Coroutine, Iterator
 from concurrent.futures import Future
 from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any
 
 from maivn._internal.utils.reporting.context import current_sdk_delivery_mode
@@ -18,6 +19,21 @@ from ..event_bridge import EventBridge
 from .interrupts import cleanup_interrupt, get_interrupt_response, register_interrupt
 
 logger = logging.getLogger(__name__)
+
+_normalized_stream_replay_active: ContextVar[bool] = ContextVar(
+    "studio_normalized_stream_replay_active",
+    default=False,
+)
+
+
+@contextmanager
+def normalized_stream_replay_context() -> Iterator[None]:
+    """Allow normalized replay chunks through contract-stream suppression."""
+    token = _normalized_stream_replay_active.set(True)
+    try:
+        yield
+    finally:
+        _normalized_stream_replay_active.reset(token)
 
 
 # MARK: Reporter
@@ -85,10 +101,16 @@ class StudioReporter(BaseReporter):
         return
 
     def print_final_response(self, response: str) -> None:
+        # Contract stream mode replays normalized chunks after the SDK stream
+        # finishes. Forwarding the final response here would seed the reporter's
+        # delta state with the full answer and collapse the replay into one UI
+        # chunk.
+        if self._is_contract_stream_mode():
+            return
         # Invoke-mode flows never call ``report_response_chunk`` — the SDK only
         # delivers the full response string here. Without forwarding it the UI
         # sees enrichment chips but no actual response text. The delta check
-        # makes this a no-op in stream mode where chunks were already pushed.
+        # still suppresses duplicate invoke-mode callbacks.
         if not isinstance(response, str) or not response:
             return
         source_id = "assistant"
@@ -512,7 +534,9 @@ class StudioReporter(BaseReporter):
 
     @staticmethod
     def _is_contract_stream_mode() -> bool:
-        return current_sdk_delivery_mode.get() == "stream"
+        return current_sdk_delivery_mode.get() == "stream" and not (
+            _normalized_stream_replay_active.get()
+        )
 
     # MARK: - Helpers
 

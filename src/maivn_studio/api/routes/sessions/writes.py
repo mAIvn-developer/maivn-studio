@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
@@ -27,6 +28,12 @@ from .models import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _request_event_subscriber_wait(session: Any) -> None:
+    metadata = getattr(session, "metadata", None)
+    if isinstance(metadata, dict):
+        metadata["_wait_for_event_subscriber"] = True
 
 
 def _resolve_app_variant(app, requested_variant: str | None) -> str | None:
@@ -84,6 +91,7 @@ async def create_session(request: CreateSessionRequest) -> SessionResponse:
     )
 
     create_event_bridge(session.session_id)
+    _request_event_subscriber_wait(session)
 
     structured_output_config = _build_structured_output_config(request.structured_output)
     invocation_kwargs = _build_invocation_kwargs(request.invocation)
@@ -134,6 +142,7 @@ async def send_message(session_id: str, request: SendMessageRequest) -> SessionR
         message_type=request.message_type,
         attachments=attachments,
     )
+    _request_event_subscriber_wait(session)
 
     try:
         await manager.send_message(

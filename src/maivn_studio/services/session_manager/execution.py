@@ -23,6 +23,10 @@ from maivn_shared import SessionResponse as SDKSessionResponse
 from .messages import resolve_structured_output_invocation_fallbacks
 from .models import _STUDIO_EVENT_CATEGORIES, SessionStatus, StudioSession, _latest_response_text
 
+# Give the frontend a chance to open EventSource after the create/send POST
+# returns. If no UI subscribes, execution still proceeds quickly for API users.
+_FIRST_EVENT_SUBSCRIBER_WAIT_SECONDS = 1.0
+
 # MARK: Capability Helpers
 
 
@@ -53,6 +57,36 @@ async def flush_reporter_events(reporter: Any | None, logger: Any) -> None:
             await flush_result
     except Exception as exc:
         logger.warning("Failed to flush pending Studio reporter events: %s", exc)
+
+
+async def wait_for_event_subscriber(
+    *,
+    session: StudioSession,
+    bridge: Any | None,
+    logger: Any,
+) -> None:
+    """Wait briefly for the first UI event subscriber when requested."""
+    if not session.metadata.pop("_wait_for_event_subscriber", False):
+        return
+    wait_for_subscriber = getattr(bridge, "wait_for_subscriber", None)
+    if not callable(wait_for_subscriber):
+        return
+    wait_for_subscriber_fn = cast(Callable[..., Awaitable[bool]], wait_for_subscriber)
+    try:
+        subscribed = await wait_for_subscriber_fn(timeout=_FIRST_EVENT_SUBSCRIBER_WAIT_SECONDS)
+    except Exception as exc:
+        logger.debug(
+            "Session %s: subscriber wait skipped after bridge error: %s",
+            session.session_id,
+            exc,
+        )
+        return
+    if not subscribed:
+        logger.debug(
+            "Session %s: no SSE subscriber connected within %.2fs; starting anyway",
+            session.session_id,
+            _FIRST_EVENT_SUBSCRIBER_WAIT_SECONDS,
+        )
 
 
 def _build_stream_tool_contract_maps(
@@ -672,6 +706,24 @@ def _should_replay_event_to_bridge(event_name: str) -> bool:
     return event_name in _BRIDGE_REPLAY_EVENT_NAMES
 
 
+async def _forward_normalized_replay_event(
+    normalized_event: Any,
+    *,
+    reporter: Any | None,
+    bridge: Any | None,
+    state: NormalizedEventForwardingState,
+) -> None:
+    from ..studio_reporter.reporter import normalized_stream_replay_context
+
+    with normalized_stream_replay_context():
+        await forward_normalized_event(
+            normalized_event,
+            reporter=reporter,
+            bridge=bridge,
+            state=state,
+        )
+
+
 def _replay_normalized_events(
     normalized_events: list[Any],
     *,
@@ -692,7 +744,7 @@ def _replay_normalized_events(
             continue
 
         future = asyncio.run_coroutine_threadsafe(
-            forward_normalized_event(
+            _forward_normalized_replay_event(
                 normalized_event,
                 reporter=replay_reporter,
                 bridge=replay_bridge,
@@ -742,6 +794,8 @@ async def execute_session(manager: Any, session: StudioSession, logger: Any) -> 
             logger.info("Session %s: StudioReporter set in context", session.session_id)
         else:
             logger.warning("Session %s: No bridge found, reporter not set", session.session_id)
+
+        await wait_for_event_subscriber(session=session, bridge=bridge, logger=logger)
 
         await manager._emit_session_start_event(
             session,
@@ -1032,6 +1086,8 @@ async def execute_session(manager: Any, session: StudioSession, logger: Any) -> 
                 break
 
             consumed_queued_message_count = manager._consume_queued_messages(session)
+            await wait_for_event_subscriber(session=session, bridge=bridge, logger=logger)
+
             await manager._emit_session_start_event(
                 session,
                 executor=executor,

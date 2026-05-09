@@ -747,6 +747,21 @@ class TestReportResponseChunk:
         chunks = _events_of_type(bridge, "assistant_chunk")
         assert chunks == []
 
+    @pytest.mark.asyncio
+    async def test_contract_stream_mode_skips_final_response_state_updates(self) -> None:
+        bridge, reporter = _make_pair()
+        reporter._response_stream_text_by_assistant_id["assistant"] = "existing"
+        token = current_sdk_delivery_mode.set("stream")
+        try:
+            reporter.print_final_response("complete final response")
+        finally:
+            current_sdk_delivery_mode.reset(token)
+        await _drain()
+
+        assert reporter._response_stream_text_by_assistant_id["assistant"] == "existing"
+        chunks = _events_of_type(bridge, "assistant_chunk")
+        assert chunks == []
+
 
 # MARK: _compute_stream_delta
 

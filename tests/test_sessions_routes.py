@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 from unittest.mock import MagicMock
@@ -275,6 +275,7 @@ class _FakeSession:
     queued_message_count: int = 0
     is_active: bool = True
     error: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -497,6 +498,7 @@ class TestSendMessage:
         request = sessions_models.SendMessageRequest(message="hello")
         result = await sessions_writes.send_message("s1", request)
         assert result.session_id == "s1"
+        assert s.metadata["_wait_for_event_subscriber"] is True
 
     @pytest.mark.asyncio
     async def test_session_not_found(self, monkeypatch: pytest.MonkeyPatch) -> None:

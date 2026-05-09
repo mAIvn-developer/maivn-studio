@@ -23,16 +23,15 @@ function readNonEmptyText(value: unknown): string | undefined {
     return undefined;
   }
   // Preserve original chunk spacing for streaming concatenation while still
-  // rejecting whitespace-only payloads.
-  return value.trim().length > 0 ? value : undefined;
+  // rejecting empty payloads.
+  return value.length > 0 ? value : undefined;
 }
 
 function buildAssistantChunkEvent(
   assistantId: string,
   text: string,
 ): NormalizedIncomingEvent | null {
-  const normalizedText = text.trim();
-  if (!normalizedText) {
+  if (text.length === 0) {
     return null;
   }
 

@@ -10,6 +10,12 @@ import pytest
 from langchain_core.messages import HumanMessage
 from maivn import Agent
 from maivn._internal.utils.reporting.context import current_reporter, current_sdk_delivery_mode
+from maivn.events import (
+    AppEvent,
+    NormalizedEventForwardingState,
+    build_assistant_chunk_payload,
+    build_system_tool_chunk_payload,
+)
 from maivn_shared import (
     FINAL_EVENT_NAME,
     INTERRUPT_REQUIRED_EVENT_NAME,
@@ -28,6 +34,7 @@ from maivn_studio.config.models import AppConfig
 from maivn_studio.services.app_loader.models import LoadedApp
 from maivn_studio.services.session_manager.manager import SessionManager
 from maivn_studio.services.session_manager.models import SessionStatus, StudioSession
+from maivn_studio.services.studio_reporter.reporter import StudioReporter
 
 
 class _StructuredPayload(BaseModel):
@@ -151,6 +158,24 @@ def _build_app_config() -> AppConfig:
 class _DummyBackgroundTask:
     def done(self) -> bool:
         return True
+
+
+class _SubscriberWaitBridge:
+    def __init__(self, result: bool = True) -> None:
+        self.result = result
+        self.timeout: float | None = None
+
+    async def wait_for_subscriber(self, timeout: float | None = None) -> bool:
+        self.timeout = timeout
+        return self.result
+
+
+class _DummyLogger:
+    def __init__(self) -> None:
+        self.debug_messages: list[tuple[Any, ...]] = []
+
+    def debug(self, *args: Any) -> None:
+        self.debug_messages.append(args)
 
 
 class _ShutdownTask:
@@ -486,7 +511,7 @@ async def test_execute_session_uses_stream_path_by_default(
 
 @pytest.mark.asyncio
 async def test_execute_session_forwards_normalized_contract_stream_events_to_bridge() -> None:
-    final_payload = SharedSessionResponse(responses=["streamed done"]).model_dump()
+    final_payload = SharedSessionResponse(responses=["Analyzing now"]).model_dump()
 
     def _report_runtime_tool_start() -> None:
         reporter = cast(Any, current_reporter.get())
@@ -498,9 +523,14 @@ async def test_execute_session_forwards_normalized_contract_stream_events_to_bri
             agent_name="Data Analyzer",
             tool_args={"agent_id": "agent-2", "prompt": "Analyze the dataset"},
         )
+        reporter.print_final_response("Analyzing now")
 
     executor = _StreamingContractExecutor(
         stream_events=[
+            _DummyStreamEvent(
+                name=UPDATE_EVENT_NAME,
+                payload={"assistant_id": "assistant-2", "streaming_content": "Analyzing"},
+            ),
             _DummyStreamEvent(
                 name=UPDATE_EVENT_NAME,
                 payload={"assistant_id": "assistant-2", "streaming_content": "Analyzing now"},
@@ -553,7 +583,7 @@ async def test_execute_session_forwards_normalized_contract_stream_events_to_bri
     assert any(event["data"]["tool_type"] == "agent" for event in tool_events)
     assert any(event["data"]["tool_name"] == "Data Analyzer" for event in tool_events)
     assert any(event["data"]["args"].get("agent_id") == "agent-2" for event in tool_events)
-    assert [event["data"]["text"] for event in assistant_chunks] == ["Analyzing now"]
+    assert [event["data"]["text"] for event in assistant_chunks] == ["Analyzing", " now"]
     assert len(interrupts) == 1
     assert interrupts[0]["data"]["interrupt_id"] == "int-1"
     assert interrupts[0]["data"]["data_key"] == "email"
@@ -643,6 +673,67 @@ async def test_execute_session_replay_ownership_skips_normalized_tool_and_status
     assert status_events[0]["data"]["message"] == "Reporter-owned status"
 
 
+@pytest.mark.asyncio
+async def test_execute_session_waits_for_event_subscriber_before_emitting_stream_events() -> None:
+    final_payload = SharedSessionResponse(responses=["streamed done"]).model_dump()
+    executor = _StreamingContractExecutor(
+        stream_events=[
+            _DummyStreamEvent(
+                name=UPDATE_EVENT_NAME,
+                payload={"assistant_id": "assistant-1", "streaming_content": "streamed"},
+            ),
+            _DummyStreamEvent(
+                name=UPDATE_EVENT_NAME,
+                payload={"assistant_id": "assistant-1", "streaming_content": "streamed done"},
+            ),
+            _DummyStreamEvent(name=FINAL_EVENT_NAME, payload=final_payload),
+        ],
+    )
+
+    loaded_app = LoadedApp(
+        config=_build_app_config(),
+        module=ModuleType("subscriber_wait_app_module"),
+        agents=[cast(Agent, executor)],
+        swarms=[],
+    )
+
+    session = StudioSession(
+        session_id="session-subscriber-wait",
+        app_config=_build_app_config(),
+        thread_id="thread-subscriber-wait",
+        status=SessionStatus.RUNNING,
+        messages=[HumanMessage(content="hello")],
+        metadata={"_wait_for_event_subscriber": True},
+        _loaded_app=loaded_app,
+    )
+
+    manager = SessionManager()
+    bridge = event_bridge_module.create_event_bridge(session.session_id)
+    assert bridge is not None
+
+    task = asyncio.create_task(manager._execute_session(session))
+    await asyncio.sleep(0.05)
+
+    assert bridge.get_history() == []
+
+    generator = bridge.generate_sse(heartbeat_interval=0.01)
+    first_event: dict[str, Any] | None = None
+    for _ in range(10):
+        candidate = await asyncio.wait_for(anext(generator), timeout=1)
+        if "event" in candidate:
+            first_event = candidate
+            break
+    await task
+    await generator.aclose()
+
+    assert first_event is not None
+    assert first_event["event"] == "session_start"
+    history = bridge.get_history()
+    assistant_chunks = [event for event in history if event.get("type") == "assistant_chunk"]
+    assert [event["data"]["text"] for event in assistant_chunks] == ["streamed", " done"]
+    assert history[-1]["type"] == "turn_complete"
+
+
 def test_studio_contract_stream_replay_ownership_is_explicit() -> None:
     assert session_execution_module._should_replay_event_to_reporter("assistant_chunk") is True
     assert session_execution_module._should_replay_event_to_reporter("system_tool_chunk") is True
@@ -650,6 +741,81 @@ def test_studio_contract_stream_replay_ownership_is_explicit() -> None:
     assert session_execution_module._should_replay_event_to_reporter("tool_event") is False
     assert session_execution_module._should_replay_event_to_bridge("interrupt_required") is True
     assert session_execution_module._should_replay_event_to_bridge("status_message") is False
+
+
+@pytest.mark.asyncio
+async def test_normalized_replay_emits_reporter_chunks_under_stream_context() -> None:
+    loop = asyncio.get_running_loop()
+    bridge = event_bridge_module.EventBridge("session-replay-stream-context")
+    reporter = StudioReporter(bridge=bridge, loop=loop)
+    normalized_events = [
+        AppEvent.model_validate(
+            build_assistant_chunk_payload(assistant_id="assistant-1", text="Hello")
+        ),
+        AppEvent.model_validate(
+            build_system_tool_chunk_payload(tool_id="system-tool-1", text="thinking")
+        ),
+    ]
+
+    def _replay_from_stream_context() -> None:
+        token = current_sdk_delivery_mode.set("stream")
+        try:
+            session_execution_module._replay_normalized_events(
+                normalized_events,
+                reporter=reporter,
+                bridge=bridge,
+                loop=loop,
+                forwarding_state=NormalizedEventForwardingState(),
+            )
+        finally:
+            current_sdk_delivery_mode.reset(token)
+
+    await asyncio.to_thread(_replay_from_stream_context)
+    await reporter.flush()
+
+    history = bridge.get_history()
+    assistant_chunks = [event for event in history if event.get("type") == "assistant_chunk"]
+    system_chunks = [event for event in history if event.get("type") == "system_tool_chunk"]
+    assert [event["data"]["text"] for event in assistant_chunks] == ["Hello"]
+    assert [event["data"]["text"] for event in system_chunks] == ["thinking"]
+
+
+@pytest.mark.asyncio
+async def test_wait_for_event_subscriber_waits_only_when_route_requested() -> None:
+    session = StudioSession(
+        session_id="session-wait-subscriber",
+        app_config=_build_app_config(),
+        thread_id="thread-wait-subscriber",
+        metadata={"_wait_for_event_subscriber": True},
+    )
+    bridge = _SubscriberWaitBridge()
+
+    await session_execution_module.wait_for_event_subscriber(
+        session=session,
+        bridge=bridge,
+        logger=_DummyLogger(),
+    )
+
+    assert bridge.timeout == session_execution_module._FIRST_EVENT_SUBSCRIBER_WAIT_SECONDS
+    assert "_wait_for_event_subscriber" not in session.metadata
+
+
+@pytest.mark.asyncio
+async def test_wait_for_event_subscriber_skips_unflagged_sessions() -> None:
+    session = StudioSession(
+        session_id="session-no-wait-subscriber",
+        app_config=_build_app_config(),
+        thread_id="thread-no-wait-subscriber",
+    )
+    bridge = _SubscriberWaitBridge()
+
+    await session_execution_module.wait_for_event_subscriber(
+        session=session,
+        bridge=bridge,
+        logger=_DummyLogger(),
+    )
+
+    assert bridge.timeout is None
 
 
 @pytest.mark.asyncio

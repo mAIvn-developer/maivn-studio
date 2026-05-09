@@ -97,11 +97,13 @@ export function handleSystemToolChunk(
   if (!toolId) {
     return;
   }
-  const text = (
+  const text =
     (asRecord(eventData.chunk)?.text as string | undefined) ??
     (eventData.text as string | undefined) ??
-    ""
-  ).trim();
+    "";
+  if (text.length === 0) {
+    return;
+  }
 
   // Skip if tool card doesn't exist (e.g., reevaluate was filtered out)
   if (!ctx.getToolCards().has(toolId)) {
