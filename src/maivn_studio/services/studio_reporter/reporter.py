@@ -36,6 +36,17 @@ def normalized_stream_replay_context() -> Iterator[None]:
         _normalized_stream_replay_active.reset(token)
 
 
+def activate_normalized_stream_replay() -> None:
+    """Set the replay-active contextvar without a paired reset.
+
+    Use this from sync callbacks (e.g. scheduled-job ``on_fire``) that own the
+    rest of an asyncio Task's lifetime. The contextvar stays set for the rest
+    of the task and is dropped when the task completes — there's no shared
+    context to leak into.
+    """
+    _normalized_stream_replay_active.set(True)
+
+
 # MARK: Reporter
 
 
