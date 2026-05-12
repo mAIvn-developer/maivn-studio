@@ -74,6 +74,8 @@ Create or edit `maivn_studio.json`:
 - `PUT /api/schedules/{demo_id}`: create or replace a schedule (ScheduleConfig body)
 - `POST /api/schedules/{demo_id}/{stop|pause|resume|trigger}`: lifecycle controls
 - `DELETE /api/schedules/{demo_id}`: remove the schedule
+- `GET /api/schedules/{demo_id}/events?last_event_id=...`: per-app SSE push stream of `schedule_fire_started` / `_completed` / `_skipped` events (pass `last_event_id` on reconnect)
+- `GET /api/schedules/{demo_id}/fires/{fire_id}/events?last_event_id=...`: per-fire chat-style SSE stream (assistant chunks, tool cards, enrichment chips)
 
 ## Scheduling Demos (Cron Jobs)
 
@@ -81,9 +83,17 @@ Every demo's inspector now has a **Schedule** tab that drives the SDK's
 `cron()` / `every()` / `at()` builders. Configure the cron expression,
 timezone, jitter (uniform / normal / triangular, with optional snap-to-grid
 and deterministic seed), misfire and overlap policies, retry/backoff,
-and `max_runs` / `end_at` bounds, then start the job. Studio polls the
-job summary every 4 seconds and displays the next-run preview, fire /
-success / skip / failure counters, and a recent-runs table.
+and `max_runs` / `end_at` bounds, then start the job. The Schedule tab
+displays the next-run countdown, fire / success / skip / failure
+counters, and a live runs table.
+
+Run cards are pushed to the browser the moment the SDK's `on_fire`
+callback runs (via a per-app SSE stream at
+`/api/schedules/{app_id}/events`); the status pill flips on the
+matching `on_success` / `on_error` / `on_skip` callback. A slow
+reconciliation poll (~30s) catches anything missed during a
+disconnect, but the countdown→running transition is push-driven
+and lands within a network round-trip.
 
 The same configuration is reachable over HTTP. Example:
 

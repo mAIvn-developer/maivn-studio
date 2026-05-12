@@ -76,6 +76,23 @@ async def remove_job(app_id: str) -> None:
     get_schedule_manager().remove(app_id)
 
 
+@router.get("/{app_id}/events")
+async def get_app_schedule_events(
+    app_id: str,
+    last_event_id: str | None = None,
+) -> EventSourceResponse:
+    """Stream per-app schedule activity push notifications.
+
+    Frontend subscribes once per app and learns about new fires the instant
+    the SDK's on_fire callback runs (no polling needed for the
+    countdown -> running transition). Each ``schedule_fire_started`` event
+    carries the new fire's ``event_session_id`` so the chat-style per-fire
+    stream at ``/fires/{fire_id}/events`` can be opened immediately.
+    """
+    bridge = get_schedule_manager().get_app_event_bridge(app_id)
+    return EventSourceResponse(bridge.generate_sse(last_event_id=last_event_id))
+
+
 @router.get("/{app_id}/fires/{fire_id}/events")
 async def get_fire_events(
     app_id: str,

@@ -2,7 +2,7 @@
   import { onDestroy, untrack } from "svelte";
   import { CalendarClock, LoaderCircle } from "lucide-svelte";
 
-  import { getSchedule, type ScheduleJobSummary } from "$lib/api_client/schedules";
+  import { useSchedule } from "$lib/stores/schedule.svelte";
   import type { ChatFlowItem } from "$lib/types";
 
   import { buildScheduleRuns } from "./schedule-runs";
@@ -11,74 +11,49 @@
   interface Props {
     appId: string;
     chatFlowItems: ChatFlowItem[];
-    pollIntervalMs?: number;
     resetRevision?: number;
     /** Notified when a schedule is configured for this app (running, paused, or done).
      *  ChatPanel uses this to hide its empty state. */
     onActiveChange?: (active: boolean) => void;
   }
 
-  let {
-    appId,
-    chatFlowItems,
-    pollIntervalMs = 4000,
-    resetRevision = 0,
-    onActiveChange,
-  }: Props = $props();
+  let { appId, chatFlowItems, resetRevision = 0, onActiveChange }: Props = $props();
 
-  // Polling lives here so the parent only has to pass appId. ScheduleTab keeps
-  // its own poll — duplicate fetches at 4s are fine and avoid lifting state to
-  // the page level just to wire one consumer.
-  let summary = $state<ScheduleJobSummary | null>(null);
-  let pollHandle: ReturnType<typeof setInterval> | null = null;
+  // Use the refcounted schedule store instead of an independent poll. With
+  // the previous approach this view AND ScheduleTab AND the composer each
+  // had their own setInterval against /api/schedules — the studio log
+  // showed dozens of GETs per second. The store deduplicates: every consumer
+  // for the same appId shares one underlying poll loop.
+  let store = $state<ReturnType<typeof useSchedule> | null>(null);
   let activeAppId = $state<string | null>(null);
-  // 1Hz tick so the upcoming-run countdown updates every second, not every
-  // poll. ScheduleTab uses the same trick.
+  let seenResetRevision = $state<number | null>(null);
+  // 1Hz tick so the upcoming-run countdown updates every second.
   let nowTick = $state(Date.now());
   let nowTickHandle: ReturnType<typeof setInterval> | null = null;
-  let refreshVersion = 0;
-  let seenResetRevision = $state<number | null>(null);
 
   // Per-fire user override of expanded state. When unset, the newest run is
   // expanded by default and everything else collapses — that's the behavior
   // the user asked for ("auto collapse the olders, show the newest").
   let userExpanded = $state(new Map<string, boolean>());
 
-  async function refresh(): Promise<void> {
-    if (!appId) return;
-    const requestAppId = appId;
-    const requestVersion = refreshVersion;
-    try {
-      const next = await getSchedule(requestAppId);
-      if (activeAppId !== requestAppId || requestVersion !== refreshVersion) return;
-      summary = next;
-    } catch {
-      // Swallow — ScheduleTab surfaces schedule errors; this view is best-effort.
-    }
-  }
+  const summary = $derived(store?.summary ?? null);
 
   $effect(() => {
     const id = appId;
     untrack(() => {
-      if (pollHandle !== null) {
-        clearInterval(pollHandle);
-        pollHandle = null;
-      }
-      if (nowTickHandle !== null) {
-        clearInterval(nowTickHandle);
-        nowTickHandle = null;
-      }
-      refreshVersion += 1;
+      if (store && activeAppId === id) return;
+      if (store) store.dispose();
+      store = null;
       activeAppId = id;
-      summary = null;
       userExpanded = new Map();
       onActiveChange?.(false);
       if (!id) return;
-      void refresh();
-      pollHandle = setInterval(() => void refresh(), pollIntervalMs);
-      nowTickHandle = setInterval(() => {
-        nowTick = Date.now();
-      }, 1000);
+      store = useSchedule(id);
+      if (nowTickHandle === null) {
+        nowTickHandle = setInterval(() => {
+          nowTick = Date.now();
+        }, 1000);
+      }
     });
   });
 
@@ -90,20 +65,35 @@
     }
     if (revision === seenResetRevision) return;
     seenResetRevision = revision;
-    refreshVersion += 1;
-    summary = null;
     userExpanded = new Map();
     onActiveChange?.(false);
   });
 
   onDestroy(() => {
-    if (pollHandle !== null) clearInterval(pollHandle);
+    if (store) store.dispose();
     if (nowTickHandle !== null) clearInterval(nowTickHandle);
     onActiveChange?.(false);
   });
 
-  const runs = $derived(buildScheduleRuns(summary?.history ?? [], chatFlowItems));
-  const newestFireId = $derived(runs.length > 0 ? runs[runs.length - 1].fireId : null);
+  const allRuns = $derived(buildScheduleRuns(summary?.history ?? [], chatFlowItems));
+
+  // Skipped fires (overlap/jitter/misfire) are noise — a busy schedule with a
+  // long-running LLM call can produce many per minute and they crowd out the
+  // runs the user actually wants to see. Hide them by default and surface a
+  // single toggle when any exist.
+  let showSkipped = $state(false);
+  const skippedRuns = $derived(
+    allRuns.filter((run) => {
+      const status = run.summary?.status?.toLowerCase() ?? "";
+      return status.startsWith("skipped") || status === "skip";
+    }),
+  );
+  const visibleRuns = $derived(
+    showSkipped ? allRuns : allRuns.filter((run) => !skippedRuns.includes(run)),
+  );
+  const newestFireId = $derived(
+    visibleRuns.length > 0 ? visibleRuns[visibleRuns.length - 1].fireId : null,
+  );
 
   // Whether to consider the schedule "configured" for this app. We treat
   // any non-null summary as configured — the chat panel uses this to hide
@@ -159,15 +149,28 @@
         Scheduled runs
       </span>
       <span class="runs-shell-count">
-        {#if runs.length > 0}
-          {runs.length} of {summary?.fire_count ?? runs.length}
+        {#if visibleRuns.length > 0}
+          {visibleRuns.length} of {summary?.fire_count ?? visibleRuns.length}
+        {:else if skippedRuns.length > 0}
+          {skippedRuns.length} skipped only
         {:else}
           waiting for first run
         {/if}
       </span>
     </header>
+    {#if skippedRuns.length > 0}
+      <button
+        type="button"
+        class="skipped-toggle"
+        onclick={() => (showSkipped = !showSkipped)}
+        title={showSkipped ? "Hide skipped runs" : "Show skipped runs"}
+      >
+        {showSkipped ? "Hide" : "Show"}
+        {skippedRuns.length} skipped run{skippedRuns.length === 1 ? "" : "s"}
+      </button>
+    {/if}
     <div class="runs-shell-list">
-      {#each runs as run, i (run.fireId)}
+      {#each visibleRuns as run, i (run.fireId)}
         <ScheduleRunCard
           {run}
           {appId}
@@ -230,6 +233,23 @@
     font-family: "JetBrains Mono", "SF Mono", monospace;
     font-size: 0.7rem;
     color: var(--color-text-tertiary);
+  }
+
+  .skipped-toggle {
+    align-self: flex-start;
+    padding: 0.2rem 0.55rem;
+    border-radius: var(--radius-full);
+    border: 1px solid color-mix(in srgb, var(--color-warning) 35%, var(--color-outline-variant));
+    background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+    color: var(--color-warning);
+    font-size: 0.65rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+  }
+
+  .skipped-toggle:hover {
+    background: color-mix(in srgb, var(--color-warning) 18%, transparent);
   }
 
   .runs-shell-list {
