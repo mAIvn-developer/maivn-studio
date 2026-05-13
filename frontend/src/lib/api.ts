@@ -279,6 +279,7 @@ export function connectToEvents(
     "session_end",
     "interrupt_required",
     "enrichment",
+    "hook_fired",
     "error",
     "final",
     "heartbeat",

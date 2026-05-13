@@ -52,6 +52,7 @@ describe("handleHookFired - tool target", () => {
       target_type: "tool",
       target_id: "evt-1",
       target_name: "my_tool",
+      source: "tool",
       elapsed_ms: 2,
     });
 
@@ -63,8 +64,52 @@ describe("handleHookFired - tool target", () => {
       status: "completed",
       targetType: "tool",
       targetId: "evt-1",
+      source: "tool",
       elapsedMs: 2,
     });
+  });
+
+  test("preserves source distinction across multiple firings on the same card", () => {
+    const card = baseToolCard("evt-multi");
+    const { ctx, getToolCards } = createCtx(new Map([["evt-multi", card]]));
+
+    handleHookFired(ctx as never, {
+      name: "audit",
+      stage: "before",
+      status: "completed",
+      target_type: "tool",
+      target_id: "evt-multi",
+      source: "tool",
+    });
+    handleHookFired(ctx as never, {
+      name: "trace",
+      stage: "before",
+      status: "completed",
+      target_type: "tool",
+      target_id: "evt-multi",
+      source: "scope",
+    });
+
+    const sources = getToolCards()
+      .get("evt-multi")!
+      .hookFirings!.map((f) => f.source);
+    expect(sources).toEqual(["tool", "scope"]);
+  });
+
+  test("drops an unrecognized source value rather than letting it through", () => {
+    const card = baseToolCard("evt-bad-source");
+    const { ctx, getToolCards } = createCtx(new Map([["evt-bad-source", card]]));
+
+    handleHookFired(ctx as never, {
+      name: "audit",
+      stage: "before",
+      status: "completed",
+      target_type: "tool",
+      target_id: "evt-bad-source",
+      source: "not-a-real-source",
+    });
+
+    expect(getToolCards().get("evt-bad-source")!.hookFirings![0].source).toBeUndefined();
   });
 
   test("accumulates multiple firings on the same tool card", () => {
@@ -130,7 +175,11 @@ describe("handleHookFired - tool target", () => {
 // MARK: Scope Hook Routing
 
 describe("handleHookFired - scope target", () => {
-  test("appends agent hooks to scopeHookFirings keyed by `agent:<id>`", () => {
+  test("indexes agent hooks under both `agent:<id>` and `agent:<name>`", () => {
+    // ``ScopeGroupCard`` looks up firings using the scope group's id, which
+    // depending on how the group was built can resolve to either the SDK's
+    // stable UUID OR the scope's display name. Storing one firing under
+    // both keys lets either lookup hit without making the caller guess.
     const { ctx, getScopeHookFirings } = createCtx();
 
     handleHookFired(ctx as never, {
@@ -142,10 +191,13 @@ describe("handleHookFired - scope target", () => {
       target_name: "MyAgent",
     });
 
-    const firings = getScopeHookFirings().get("agent:agent-42")!;
-    expect(firings).toHaveLength(1);
-    expect(firings[0].targetType).toBe("agent");
-    expect(firings[0].targetName).toBe("MyAgent");
+    const byId = getScopeHookFirings().get("agent:agent-42");
+    const byName = getScopeHookFirings().get("agent:MyAgent");
+    expect(byId).toHaveLength(1);
+    expect(byName).toHaveLength(1);
+    // Both keys point at the SAME firing object — appending under multiple
+    // keys must not turn one event into two pills.
+    expect(byId![0]).toBe(byName![0]);
   });
 
   test("falls back to target_name when target_id is missing", () => {
@@ -160,6 +212,24 @@ describe("handleHookFired - scope target", () => {
     });
 
     expect(getScopeHookFirings().get("swarm:MySwarm")).toHaveLength(1);
+  });
+
+  test("uses a single key when target_id and target_name are identical", () => {
+    const { ctx, getScopeHookFirings } = createCtx();
+
+    handleHookFired(ctx as never, {
+      name: "swarm_hook",
+      stage: "before",
+      status: "completed",
+      target_type: "swarm",
+      target_id: "Hook Swarm",
+      target_name: "Hook Swarm",
+    });
+
+    // Only one map entry — duplicating an identical key just to dedupe the
+    // firing object would be wasted work.
+    expect(getScopeHookFirings().size).toBe(1);
+    expect(getScopeHookFirings().get("swarm:Hook Swarm")).toHaveLength(1);
   });
 
   test("drops the event when both target_id and target_name are missing", () => {

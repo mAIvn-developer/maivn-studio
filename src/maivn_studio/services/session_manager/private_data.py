@@ -154,7 +154,7 @@ def _collect_private_data_keys(scope: Any) -> set[str]:
     """
     try:
         tools = scope.list_tools()
-    except Exception:
+    except Exception:  # noqa: BLE001 - introspection on uninitialized scope; treat as "no keys"
         return set()
 
     keys: set[str] = set()

@@ -1,4 +1,4 @@
-import type { HookFiring, ToolCard } from "$lib/types";
+import type { HookFiring, HookSource, ToolCard } from "$lib/types";
 
 import type { SessionStoreContext } from "../types";
 import { asRecord } from "./event-utils";
@@ -70,6 +70,9 @@ function readHookFiring(eventData: Record<string, unknown>): HookFiring | null {
   const elapsedRaw = descriptor?.elapsed_ms ?? eventData.elapsed_ms;
   const elapsedMs =
     typeof elapsedRaw === "number" && Number.isFinite(elapsedRaw) ? elapsedRaw : undefined;
+  const sourceRaw = normalizeScalar(descriptor?.source ?? eventData.source);
+  const source: HookSource | undefined =
+    sourceRaw === "tool" || sourceRaw === "scope" || sourceRaw === "swarm" ? sourceRaw : undefined;
 
   return {
     name,
@@ -78,6 +81,7 @@ function readHookFiring(eventData: Record<string, unknown>): HookFiring | null {
     targetType,
     targetId,
     targetName,
+    source,
     error,
     elapsedMs,
     timestamp: new Date().toISOString(),
@@ -94,30 +98,43 @@ function appendToToolCard(ctx: SessionStoreContext, firing: HookFiring) {
   const card = toolCards.get(key);
   if (!card) return;
 
+  // Svelte 5 $state Maps fire reactivity on in-place ``.set(...)``. Cloning
+  // the whole Map on every hook firing would be O(N) work per event for a
+  // result the consumer can read out of the existing reference.
   const next: ToolCard = {
     ...card,
     hookFirings: [...(card.hookFirings ?? []), firing],
   };
-  const nextCards = new Map(toolCards);
-  nextCards.set(key, next);
-  ctx.setToolCards(nextCards);
+  toolCards.set(key, next);
 }
 
 // MARK: Scope Append
 
 function appendToScope(ctx: SessionStoreContext, firing: HookFiring) {
-  const key = scopeKey(firing);
-  if (!key) return;
+  const keys = scopeKeys(firing);
+  if (keys.length === 0) return;
 
+  // Index a single firing under both ``{type}:{id}`` and ``{type}:{name}``
+  // because ``ScopeGroupCard`` consumers look the firings up via the scope
+  // group's id, which can be either the SDK's stable UUID or the scope's
+  // display name depending on how the group was built. Storing one firing
+  // under both keys lets either lookup hit without depending on which side
+  // happens to be canonical.
   const firings = ctx.getScopeHookFirings();
-  const existing = firings.get(key) ?? [];
-  const next = new Map(firings);
-  next.set(key, [...existing, firing]);
-  ctx.setScopeHookFirings(next);
+  for (const key of keys) {
+    const existing = firings.get(key) ?? [];
+    // Only append once per key (the same firing object) — the consumer's
+    // lookup is a get(), so duplicates would render twice.
+    if (existing.includes(firing)) continue;
+    firings.set(key, [...existing, firing]);
+  }
 }
 
-function scopeKey(firing: HookFiring): string | null {
-  const identifier = firing.targetId ?? firing.targetName;
-  if (!identifier) return null;
-  return `${firing.targetType}:${identifier}`;
+function scopeKeys(firing: HookFiring): string[] {
+  const keys: string[] = [];
+  if (firing.targetId) keys.push(`${firing.targetType}:${firing.targetId}`);
+  if (firing.targetName && firing.targetName !== firing.targetId) {
+    keys.push(`${firing.targetType}:${firing.targetName}`);
+  }
+  return keys;
 }

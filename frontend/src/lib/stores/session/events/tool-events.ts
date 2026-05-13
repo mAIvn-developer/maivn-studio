@@ -72,15 +72,15 @@ function createToolCard(
 }
 
 function appendToolCardToChatFlow(ctx: SessionStoreContext, card: ToolCard) {
-  ctx.setChatFlowItems([
-    ...ctx.getChatFlowItems(),
-    {
-      id: crypto.randomUUID(),
-      type: "tool_card",
-      timestamp: new Date().toISOString(),
-      data: card,
-    },
-  ]);
+  // Svelte 5 $state arrays fire reactivity on ``push``. Cloning the whole
+  // ``chatFlowItems`` array on every new tool card was O(N) work for an
+  // append the consumer can observe through the existing reference.
+  ctx.getChatFlowItems().push({
+    id: crypto.randomUUID(),
+    type: "tool_card",
+    timestamp: new Date().toISOString(),
+    data: card,
+  });
 }
 
 function buildUpdatedToolCard(

@@ -78,4 +78,51 @@ describe("api_client connectToEvents", () => {
       expect.arrayContaining(["batch_start", "batch_item_complete", "batch_complete"]),
     );
   });
+
+  it("subscribes to hook_fired so hook events reach the session store", () => {
+    // Regression: hook_fired wasn't in the named-events list, so the browser
+    // dropped every hook event before it ever reached processEvent. Tools and
+    // scope cards therefore rendered without their header/footer markers even
+    // though the backend was emitting them correctly.
+    const { MockEventSource, listeners } = makeMockEventSource();
+    vi.stubGlobal("EventSource", MockEventSource);
+
+    connectToEvents("s1", vi.fn());
+
+    expect(Object.keys(listeners)).toContain("hook_fired");
+  });
+
+  it("dispatches hook_fired events to the onEvent callback", () => {
+    const { MockEventSource, listeners } = makeMockEventSource();
+    vi.stubGlobal("EventSource", MockEventSource);
+
+    const onEvent = vi.fn();
+    connectToEvents("s1", onEvent);
+
+    listeners["hook_fired"]?.[0]?.({
+      data: JSON.stringify({
+        id: "evt-99",
+        data: {
+          name: "audit_log",
+          stage: "before",
+          status: "completed",
+          target_type: "tool",
+          target_id: "tool-1",
+        },
+      }),
+      lastEventId: "99",
+    } as MessageEvent);
+
+    expect(onEvent).toHaveBeenCalledWith({
+      type: "hook_fired",
+      data: {
+        name: "audit_log",
+        stage: "before",
+        status: "completed",
+        target_type: "tool",
+        target_id: "tool-1",
+      },
+      eventId: "99",
+    });
+  });
 });

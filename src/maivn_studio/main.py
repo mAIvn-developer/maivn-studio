@@ -104,7 +104,7 @@ def main() -> None:
                 try:
                     urllib.request.urlopen(f"{url}/health", timeout=0.5)  # nosec B310
                     break
-                except Exception:
+                except Exception:  # noqa: BLE001 - poll loop; any network or import error means "retry"
                     time.sleep(0.5)
             webbrowser.open(url)
 

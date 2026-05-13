@@ -181,7 +181,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("Shutting down MAIVN Studio...")
     try:
         await get_session_manager().shutdown()
-    except Exception:
+    except Exception:  # noqa: BLE001 - shutdown must not raise; log and proceed
         logger.exception("Failed to shutdown Studio session manager cleanly")
 
 

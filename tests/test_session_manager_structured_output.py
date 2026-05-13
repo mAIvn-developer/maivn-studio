@@ -7,7 +7,7 @@ from typing import Any, cast
 
 import maivn._internal.core.entities as core_entities
 import pytest
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from maivn import Agent
 from maivn._internal.utils.reporting.context import current_reporter, current_sdk_delivery_mode
 from maivn.events import (
@@ -510,6 +510,69 @@ async def test_execute_session_uses_stream_path_by_default(
 
 
 @pytest.mark.asyncio
+async def test_execute_session_strips_prior_turn_attachments_from_invocation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(core_entities, "ModelTool", _DummyModelTool)
+
+    model_tool = _DummyModelTool(name="schema_tool", model=_StructuredPayload)
+    executor = _DummyExecutor(model_tool=model_tool)
+
+    loaded_app = LoadedApp(
+        config=_build_app_config(),
+        module=ModuleType("test_app_module"),
+        agents=[cast(Agent, executor)],
+        swarms=[],
+    )
+    prior_attachment = {
+        "name": "prior.txt",
+        "mime_type": "text/plain",
+        "content_base64": "cHJpb3I=",
+    }
+    current_attachment = {
+        "name": "current.txt",
+        "mime_type": "text/plain",
+        "content_base64": "Y3VycmVudA==",
+    }
+    prior_message = HumanMessage(
+        content="What is in this attachment?",
+        additional_kwargs={"attachments": [prior_attachment]},
+    )
+    current_message = HumanMessage(
+        content="Follow up on that.",
+        additional_kwargs={"attachments": [current_attachment]},
+    )
+
+    session = StudioSession(
+        session_id="session-prior-attachment",
+        app_config=_build_app_config(),
+        thread_id="thread-prior-attachment",
+        status=SessionStatus.RUNNING,
+        messages=[
+            prior_message,
+            AIMessage(content="The attachment had prior context."),
+            current_message,
+        ],
+        _loaded_app=loaded_app,
+    )
+
+    manager = SessionManager()
+
+    async def _emit_event_noop(*_: Any, **__: Any) -> None:
+        return None
+
+    monkeypatch.setattr(manager, "_emit_event", _emit_event_noop)
+
+    await manager._execute_session(session)
+
+    invoke_messages = executor.event_invocable.last_stream_kwargs["messages"]
+    assert invoke_messages[0].additional_kwargs.get("attachments") is None
+    assert prior_message.additional_kwargs["attachments"] == [prior_attachment]
+    assert invoke_messages[1].content == "The attachment had prior context."
+    assert invoke_messages[2].additional_kwargs["attachments"] == [current_attachment]
+
+
+@pytest.mark.asyncio
 async def test_execute_session_forwards_normalized_contract_stream_events_to_bridge() -> None:
     final_payload = SharedSessionResponse(responses=["Analyzing now"]).model_dump()
 
@@ -735,12 +798,12 @@ async def test_execute_session_waits_for_event_subscriber_before_emitting_stream
 
 
 def test_studio_contract_stream_replay_ownership_is_explicit() -> None:
-    assert session_execution_module._should_replay_event_to_reporter("assistant_chunk") is True
-    assert session_execution_module._should_replay_event_to_reporter("system_tool_chunk") is True
-    assert session_execution_module._should_replay_event_to_reporter("status_message") is False
-    assert session_execution_module._should_replay_event_to_reporter("tool_event") is False
-    assert session_execution_module._should_replay_event_to_bridge("interrupt_required") is True
-    assert session_execution_module._should_replay_event_to_bridge("status_message") is False
+    assert session_execution_module.should_replay_event_to_reporter("assistant_chunk") is True
+    assert session_execution_module.should_replay_event_to_reporter("system_tool_chunk") is True
+    assert session_execution_module.should_replay_event_to_reporter("status_message") is False
+    assert session_execution_module.should_replay_event_to_reporter("tool_event") is False
+    assert session_execution_module.should_replay_event_to_bridge("interrupt_required") is True
+    assert session_execution_module.should_replay_event_to_bridge("status_message") is False
 
 
 @pytest.mark.asyncio

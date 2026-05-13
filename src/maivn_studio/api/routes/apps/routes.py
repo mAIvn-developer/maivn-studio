@@ -238,7 +238,7 @@ async def get_app_full_details(app_id: str, variant: str | None = None) -> AppFu
             agent_tools = agent.list_tools()
             for tool in agent_tools:
                 tools.append(build_tool_info(tool, agent_name))
-        except Exception:
+        except Exception:  # noqa: BLE001 - one bad agent shouldn't fail the whole tools listing
             pass
 
     # Build prompts list

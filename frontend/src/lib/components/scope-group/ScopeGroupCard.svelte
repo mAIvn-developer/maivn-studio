@@ -32,6 +32,13 @@
     nestedAgents?: NestedAgent[]; // For swarm type, contains child agents
     phaseChips?: PhaseChipData[]; // Scoped enrichment phase chips
     hookFirings?: HookFiring[]; // Scoped before/after hook firings
+    /**
+     * Map of all scope hook firings keyed by ``"{type}:{id_or_name}"``. Kept
+     * here as an out-of-band prop so a swarm card can resolve hook firings
+     * for each of its nested agent cards too (the top level is handled by
+     * ``ExchangeScopeGroupList``).
+     */
+    scopeHookFirings?: Map<string, HookFiring[]>;
     latestStatusMessage?: string | null;
     showArgs?: boolean;
     expandAllCards?: boolean;
@@ -49,6 +56,7 @@
     nestedAgents = [],
     phaseChips = [],
     hookFirings = [],
+    scopeHookFirings,
     latestStatusMessage = null,
     showArgs = true,
     expandAllCards = false,
@@ -165,6 +173,7 @@
       {scopeType}
       {nestedAgents}
       {resolveNestedAgentChips}
+      {scopeHookFirings}
       {isLive}
       {showArgs}
       {expandAllCards}

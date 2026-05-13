@@ -519,6 +519,7 @@ export function createScheduleFireEventStream(
         "system_tool_chunk",
         "system_tool_complete",
         "enrichment",
+        "hook_fired",
         "status_message",
         "agent_assignment",
         "turn_complete",
