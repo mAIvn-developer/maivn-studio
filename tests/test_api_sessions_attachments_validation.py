@@ -189,12 +189,14 @@ async def test_create_session_refreshes_registry_private_data_from_disk(
     monkeypatch.setattr(sessions_writes, "get_registry", lambda: registry)
     monkeypatch.setattr(sessions_writes, "get_session_manager", lambda: manager)
     monkeypatch.setattr(sessions_writes, "create_event_bridge", lambda _session_id: None)
+    # ``get_config_path`` is mocked to a stable placeholder so the test stays
+    # portable. The downstream code only takes ``.parent`` off the value and
+    # passes it through ``init_registry``; the file is never opened, so the
+    # exact path doesn't matter as long as it parses as a Path.
     monkeypatch.setattr(
         sessions_helpers,
         "get_config_path",
-        lambda: Path(
-            "c:/Users/chad6/Repo/MaivnProjects/maivn-apps/apps/maivn-demos/maivn_studio.json"
-        ),
+        lambda: Path("/tmp/maivn_studio.json"),
     )
     monkeypatch.setattr(
         sessions_helpers,
