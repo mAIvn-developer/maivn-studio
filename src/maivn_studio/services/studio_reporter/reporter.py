@@ -408,6 +408,38 @@ class StudioReporter(BaseReporter):
             )
         )
 
+    def report_hook_fired(
+        self,
+        *,
+        name: str,
+        stage: str,
+        status: str,
+        target_type: str,
+        target_id: str | None = None,
+        target_name: str | None = None,
+        error: str | None = None,
+        elapsed_ms: int | None = None,
+    ) -> None:
+        """Forward a developer-registered hook firing onto the EventBridge.
+
+        Studio's frontend listens for ``hook_fired`` events and renders the
+        hook name + status as a persistent header (``stage == "before"``)
+        or footer (``stage == "after"``) on the matching tool card or
+        scope card.
+        """
+        self._submit(
+            self._bridge.emit_hook_fired(
+                name=name,
+                stage=stage,
+                status=status,
+                target_type=target_type,
+                target_id=target_id,
+                target_name=target_name,
+                error=error,
+                elapsed_ms=elapsed_ms,
+            )
+        )
+
     def report_enrichment(
         self,
         *,

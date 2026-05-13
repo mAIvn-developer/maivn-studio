@@ -1,5 +1,6 @@
 import type {
   ChatFlowItem,
+  HookFiring,
   InterruptData,
   InvocationConfig,
   MemoryActivityData,
@@ -42,6 +43,11 @@ export interface SessionStoreContext {
   setChatFlowItems: (items: ChatFlowItem[]) => void;
   getToolCards: () => Map<string, ToolCard>;
   setToolCards: (cards: Map<string, ToolCard>) => void;
+  // Hook firings keyed by `${target_type}:${target_id_or_name}` — populated
+  // by ``handleHookFired`` for scope-level (agent/swarm) hooks. Tool hooks
+  // attach to ``ToolCard.hookFirings`` directly.
+  getScopeHookFirings: () => Map<string, HookFiring[]>;
+  setScopeHookFirings: (firings: Map<string, HookFiring[]>) => void;
   getEvents: () => UIEvent[];
   setEvents: (events: UIEvent[]) => void;
   getLoading: () => boolean;

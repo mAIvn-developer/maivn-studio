@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { InterruptStyle } from "$lib/types";
+  import type { HookFiring, InterruptStyle } from "$lib/types";
   import ExchangeContainer from "../exchange/ExchangeContainer.svelte";
   import MessageCard from "../message/MessageCard.svelte";
   import type { Exchange } from "./chat-exchanges";
@@ -19,6 +19,7 @@
     showSessionDetails?: boolean;
     hasActiveSession: boolean;
     chatFlowItemsLength: number;
+    scopeHookFirings?: Map<string, HookFiring[]>;
     onSubmitInterrupt?: (interruptId: string, value: string) => void;
     onCancelInterrupt?: (interruptId: string) => void;
   }
@@ -36,6 +37,7 @@
     showSessionDetails = false,
     hasActiveSession,
     chatFlowItemsLength,
+    scopeHookFirings,
     onSubmitInterrupt,
     onCancelInterrupt,
   }: Props = $props();
@@ -47,6 +49,7 @@
       humanMessage={exchange.humanMessage}
       toolCards={exchange.toolCards}
       phaseChips={exchange.phaseChips}
+      {scopeHookFirings}
       statusMessages={exchange.statusMessages}
       batchResults={exchange.batchResults}
       interruptCards={interruptStyle === "inline" || interruptStyle === "hybrid"

@@ -30,8 +30,8 @@ from maivn_studio.services.event_bridge import (
     remove_event_bridge,
 )
 from maivn_studio.services.session_manager.models import (
-    _STUDIO_EVENT_CATEGORIES,
-    _latest_response_text,
+    STUDIO_EVENT_CATEGORIES,
+    latest_response_text,
 )
 from maivn_studio.services.studio_reporter.reporter import (
     StudioReporter,
@@ -167,7 +167,7 @@ class ScheduleManager:
         scope_for_schedule: Any = executor
         if callable(events_factory) and config.method in {"invoke", "stream"}:
             scope_for_schedule = events_factory(
-                include=_STUDIO_EVENT_CATEGORIES,
+                include=STUDIO_EVENT_CATEGORIES,
                 auto_verbose=False,
             )
             logger.info(
@@ -746,7 +746,7 @@ def _coerce_stream_result(result: Any) -> Any:
 def _extract_result_payload(result: Any) -> dict[str, Any]:
     result = _coerce_stream_result(result)
     responses = getattr(result, "responses", None)
-    response_text = _latest_response_text(responses)
+    response_text = latest_response_text(responses)
     if response_text is None:
         raw_response = getattr(result, "response", None)
         response_text = raw_response if isinstance(raw_response, str) else ""

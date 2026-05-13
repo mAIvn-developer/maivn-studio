@@ -9,7 +9,7 @@ from maivn_studio.services.event_bridge import create_event_bridge, get_event_br
 from maivn_studio.services.session_manager.manager import get_session_manager
 from maivn_studio.services.session_manager.models import SessionStatus
 
-from .helpers import _get_session_or_404
+from .helpers import get_session_or_404
 from .models import SessionListResponse, SessionResponse
 
 router = APIRouter()
@@ -49,7 +49,7 @@ async def list_sessions_route(
 
 async def get_session(session_id: str) -> SessionResponse:
     manager = get_session_manager()
-    session = _get_session_or_404(session_id, manager=manager)
+    session = get_session_or_404(session_id, manager=manager)
     return SessionResponse(**session.to_dict())
 
 
@@ -63,7 +63,7 @@ async def get_session_events(
     last_event_id: str | None = None,
 ) -> EventSourceResponse:
     manager = get_session_manager()
-    _get_session_or_404(session_id, manager=manager)
+    get_session_or_404(session_id, manager=manager)
 
     bridge = get_event_bridge(session_id)
     if bridge is None:
@@ -82,7 +82,7 @@ async def get_session_events_route(
 
 async def get_session_history(session_id: str) -> dict[str, Any]:
     manager = get_session_manager()
-    _get_session_or_404(session_id, manager=manager)
+    get_session_or_404(session_id, manager=manager)
 
     bridge = get_event_bridge(session_id)
     events = bridge.get_history() if bridge else []

@@ -11,8 +11,6 @@ from __future__ import annotations
 from maivn.events import BridgeRegistry, EventBridge, UIEvent
 from maivn.events._bridge import safe_json_dumps
 
-_safe_json_dumps = safe_json_dumps
-
 # Default max history from the EventBridge constructor.
 MAX_EVENT_HISTORY = 500
 
@@ -46,8 +44,8 @@ __all__ = [
     "EventBridge",
     "MAX_EVENT_HISTORY",
     "UIEvent",
-    "_safe_json_dumps",
     "create_event_bridge",
     "get_event_bridge",
     "remove_event_bridge",
+    "safe_json_dumps",
 ]

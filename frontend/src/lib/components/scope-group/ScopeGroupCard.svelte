@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { PhaseChipData, ToolCard as ToolCardType } from "$lib/types";
+  import type { HookFiring, PhaseChipData, ToolCard as ToolCardType } from "$lib/types";
+  import HookFiringMarker from "../ui/HookFiringMarker.svelte";
   import { getAgentResponse, isAgentFinalOutput } from "./scope-group-agent-response";
   import {
     buildNestedAgentPhaseChipsMap,
@@ -30,6 +31,7 @@
     tools: ToolCardType[];
     nestedAgents?: NestedAgent[]; // For swarm type, contains child agents
     phaseChips?: PhaseChipData[]; // Scoped enrichment phase chips
+    hookFirings?: HookFiring[]; // Scoped before/after hook firings
     latestStatusMessage?: string | null;
     showArgs?: boolean;
     expandAllCards?: boolean;
@@ -46,6 +48,7 @@
     tools,
     nestedAgents = [],
     phaseChips = [],
+    hookFirings = [],
     latestStatusMessage = null,
     showArgs = true,
     expandAllCards = false,
@@ -131,6 +134,10 @@
   class:nested={depth > 0}
   style="--status-color: {currentStatus.color}; --status-bg: {currentStatus.bg}"
 >
+  {#if hookFirings.length > 0}
+    <HookFiringMarker firings={hookFirings} stage="before" />
+  {/if}
+
   <ScopeGroupHeader
     {scopeType}
     {scopeName}
@@ -170,6 +177,10 @@
       bind:bindAgentResponseEl={agentResponseEl}
       displayTools={displayTools()}
     />
+  {/if}
+
+  {#if hookFirings.length > 0}
+    <HookFiringMarker firings={hookFirings} stage="after" />
   {/if}
 </div>
 

@@ -133,6 +133,27 @@ export interface BatchResult {
   items: BatchResultItem[];
 }
 
+// MARK: Hook Firing
+
+/**
+ * One firing of a developer-registered scope or tool hook callback,
+ * emitted by the SDK as a ``hook_fired`` event.
+ *
+ * Rendered as a persistent header (``stage === "before"``) or footer
+ * (``stage === "after"``) on the matching tool card or scope card.
+ */
+export interface HookFiring {
+  name: string;
+  stage: "before" | "after";
+  status: "completed" | "failed";
+  targetType: "tool" | "agent" | "swarm";
+  targetId?: string;
+  targetName?: string;
+  error?: string;
+  elapsedMs?: number;
+  timestamp: string;
+}
+
 // MARK: Tool Card Types
 
 export type ToolCardStatus = "pending" | "executing" | "completed" | "failed";
@@ -153,4 +174,6 @@ export interface ToolCard {
   isSystemTool: boolean;
   agentName?: string;
   swarmName?: string;
+  /** Persistent hook-firing markers — rendered as header (before) / footer (after) on the card. */
+  hookFirings?: HookFiring[];
 }

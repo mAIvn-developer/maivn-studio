@@ -12,10 +12,10 @@ from maivn_studio.services.event_bridge import (
     EventBridge,
     UIEvent,
     _bridges,
-    _safe_json_dumps,
     create_event_bridge,
     get_event_bridge,
     remove_event_bridge,
+    safe_json_dumps,
 )
 
 
@@ -565,14 +565,14 @@ class TestBridgeRegistry:
         remove_event_bridge("nonexistent")  # should not raise
 
 
-# MARK: _safe_json_dumps
+# MARK: safe_json_dumps
 
 
 class TestSafeJsonDumps:
-    """Tests for _safe_json_dumps()."""
+    """Tests for safe_json_dumps()."""
 
     def test_serializes_normal_dict(self) -> None:
-        result = _safe_json_dumps({"key": "value", "num": 42})
+        result = safe_json_dumps({"key": "value", "num": 42})
         parsed = json.loads(result)
         assert parsed == {"key": "value", "num": 42}
 
@@ -580,7 +580,7 @@ class TestSafeJsonDumps:
         from datetime import datetime
 
         dt = datetime(2025, 1, 1, 12, 0, 0)
-        result = _safe_json_dumps({"ts": dt})
+        result = safe_json_dumps({"ts": dt})
         parsed = json.loads(result)
         assert "2025-01-01" in parsed["ts"]
 
@@ -600,7 +600,7 @@ class TestSafeJsonDumps:
 
         bridge_serialization.json.dumps = patched_dumps  # type: ignore[assignment]
         try:
-            result = _safe_json_dumps({"will": "fail"})
+            result = safe_json_dumps({"will": "fail"})
         finally:
             bridge_serialization.json.dumps = original  # type: ignore[assignment]
 

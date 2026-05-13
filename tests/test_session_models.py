@@ -11,7 +11,7 @@ from maivn_studio.services.session_manager.models import (
     QueuedMessage,
     SessionStatus,
     StudioSession,
-    _latest_response_text,
+    latest_response_text,
 )
 
 # MARK: SessionStatus
@@ -208,29 +208,29 @@ class TestToDict:
         assert d["is_active"] is False
 
 
-# MARK: _latest_response_text
+# MARK: latest_response_text
 
 
 class TestLatestResponseText:
     def test_returns_last_non_empty(self) -> None:
-        assert _latest_response_text(["first", "second", "third"]) == "third"
+        assert latest_response_text(["first", "second", "third"]) == "third"
 
     def test_skips_empty_strings(self) -> None:
-        assert _latest_response_text(["hello", "", "  "]) == "hello"
+        assert latest_response_text(["hello", "", "  "]) == "hello"
 
     def test_strips_whitespace(self) -> None:
-        assert _latest_response_text(["  trimmed  "]) == "trimmed"
+        assert latest_response_text(["  trimmed  "]) == "trimmed"
 
     def test_not_a_list(self) -> None:
-        assert _latest_response_text("not a list") is None
-        assert _latest_response_text(None) is None
-        assert _latest_response_text(42) is None
+        assert latest_response_text("not a list") is None
+        assert latest_response_text(None) is None
+        assert latest_response_text(42) is None
 
     def test_empty_list(self) -> None:
-        assert _latest_response_text([]) is None
+        assert latest_response_text([]) is None
 
     def test_all_empty(self) -> None:
-        assert _latest_response_text(["", "  ", ""]) is None
+        assert latest_response_text(["", "  ", ""]) is None
 
     def test_non_string_items(self) -> None:
-        assert _latest_response_text([123, None, "actual"]) == "actual"
+        assert latest_response_text([123, None, "actual"]) == "actual"

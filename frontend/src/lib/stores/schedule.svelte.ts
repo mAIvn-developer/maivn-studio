@@ -120,10 +120,7 @@ function createStore(appId: string): InternalStore {
   // for the next reconciliation poll. Backend may send a string, ``null``
   // (no future fires — one-shot done, max_runs reached), or omit the key
   // entirely on older builds.
-  function pickNextRunAt(
-    current: string | null,
-    data: Record<string, unknown>,
-  ): string | null {
+  function pickNextRunAt(current: string | null, data: Record<string, unknown>): string | null {
     if (!("next_run_at" in data)) return current;
     const next = data.next_run_at;
     if (typeof next === "string") return next;

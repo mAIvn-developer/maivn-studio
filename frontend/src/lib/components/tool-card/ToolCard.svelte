@@ -6,6 +6,7 @@
     getToolStatusDisplayConfig,
     getToolTypeDisplayConfig,
   } from "./tool-card-display";
+  import HookFiringMarker from "../ui/HookFiringMarker.svelte";
   import ToolCardArguments from "./ToolCardArguments.svelte";
   import ToolCardError from "./ToolCardError.svelte";
   import ToolCardHeader from "./ToolCardHeader.svelte";
@@ -94,6 +95,10 @@
   style="--type-color: {typeConfig.color}; --status-color: {status.color}; margin-left: {depth *
     12}px"
 >
+  {#if card.hookFirings && card.hookFirings.length > 0}
+    <HookFiringMarker firings={card.hookFirings} stage="before" />
+  {/if}
+
   <ToolCardHeader
     {card}
     {isExpanded}
@@ -135,6 +140,10 @@
 
       <ToolCardTimingFooter startedAt={card.startedAt} completedAt={card.completedAt} />
     </div>
+  {/if}
+
+  {#if card.hookFirings && card.hookFirings.length > 0}
+    <HookFiringMarker firings={card.hookFirings} stage="after" />
   {/if}
 </div>
 

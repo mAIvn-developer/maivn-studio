@@ -16,9 +16,9 @@ from maivn_studio.api.routes.sessions import reads as sessions_reads
 from maivn_studio.api.routes.sessions import routes as sessions_routes
 from maivn_studio.api.routes.sessions import writes as sessions_writes
 from maivn_studio.api.routes.sessions.helpers import (
-    _build_batch_config,
-    _build_invocation_kwargs,
-    _build_structured_output_config,
+    build_batch_config,
+    build_invocation_kwargs,
+    build_structured_output_config,
 )
 from maivn_studio.api.routes.sessions.models import (
     BatchInvocationRequest,
@@ -26,16 +26,16 @@ from maivn_studio.api.routes.sessions.models import (
     StructuredOutputRequest,
 )
 
-# MARK: Helpers - _build_structured_output_config
+# MARK: Helpers - build_structured_output_config
 
 
 class TestBuildStructuredOutputConfig:
     def test_returns_none_when_none(self) -> None:
-        assert _build_structured_output_config(None) is None
+        assert build_structured_output_config(None) is None
 
     def test_returns_none_when_disabled(self) -> None:
         req = StructuredOutputRequest(enabled=False)
-        assert _build_structured_output_config(req) is None
+        assert build_structured_output_config(req) is None
 
     def test_returns_config_when_enabled(self) -> None:
         req = StructuredOutputRequest(
@@ -44,7 +44,7 @@ class TestBuildStructuredOutputConfig:
             schema_name="MySchema",
             json_schema={"type": "object"},
         )
-        result = _build_structured_output_config(req)
+        result = build_structured_output_config(req)
         assert result == {
             "tool_name": "my_tool",
             "schema_name": "MySchema",
@@ -53,7 +53,7 @@ class TestBuildStructuredOutputConfig:
 
     def test_returns_config_with_nones(self) -> None:
         req = StructuredOutputRequest(enabled=True)
-        result = _build_structured_output_config(req)
+        result = build_structured_output_config(req)
         assert result == {
             "tool_name": None,
             "schema_name": None,
@@ -61,66 +61,66 @@ class TestBuildStructuredOutputConfig:
         }
 
 
-# MARK: Helpers - _build_invocation_kwargs
+# MARK: Helpers - build_invocation_kwargs
 
 
 class TestBuildInvocationKwargs:
     def test_returns_empty_when_none(self) -> None:
-        assert _build_invocation_kwargs(None) == {}
+        assert build_invocation_kwargs(None) == {}
 
     def test_returns_empty_for_defaults(self) -> None:
         config = InvocationConfig()
-        result = _build_invocation_kwargs(config)
+        result = build_invocation_kwargs(config)
         assert result == {}
 
     def test_includes_model(self) -> None:
         config = InvocationConfig(model="fast")
-        result = _build_invocation_kwargs(config)
+        result = build_invocation_kwargs(config)
         assert result["model"] == "fast"
 
     def test_includes_reasoning(self) -> None:
         config = InvocationConfig(reasoning="high")
-        result = _build_invocation_kwargs(config)
+        result = build_invocation_kwargs(config)
         assert result["reasoning"] == "high"
 
     def test_includes_force_final_tool(self) -> None:
         config = InvocationConfig(force_final_tool=True)
-        result = _build_invocation_kwargs(config)
+        result = build_invocation_kwargs(config)
         assert result["force_final_tool"] is True
 
     def test_excludes_force_final_tool_when_false(self) -> None:
         config = InvocationConfig(force_final_tool=False)
-        result = _build_invocation_kwargs(config)
+        result = build_invocation_kwargs(config)
         assert "force_final_tool" not in result
 
     def test_includes_stream_response_false(self) -> None:
         config = InvocationConfig(stream_response=False)
-        result = _build_invocation_kwargs(config)
+        result = build_invocation_kwargs(config)
         assert result["stream_response"] is False
 
     def test_excludes_stream_response_true(self) -> None:
         config = InvocationConfig(stream_response=True)
-        result = _build_invocation_kwargs(config)
+        result = build_invocation_kwargs(config)
         assert "stream_response" not in result
 
     def test_includes_status_messages(self) -> None:
         config = InvocationConfig(status_messages=True)
-        result = _build_invocation_kwargs(config)
+        result = build_invocation_kwargs(config)
         assert result["status_messages"] is True
 
     def test_excludes_status_messages_false(self) -> None:
         config = InvocationConfig(status_messages=False)
-        result = _build_invocation_kwargs(config)
+        result = build_invocation_kwargs(config)
         assert "status_messages" not in result
 
     def test_includes_targeted_tools(self) -> None:
         config = InvocationConfig(targeted_tools=["tool_a", "tool_b"])
-        result = _build_invocation_kwargs(config)
+        result = build_invocation_kwargs(config)
         assert result["targeted_tools"] == ["tool_a", "tool_b"]
 
     def test_includes_metadata(self) -> None:
         config = InvocationConfig(metadata={"key": "value"})
-        result = _build_invocation_kwargs(config)
+        result = build_invocation_kwargs(config)
         assert result["metadata"] == {"key": "value"}
 
     def test_includes_typed_session_configs(self) -> None:
@@ -128,13 +128,13 @@ class TestBuildInvocationKwargs:
             system_tools_config={"allowed_tools": ["web_search"]},
             orchestration_config={"max_cycles": 2},
         )
-        result = _build_invocation_kwargs(config)
+        result = build_invocation_kwargs(config)
         assert result["system_tools_config"].allowed_tools == ["web_search"]
         assert result["orchestration_config"].max_cycles == 2
 
     def test_includes_allow_private_in_system_tools(self) -> None:
         config = InvocationConfig(allow_private_in_system_tools=True)
-        result = _build_invocation_kwargs(config)
+        result = build_invocation_kwargs(config)
         assert result["allow_private_in_system_tools"] is True
 
     def test_full_config(self) -> None:
@@ -150,7 +150,7 @@ class TestBuildInvocationKwargs:
             orchestration_config={"max_cycles": 2},
             allow_private_in_system_tools=False,
         )
-        result = _build_invocation_kwargs(config)
+        result = build_invocation_kwargs(config)
         assert result["model"] == "balanced"
         assert result["reasoning"] == "medium"
         assert result["force_final_tool"] is True
@@ -163,14 +163,14 @@ class TestBuildInvocationKwargs:
         assert result["allow_private_in_system_tools"] is False
 
 
-# MARK: Helpers - _build_batch_config
+# MARK: Helpers - build_batch_config
 
 
 class TestBuildBatchConfig:
     def test_returns_none_when_none_or_disabled(self) -> None:
-        assert _build_batch_config(None, message_type="human", attachments=None) is None
+        assert build_batch_config(None, message_type="human", attachments=None) is None
         assert (
-            _build_batch_config(
+            build_batch_config(
                 BatchInvocationRequest(enabled=False),
                 message_type="human",
                 attachments=None,
@@ -180,7 +180,7 @@ class TestBuildBatchConfig:
 
     def test_returns_config_when_enabled(self) -> None:
         attachments = [{"name": "sample.txt", "content_base64": "YWJj"}]
-        result = _build_batch_config(
+        result = build_batch_config(
             BatchInvocationRequest(
                 enabled=True,
                 messages=["alpha", "beta"],
@@ -207,7 +207,7 @@ class TestBuildBatchConfig:
         assert request.messages == ["alpha", "beta"]
 
     def test_returns_matrix_rows_when_enabled(self) -> None:
-        result = _build_batch_config(
+        result = build_batch_config(
             BatchInvocationRequest(
                 enabled=True,
                 rows=[
