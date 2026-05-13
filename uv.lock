@@ -400,7 +400,7 @@ wheels = [
 
 [[package]]
 name = "maivn"
-version = "0.2.0"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "croniter" },
@@ -412,14 +412,14 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "tzlocal" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5c/0a/fde20f708c45d8ed5c5b2b69dfeb88fd57e3cbafc2cef132a4b112f53273/maivn-0.2.0.tar.gz", hash = "sha256:6207c00fec77c184d4b3c3bd3a45454dbe9172dc24839e476973842304a697fd", size = 526199, upload-time = "2026-05-04T15:09:15.439Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d1/f5/52d8787d202012c071985c1ce5b3d87d1a1e05bd0b127e69f58bb9c0e680/maivn-0.3.0.tar.gz", hash = "sha256:d732b9c82f98485727230b3944ef4f220990e0356701e5616c69334d926c1900", size = 575863, upload-time = "2026-05-13T23:51:01.56Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4b/1b/823304bc3771c92c70003b0e06abc42aee493b5fde57c90889137adcc77c/maivn-0.2.0-py3-none-any.whl", hash = "sha256:e0eea73489294ede30f252796aee4c31da57b7840e2377be178a54663363a532", size = 372255, upload-time = "2026-05-04T15:09:13.599Z" },
+    { url = "https://files.pythonhosted.org/packages/2d/8b/efbdddd6d84db8371e298b338ad5fbd9759b1c50f55cdaea6e684206aaa3/maivn-0.3.0-py3-none-any.whl", hash = "sha256:328bb8f1d9d0274a79819a4e28cdc58c3cf97c2032a803bf262e6f8ae67cb60b", size = 393603, upload-time = "2026-05-13T23:50:59.725Z" },
 ]
 
 [[package]]
 name = "maivn-shared"
-version = "0.2.0"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -427,9 +427,9 @@ dependencies = [
     { name = "orjson" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/49/ac/c6f589c2716827bcc1036de421b45e06dfcf4bf102103375946fca65dfc8/maivn_shared-0.2.0.tar.gz", hash = "sha256:b0b116b775e18dfb2b7c2dd92c0e7c9f740f4485789b24e133c987a5a1422c96", size = 148317, upload-time = "2026-05-04T12:49:50.558Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/15/09/c0e19580f10c6f99c9b7dcbcbe41fca9859d65979aea081601c3fb1acccb/maivn_shared-0.3.0.tar.gz", hash = "sha256:6f5f207eb1179e2539725c581547176be4cf3173c489092111b4c9e469a06a66", size = 151846, upload-time = "2026-05-13T23:20:32.435Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7b/43/4fbd79dc4bbbd12e60178df657f0f32994302310d7755edc395430b10eaa/maivn_shared-0.2.0-py3-none-any.whl", hash = "sha256:6fa0b4745d15fc5b2e53bf4d77de5739b0c4cb3927088d1af34b86d3b3c640eb", size = 80847, upload-time = "2026-05-04T12:49:48.453Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/af/52202004232572faaa9bedc6d9bf4b3fb01dc5ed341339801cb8e8b41697/maivn_shared-0.3.0-py3-none-any.whl", hash = "sha256:45143d02fdebce25ab23cb06b39de7b70110b65d3493f9dc646029d60e8c5325", size = 85407, upload-time = "2026-05-13T23:20:30.992Z" },
 ]
 
 [[package]]
@@ -455,8 +455,8 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.136.1" },
-    { name = "maivn", specifier = ">=0.2.0,<0.3.0" },
-    { name = "maivn-shared", specifier = ">=0.2.0,<0.3.0" },
+    { name = "maivn", specifier = ">=0.3.0,<0.4.0" },
+    { name = "maivn-shared", specifier = ">=0.3.0,<0.4.0" },
     { name = "pydantic", specifier = ">=2.13.3" },
     { name = "sse-starlette", specifier = ">=2.1.3" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.46.0" },
