@@ -64,7 +64,7 @@ def collect_private_data_keys(scope: Any) -> list[str]:
     keys: set[str] = set()
     try:
         tools = scope.list_tools()
-    except Exception:
+    except Exception:  # noqa: BLE001 - introspection of live SDK objects; any failure means "no keys"
         return []
     for tool in tools:
         for dep in getattr(tool, "dependencies", []) or []:
@@ -82,7 +82,7 @@ def collect_runtime_tool_count(scope: Any) -> int:
     """
     try:
         tools = list(scope.list_tools())
-    except Exception:
+    except Exception:  # noqa: BLE001 - tool listing can fail on partially-initialized scopes
         return 0
 
     if not tools:
@@ -105,7 +105,7 @@ def collect_runtime_tool_count(scope: Any) -> int:
                 )
             )
         return len({spec.tool_id for spec in specs})
-    except Exception:
+    except Exception:  # noqa: BLE001 - ToolSpec expansion is best-effort; fall back to authored count
         return len(tools)
 
 
@@ -121,7 +121,7 @@ def build_agent_info(
     tool_count = 0
     try:
         tool_count = len(agent.list_tools())
-    except Exception:
+    except Exception:  # noqa: BLE001 - missing tool list is non-fatal for the summary card
         pass
     runtime_tool_count = collect_runtime_tool_count(agent)
 
@@ -129,7 +129,7 @@ def build_agent_info(
     try:
         for srv in agent.list_mcp_servers():
             mcp_names.append(getattr(srv, "name", str(srv)))
-    except Exception:
+    except Exception:  # noqa: BLE001 - MCP discovery may fail before server is reachable
         pass
 
     return AgentInfo(
@@ -196,7 +196,7 @@ def build_swarm_info(swarm: Any) -> SwarmInfo:
             agent_names.append(getattr(agent, "name", str(agent)))
             try:
                 total_tools += len(agent.list_tools())
-            except Exception:
+            except Exception:  # noqa: BLE001 - per-agent tool count is best-effort for the summary
                 pass
             runtime_total_tools += collect_runtime_tool_count(agent)
 
@@ -257,7 +257,7 @@ def build_tool_info(tool: Any, agent_name: str) -> ToolInfo:
         elif hasattr(raw_schema, "model_json_schema"):
             try:
                 args_schema = raw_schema.model_json_schema()
-            except Exception:
+            except Exception:  # noqa: BLE001 - Pydantic schema dump can fail on dynamic models; omit
                 pass
 
     return ToolInfo(

@@ -59,6 +59,7 @@ def _resolve_app_variant(app, requested_variant: str | None) -> str | None:
 
 
 async def create_session(request: CreateSessionRequest) -> SessionResponse:
+    """Create a session for an app + variant and dispatch the initial message."""
     refresh_registry_from_disk()
 
     registry = get_registry()
@@ -121,10 +122,12 @@ async def create_session(request: CreateSessionRequest) -> SessionResponse:
 
 @router.post("/", response_model=SessionResponse, include_in_schema=False)
 async def create_session_route(request: CreateSessionRequest) -> SessionResponse:
+    """Create a session for an app + variant and dispatch the initial message."""
     return await create_session(request)
 
 
 async def send_message(session_id: str, request: SendMessageRequest) -> SessionResponse:
+    """Send a follow-up message into an active session."""
     manager = get_session_manager()
     session = get_session_or_404(session_id, manager=manager)
 
@@ -162,6 +165,7 @@ async def send_message(session_id: str, request: SendMessageRequest) -> SessionR
 
 @router.post("/{session_id}/messages", response_model=SessionResponse)
 async def send_message_route(session_id: str, request: SendMessageRequest) -> SessionResponse:
+    """Send a follow-up message into an active session."""
     return await send_message(session_id, request)
 
 
@@ -169,6 +173,7 @@ async def submit_interrupt(
     session_id: str,
     request: SubmitInterruptRequest,
 ) -> SessionResponse:
+    """Resolve a pending interrupt request with a user-supplied value."""
     from maivn_studio.services.studio_reporter.interrupts import resolve_interrupt
 
     manager = get_session_manager()
@@ -215,10 +220,12 @@ async def submit_interrupt_route(
     session_id: str,
     request: SubmitInterruptRequest,
 ) -> SessionResponse:
+    """Resolve a pending interrupt request with a user-supplied value."""
     return await submit_interrupt(session_id, request)
 
 
 async def end_session(session_id: str) -> SessionResponse:
+    """End the session gracefully and return its final snapshot."""
     manager = get_session_manager()
     session = get_session_or_404(session_id, manager=manager)
     await manager.end_session(session)
@@ -227,10 +234,12 @@ async def end_session(session_id: str) -> SessionResponse:
 
 @router.post("/{session_id}/end", response_model=SessionResponse)
 async def end_session_route(session_id: str) -> SessionResponse:
+    """End the session gracefully and return its final snapshot."""
     return await end_session(session_id)
 
 
 async def cancel_session_compat(session_id: str) -> SessionResponse:
+    """Cancel the session (POST compat path used by older clients)."""
     manager = get_session_manager()
     session = get_session_or_404(session_id, manager=manager)
     await manager.cancel_session(session)
@@ -239,10 +248,12 @@ async def cancel_session_compat(session_id: str) -> SessionResponse:
 
 @router.post("/{session_id}/cancel", response_model=SessionResponse)
 async def cancel_session_compat_route(session_id: str) -> SessionResponse:
+    """Cancel the session (POST compat path used by older clients)."""
     return await cancel_session_compat(session_id)
 
 
 async def cancel_session(session_id: str) -> SessionResponse:
+    """Cancel the session and return its final snapshot."""
     manager = get_session_manager()
     session = get_session_or_404(session_id, manager=manager)
     await manager.cancel_session(session)
@@ -251,4 +262,5 @@ async def cancel_session(session_id: str) -> SessionResponse:
 
 @router.delete("/{session_id}", response_model=SessionResponse)
 async def cancel_session_route(session_id: str) -> SessionResponse:
+    """Cancel the session and return its final snapshot."""
     return await cancel_session(session_id)

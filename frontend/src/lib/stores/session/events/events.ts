@@ -24,19 +24,38 @@ import type { SessionStoreContext } from "../types";
 
 // MARK: Event Dispatcher
 
+/**
+ * Upper bound on the raw event history retained in the session store.
+ *
+ * The history is debug-only — surfaced by ``InspectorPanel`` for developers
+ * inspecting the SSE wire feed. Long streaming turns can otherwise produce
+ * thousands of ``assistant_chunk`` / ``system_tool_chunk`` events, each one
+ * forcing an ``O(n)`` array clone via the current ``setEvents([...prev, e])``
+ * pattern. Capping retention keeps the per-event cost flat and bounds the
+ * memory footprint of a long-running session.
+ *
+ * Increase if a future inspector view needs deeper retention; lower if the
+ * inspector switches to a windowed render.
+ */
+const MAX_RAW_EVENT_HISTORY = 1000;
+
 export function processEvent(ctx: SessionStoreContext, type: string, data: unknown) {
   const eventData = (data as Record<string, unknown> | null) ?? {};
 
-  // Add to raw event history
-  ctx.setEvents([
-    ...ctx.getEvents(),
-    {
-      id: crypto.randomUUID(),
-      type,
-      data: eventData,
-      timestamp: new Date().toISOString(),
-    },
-  ]);
+  // Add to raw event history, capped at MAX_RAW_EVENT_HISTORY so long
+  // streaming turns don't grow this list unbounded (it is debug-only).
+  const previousEvents = ctx.getEvents();
+  const newEvent = {
+    id: crypto.randomUUID(),
+    type,
+    data: eventData,
+    timestamp: new Date().toISOString(),
+  };
+  const nextEvents =
+    previousEvents.length >= MAX_RAW_EVENT_HISTORY
+      ? [...previousEvents.slice(previousEvents.length - MAX_RAW_EVENT_HISTORY + 1), newEvent]
+      : [...previousEvents, newEvent];
+  ctx.setEvents(nextEvents);
 
   for (const normalizedEvent of normalizeIncomingEvents(ctx, type, eventData)) {
     processNormalizedEvent(ctx, normalizedEvent.type, normalizedEvent.data);

@@ -142,13 +142,22 @@ export interface BatchResult {
  * Rendered as a persistent header (``stage === "before"``) or footer
  * (``stage === "after"``) on the matching tool card or scope card.
  */
+export type HookSource = "tool" | "scope" | "swarm";
+
 export interface HookFiring {
   name: string;
   stage: "before" | "after";
   status: "completed" | "failed";
+  /** Which on-screen card the firing attaches to. */
   targetType: "tool" | "agent" | "swarm";
   targetId?: string;
   targetName?: string;
+  /**
+   * Which level defined the hook (``"tool"`` / ``"scope"`` / ``"swarm"``).
+   * Lets the UI label pills even when multiple sources hook the same target.
+   * Optional for backward compatibility with older SDKs.
+   */
+  source?: HookSource;
   error?: string;
   elapsedMs?: number;
   timestamp: string;

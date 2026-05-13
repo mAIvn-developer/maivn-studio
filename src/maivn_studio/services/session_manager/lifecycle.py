@@ -38,7 +38,7 @@ def close_loaded_app_resources(session: StudioSession) -> None:
             continue
         try:
             close()
-        except Exception:
+        except Exception:  # noqa: BLE001 - resource close() should never block shutdown
             pass
 
 
@@ -103,7 +103,7 @@ async def shutdown_sessions(sessions: list[StudioSession]) -> None:
                 await task
             except asyncio.CancelledError:
                 pass
-            except Exception:
+            except Exception:  # noqa: BLE001 - shutdown must drain tasks even if they erred
                 pass
         session._task = None
 

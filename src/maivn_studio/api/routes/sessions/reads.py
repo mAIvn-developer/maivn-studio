@@ -19,6 +19,7 @@ async def list_sessions(
     status: str | None = None,
     thread_id: str | None = None,
 ) -> SessionListResponse:
+    """List sessions, optionally filtered by status and/or thread id."""
     manager = get_session_manager()
 
     if thread_id:
@@ -44,10 +45,12 @@ async def list_sessions_route(
     status: str | None = None,
     thread_id: str | None = None,
 ) -> SessionListResponse:
+    """List sessions, optionally filtered by status and/or thread id."""
     return await list_sessions(status=status, thread_id=thread_id)
 
 
 async def get_session(session_id: str) -> SessionResponse:
+    """Return the current snapshot of a session."""
     manager = get_session_manager()
     session = get_session_or_404(session_id, manager=manager)
     return SessionResponse(**session.to_dict())
@@ -55,6 +58,7 @@ async def get_session(session_id: str) -> SessionResponse:
 
 @router.get("/{session_id}", response_model=SessionResponse)
 async def get_session_route(session_id: str) -> SessionResponse:
+    """Return the current snapshot of a session."""
     return await get_session(session_id)
 
 
@@ -62,6 +66,7 @@ async def get_session_events(
     session_id: str,
     last_event_id: str | None = None,
 ) -> EventSourceResponse:
+    """Open an SSE stream for the session, replaying from ``last_event_id``."""
     manager = get_session_manager()
     get_session_or_404(session_id, manager=manager)
 
@@ -77,10 +82,12 @@ async def get_session_events_route(
     session_id: str,
     last_event_id: str | None = None,
 ) -> EventSourceResponse:
+    """Open an SSE stream for the session, replaying from ``last_event_id``."""
     return await get_session_events(session_id, last_event_id=last_event_id)
 
 
 async def get_session_history(session_id: str) -> dict[str, Any]:
+    """Return the captured event history for the session."""
     manager = get_session_manager()
     get_session_or_404(session_id, manager=manager)
 
@@ -96,4 +103,5 @@ async def get_session_history(session_id: str) -> dict[str, Any]:
 
 @router.get("/{session_id}/history")
 async def get_session_history_route(session_id: str) -> dict[str, Any]:
+    """Return the captured event history for the session."""
     return await get_session_history(session_id)

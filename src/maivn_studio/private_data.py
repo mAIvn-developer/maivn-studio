@@ -91,7 +91,7 @@ def extract_private_data_schema(loaded: Any) -> list[PrivateDataField]:
             continue
         try:
             tools = scope.list_tools()
-        except Exception:
+        except Exception:  # noqa: BLE001 - skip scopes whose tools can't be enumerated
             continue
 
         for tool in tools:

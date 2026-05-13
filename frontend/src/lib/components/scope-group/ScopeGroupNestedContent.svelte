@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { PhaseChipData, ToolCard as ToolCardType } from "$lib/types";
+  import type { HookFiring, PhaseChipData, ToolCard as ToolCardType } from "$lib/types";
   import MarkdownContent from "../markdown/MarkdownContent.svelte";
   import ToolCard from "../tool-card/ToolCard.svelte";
   import type { NestedAgent, ScopeType } from "./scope-group-helpers";
@@ -9,6 +9,14 @@
     scopeType: ScopeType;
     nestedAgents: NestedAgent[];
     resolveNestedAgentChips: (agent: NestedAgent) => PhaseChipData[];
+    /**
+     * Map of all scope hook firings. Used to resolve nested agent cards'
+     * own firings (the SDK emits them with target_type="agent" / target_id
+     * = agent.id; the frontend stores under both ``agent:<id>`` and
+     * ``agent:<name>`` for fallback). Passed through unchanged so deeper
+     * nested ScopeGroupCards can recurse if needed.
+     */
+    scopeHookFirings?: Map<string, HookFiring[]>;
     isLive?: boolean;
     showArgs?: boolean;
     expandAllCards?: boolean;
@@ -26,6 +34,7 @@
     scopeType,
     nestedAgents,
     resolveNestedAgentChips,
+    scopeHookFirings,
     isLive = false,
     showArgs = true,
     expandAllCards = false,
@@ -38,6 +47,16 @@
     bindAgentResponseEl = $bindable(undefined),
     displayTools,
   }: Props = $props();
+
+  function resolveNestedAgentFirings(agent: NestedAgent): HookFiring[] {
+    if (!scopeHookFirings) return [];
+    const byId = agent.agentId ? scopeHookFirings.get(`agent:${agent.agentId}`) : undefined;
+    const byName = scopeHookFirings.get(`agent:${agent.agentName}`);
+    // ``hook-events.ts`` stores the same firing object under both ``agent:<id>``
+    // and ``agent:<name>``, so ``byId`` and ``byName`` are either the same
+    // array or one is undefined — no merge / dedup needed here.
+    return byId ?? byName ?? [];
+  }
 </script>
 
 <div
@@ -56,6 +75,8 @@
         scopeId={agent.agentId}
         tools={agent.tools}
         phaseChips={resolveNestedAgentChips(agent)}
+        hookFirings={resolveNestedAgentFirings(agent)}
+        {scopeHookFirings}
         {isLive}
         {showArgs}
         {expandAllCards}

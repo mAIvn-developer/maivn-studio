@@ -49,6 +49,8 @@ class ScheduleConfig(BaseModel):
 
 
 class ScheduleRunSummary(BaseModel):
+    """One execution record (a single "fire") of a scheduled app job."""
+
     fire_id: str
     scheduled_at: datetime
     fired_at: datetime | None = None
@@ -65,6 +67,8 @@ class ScheduleRunSummary(BaseModel):
 
 
 class ScheduleJobSummary(BaseModel):
+    """API-facing summary of a scheduled app job, including counts and history."""
+
     job_id: str
     app_id: str
     name: str

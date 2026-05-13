@@ -57,6 +57,7 @@
         nestedAgents={group.nestedAgents}
         phaseChips={resolveScopePhaseChips(group, phaseChips)}
         hookFirings={resolveScopeHookFirings(group)}
+        {scopeHookFirings}
         {latestStatusMessage}
         {isLive}
         showArgs={showToolArgs}

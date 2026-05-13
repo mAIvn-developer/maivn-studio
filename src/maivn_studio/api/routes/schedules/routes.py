@@ -20,11 +20,13 @@ logger = logging.getLogger(__name__)
 
 @router.get("", response_model=list[ScheduleJobSummary])
 async def list_jobs() -> list[ScheduleJobSummary]:
+    """List all currently registered schedule jobs."""
     return get_schedule_manager().list_jobs()
 
 
 @router.get("/{app_id}", response_model=ScheduleJobSummary)
 async def get_job(app_id: str) -> ScheduleJobSummary:
+    """Return the schedule summary for ``app_id`` or 404 if none is registered."""
     summary = get_schedule_manager().get(app_id)
     if summary is None:
         raise HTTPException(status_code=404, detail=f"No schedule for app {app_id}")
@@ -33,6 +35,7 @@ async def get_job(app_id: str) -> ScheduleJobSummary:
 
 @router.put("/{app_id}", response_model=ScheduleJobSummary)
 async def upsert_job(app_id: str, config: ScheduleConfig) -> ScheduleJobSummary:
+    """Create or replace the schedule for ``app_id``."""
     try:
         return get_schedule_manager().start(app_id, config)
     except ValueError as exc:
@@ -41,6 +44,7 @@ async def upsert_job(app_id: str, config: ScheduleConfig) -> ScheduleJobSummary:
 
 @router.post("/{app_id}/stop", response_model=ScheduleJobSummary)
 async def stop_job(app_id: str, drain: bool = True) -> ScheduleJobSummary:
+    """Stop the schedule for ``app_id``, optionally draining in-flight fires."""
     summary = get_schedule_manager().stop(app_id, drain=drain)
     if summary is None:
         raise HTTPException(status_code=404, detail=f"No schedule for app {app_id}")
@@ -49,6 +53,7 @@ async def stop_job(app_id: str, drain: bool = True) -> ScheduleJobSummary:
 
 @router.post("/{app_id}/pause", response_model=ScheduleJobSummary)
 async def pause_job(app_id: str) -> ScheduleJobSummary:
+    """Pause future fires for ``app_id`` without losing its configuration."""
     summary = get_schedule_manager().pause(app_id)
     if summary is None:
         raise HTTPException(status_code=404, detail=f"No schedule for app {app_id}")
@@ -57,6 +62,7 @@ async def pause_job(app_id: str) -> ScheduleJobSummary:
 
 @router.post("/{app_id}/resume", response_model=ScheduleJobSummary)
 async def resume_job(app_id: str) -> ScheduleJobSummary:
+    """Resume a previously paused schedule for ``app_id``."""
     summary = get_schedule_manager().resume(app_id)
     if summary is None:
         raise HTTPException(status_code=404, detail=f"No schedule for app {app_id}")
@@ -65,6 +71,7 @@ async def resume_job(app_id: str) -> ScheduleJobSummary:
 
 @router.post("/{app_id}/trigger", response_model=ScheduleJobSummary)
 async def trigger_now(app_id: str) -> ScheduleJobSummary:
+    """Fire the scheduled app immediately, outside its cron cadence."""
     summary = get_schedule_manager().trigger_now(app_id)
     if summary is None:
         raise HTTPException(status_code=404, detail=f"No schedule for app {app_id}")
@@ -73,6 +80,7 @@ async def trigger_now(app_id: str) -> ScheduleJobSummary:
 
 @router.delete("/{app_id}", status_code=204)
 async def remove_job(app_id: str) -> None:
+    """Delete the schedule and its history for ``app_id``."""
     get_schedule_manager().remove(app_id)
 
 
