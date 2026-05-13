@@ -21,7 +21,7 @@ from maivn_shared import FINAL_EVENT_NAME
 from maivn_shared import SessionResponse as SDKSessionResponse
 
 from .messages import resolve_structured_output_invocation_fallbacks
-from .models import _STUDIO_EVENT_CATEGORIES, SessionStatus, StudioSession, _latest_response_text
+from .models import STUDIO_EVENT_CATEGORIES, SessionStatus, StudioSession, latest_response_text
 
 # Give the frontend a chance to open EventSource after the create/send POST
 # returns. If no UI subscribes, execution still proceeds quickly for API users.
@@ -223,7 +223,7 @@ def _serialize_batch_response(
     duration_ms: int | None = None,
 ) -> dict[str, Any]:
     responses = getattr(result, "responses", None)
-    response_text = _latest_response_text(responses)
+    response_text = latest_response_text(responses)
     if response_text is None:
         raw_response = getattr(result, "response", None)
         response_text = raw_response if isinstance(raw_response, str) else ""
@@ -825,7 +825,7 @@ async def execute_session(manager: Any, session: StudioSession, logger: Any) -> 
                 event_builder = getattr(executor, "events", None)
                 if callable(event_builder):
                     event_invocable = event_builder(
-                        include=_STUDIO_EVENT_CATEGORIES,
+                        include=STUDIO_EVENT_CATEGORIES,
                         auto_verbose=False,
                     )
                 else:
@@ -933,7 +933,7 @@ async def execute_session(manager: Any, session: StudioSession, logger: Any) -> 
                                 )
                             routed_reporter = cast(Any, event_router_reporter_cls)(
                                 base_reporter,
-                                include=_STUDIO_EVENT_CATEGORIES,
+                                include=STUDIO_EVENT_CATEGORIES,
                             )
                             routed_token = current_reporter.set(cast(Any, routed_reporter))
                             try:
@@ -1041,7 +1041,7 @@ async def execute_session(manager: Any, session: StudioSession, logger: Any) -> 
                 batch_event_data = result.event_data
             else:
                 session.result = result
-                response = _latest_response_text(getattr(result, "responses", None))
+                response = latest_response_text(getattr(result, "responses", None))
                 if response is None:
                     response = ""
                 structured_result = _serialize_structured_result(getattr(result, "result", None))

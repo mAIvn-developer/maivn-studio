@@ -6,6 +6,7 @@ interface CreateSessionStoreApiParams {
   getSession: () => import("$lib/types").Session | null;
   getChatFlowItems: () => import("$lib/types").ChatFlowItem[];
   getToolCards: () => Map<string, import("$lib/types").ToolCard>;
+  getScopeHookFirings: () => Map<string, import("$lib/types").HookFiring[]>;
   getEvents: () => import("$lib/types").UIEvent[];
   getLoading: () => boolean;
   getError: () => string | null;
@@ -85,6 +86,9 @@ export function createSessionStoreApi(params: CreateSessionStoreApiParams) {
     },
     get toolCards() {
       return params.getToolCards();
+    },
+    get scopeHookFirings() {
+      return params.getScopeHookFirings();
     },
     get messages() {
       return getMessages(params.getChatFlowItems());

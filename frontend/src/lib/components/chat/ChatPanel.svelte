@@ -4,6 +4,7 @@
     BatchInvocationRow,
     ChatFlowItem,
     AppDetails,
+    HookFiring,
     InterruptData,
     InterruptStyle,
     MessageAttachmentPayload,
@@ -41,6 +42,7 @@
   interface Props {
     app: AppDetails | null;
     chatFlowItems: ChatFlowItem[];
+    scopeHookFirings?: Map<string, HookFiring[]>;
     loading: boolean;
     canSend: boolean;
     canStageNext: boolean;
@@ -95,6 +97,7 @@
   let {
     app,
     chatFlowItems,
+    scopeHookFirings,
     loading,
     canSend,
     canStageNext,
@@ -592,6 +595,7 @@
             {showSessionDetails}
             {hasActiveSession}
             chatFlowItemsLength={chatFlowItems.length}
+            {scopeHookFirings}
             onSubmitInterrupt={handleInterruptSubmit}
             onCancelInterrupt={handleInterruptCancel}
           />

@@ -543,6 +543,7 @@
           <ChatPanel
             app={apps.selectedApp}
             chatFlowItems={session.filteredChatFlowItems}
+            scopeHookFirings={session.scopeHookFirings}
             loading={session.loading}
             canSend={session.session?.can_send_message ?? false}
             canStageNext={session.canStageNext}

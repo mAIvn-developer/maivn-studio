@@ -10,13 +10,13 @@ from maivn_studio.services.event_bridge import create_event_bridge
 from maivn_studio.services.session_manager.manager import get_session_manager
 
 from .helpers import (
-    _build_batch_config,
-    _build_invocation_kwargs,
-    _build_structured_output_config,
-    _get_session_or_404,
-    _merge_private_data,
-    _refresh_registry_from_disk,
-    _serialize_attachments,
+    build_batch_config,
+    build_invocation_kwargs,
+    build_structured_output_config,
+    get_session_or_404,
+    merge_private_data,
+    refresh_registry_from_disk,
+    serialize_attachments,
 )
 from .models import (
     CreateSessionRequest,
@@ -59,7 +59,7 @@ def _resolve_app_variant(app, requested_variant: str | None) -> str | None:
 
 
 async def create_session(request: CreateSessionRequest) -> SessionResponse:
-    _refresh_registry_from_disk()
+    refresh_registry_from_disk()
 
     registry = get_registry()
     app = registry.get(request.app_id)
@@ -83,7 +83,7 @@ async def create_session(request: CreateSessionRequest) -> SessionResponse:
         app_config=app,
         variant=resolved_variant,
         thread_id=request.thread_id,
-        private_data=_merge_private_data(
+        private_data=merge_private_data(
             app.private_data,
             variant_private_data,
             request.private_data,
@@ -93,10 +93,10 @@ async def create_session(request: CreateSessionRequest) -> SessionResponse:
     create_event_bridge(session.session_id)
     _request_event_subscriber_wait(session)
 
-    structured_output_config = _build_structured_output_config(request.structured_output)
-    invocation_kwargs = _build_invocation_kwargs(request.invocation)
-    attachments = _serialize_attachments(request.attachments)
-    batch_config = _build_batch_config(
+    structured_output_config = build_structured_output_config(request.structured_output)
+    invocation_kwargs = build_invocation_kwargs(request.invocation)
+    attachments = serialize_attachments(request.attachments)
+    batch_config = build_batch_config(
         request.batch,
         message_type=request.message_type,
         attachments=attachments,
@@ -126,7 +126,7 @@ async def create_session_route(request: CreateSessionRequest) -> SessionResponse
 
 async def send_message(session_id: str, request: SendMessageRequest) -> SessionResponse:
     manager = get_session_manager()
-    session = _get_session_or_404(session_id, manager=manager)
+    session = get_session_or_404(session_id, manager=manager)
 
     if not session.can_send_message and not session.can_stage_message:
         raise HTTPException(
@@ -134,10 +134,10 @@ async def send_message(session_id: str, request: SendMessageRequest) -> SessionR
             detail=f"Session cannot accept messages. Status: {session.status.value}",
         )
 
-    structured_output_config = _build_structured_output_config(request.structured_output)
-    invocation_kwargs = _build_invocation_kwargs(request.invocation)
-    attachments = _serialize_attachments(request.attachments)
-    batch_config = _build_batch_config(
+    structured_output_config = build_structured_output_config(request.structured_output)
+    invocation_kwargs = build_invocation_kwargs(request.invocation)
+    attachments = serialize_attachments(request.attachments)
+    batch_config = build_batch_config(
         request.batch,
         message_type=request.message_type,
         attachments=attachments,
@@ -172,7 +172,7 @@ async def submit_interrupt(
     from maivn_studio.services.studio_reporter.interrupts import resolve_interrupt
 
     manager = get_session_manager()
-    session = _get_session_or_404(session_id, manager=manager)
+    session = get_session_or_404(session_id, manager=manager)
 
     resolve_candidates = [request.interrupt_id]
     if request.data_key:
@@ -220,7 +220,7 @@ async def submit_interrupt_route(
 
 async def end_session(session_id: str) -> SessionResponse:
     manager = get_session_manager()
-    session = _get_session_or_404(session_id, manager=manager)
+    session = get_session_or_404(session_id, manager=manager)
     await manager.end_session(session)
     return SessionResponse(**session.to_dict())
 
@@ -232,7 +232,7 @@ async def end_session_route(session_id: str) -> SessionResponse:
 
 async def cancel_session_compat(session_id: str) -> SessionResponse:
     manager = get_session_manager()
-    session = _get_session_or_404(session_id, manager=manager)
+    session = get_session_or_404(session_id, manager=manager)
     await manager.cancel_session(session)
     return SessionResponse(**session.to_dict())
 
@@ -244,7 +244,7 @@ async def cancel_session_compat_route(session_id: str) -> SessionResponse:
 
 async def cancel_session(session_id: str) -> SessionResponse:
     manager = get_session_manager()
-    session = _get_session_or_404(session_id, manager=manager)
+    session = get_session_or_404(session_id, manager=manager)
     await manager.cancel_session(session)
     return SessionResponse(**session.to_dict())
 

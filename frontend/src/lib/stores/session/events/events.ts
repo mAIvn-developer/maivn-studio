@@ -8,6 +8,7 @@ import {
 } from "./assistant-events";
 import { handleBatchComplete, handleBatchItemComplete, handleBatchStart } from "./batch-events";
 import { handleEnrichment } from "./enrichment-events";
+import { handleHookFired } from "./hook-events";
 import { handleInterruptRequired } from "./interrupt-events";
 import { handleSessionStart } from "./session-lifecycle-events";
 import { commitStatusMessage, readStatusMessageText } from "./status-events";
@@ -132,6 +133,11 @@ function processNormalizedEvent(
 
     case "enrichment": {
       handleEnrichment(ctx, eventData);
+      break;
+    }
+
+    case "hook_fired": {
+      handleHookFired(ctx, eventData);
       break;
     }
 

@@ -3,6 +3,7 @@ import type {
   ChatFlowItem,
   ExtractedInsightSummary,
   ExtractedSkillSummary,
+  HookFiring,
   InterruptData,
   InterruptStyle,
   InvocationConfig,
@@ -18,6 +19,7 @@ interface CreateSessionApiGettersParams {
   getSession: () => Session | null;
   getChatFlowItems: () => ChatFlowItem[];
   getToolCards: () => Map<string, ToolCard>;
+  getScopeHookFirings: () => Map<string, HookFiring[]>;
   getEvents: () => UIEvent[];
   getLoading: () => boolean;
   getError: () => string | null;
@@ -46,6 +48,7 @@ export function createSessionApiGetters(params: CreateSessionApiGettersParams) {
     getSession: params.getSession,
     getChatFlowItems: params.getChatFlowItems,
     getToolCards: params.getToolCards,
+    getScopeHookFirings: params.getScopeHookFirings,
     getEvents: params.getEvents,
     getLoading: params.getLoading,
     getError: params.getError,

@@ -1,5 +1,6 @@
 import type {
   ChatFlowItem,
+  HookFiring,
   InterruptData,
   InvocationConfig,
   MemoryActivityData,
@@ -17,6 +18,8 @@ interface CreateSessionStoreContextParams {
   setChatFlowItems: (items: ChatFlowItem[]) => void;
   getToolCards: () => Map<string, ToolCard>;
   setToolCards: (cards: Map<string, ToolCard>) => void;
+  getScopeHookFirings: () => Map<string, HookFiring[]>;
+  setScopeHookFirings: (firings: Map<string, HookFiring[]>) => void;
   getEvents: () => UIEvent[];
   setEvents: (events: UIEvent[]) => void;
   getLoading: () => boolean;
@@ -81,6 +84,8 @@ export function createSessionStoreContext(
     setChatFlowItems: params.setChatFlowItems,
     getToolCards: params.getToolCards,
     setToolCards: params.setToolCards,
+    getScopeHookFirings: params.getScopeHookFirings,
+    setScopeHookFirings: params.setScopeHookFirings,
     getEvents: params.getEvents,
     setEvents: params.setEvents,
     getLoading: params.getLoading,

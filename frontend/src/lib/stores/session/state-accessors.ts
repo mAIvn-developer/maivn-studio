@@ -1,5 +1,6 @@
 import type {
   ChatFlowItem,
+  HookFiring,
   InterruptData,
   MemoryActivityData,
   Session,
@@ -14,6 +15,8 @@ interface CreateSessionStateAccessorsParams {
   setChatFlowItems: (items: ChatFlowItem[]) => void;
   getToolCards: () => Map<string, ToolCard>;
   setToolCards: (cards: Map<string, ToolCard>) => void;
+  getScopeHookFirings: () => Map<string, HookFiring[]>;
+  setScopeHookFirings: (firings: Map<string, HookFiring[]>) => void;
   getEvents: () => UIEvent[];
   setEvents: (events: UIEvent[]) => void;
   getLoading: () => boolean;
@@ -62,6 +65,8 @@ export function createSessionStateAccessors(params: CreateSessionStateAccessorsP
     setChatFlowItems: params.setChatFlowItems,
     getToolCards: params.getToolCards,
     setToolCards: params.setToolCards,
+    getScopeHookFirings: params.getScopeHookFirings,
+    setScopeHookFirings: params.setScopeHookFirings,
     getEvents: params.getEvents,
     setEvents: params.setEvents,
     getLoading: params.getLoading,

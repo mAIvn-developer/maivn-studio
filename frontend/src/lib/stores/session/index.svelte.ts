@@ -47,6 +47,11 @@ export type { AccumulatedStats } from "./types";
 let session = $state<Session | null>(null);
 let chatFlowItems = $state<ChatFlowItem[]>([]);
 let toolCards = $state<Map<string, ToolCard>>(new Map());
+// Scope-level hook firings keyed by `${target_type}:${target_id_or_name}`.
+// Tool hooks attach to their owning ToolCard.hookFirings; this map holds
+// the Agent/Swarm firings that the ScopeGroupCard renders as
+// header/footer markers.
+let scopeHookFirings = $state<Map<string, import("$lib/types").HookFiring[]>>(new Map());
 let events = $state<UIEvent[]>([]);
 let loading = $state(false);
 let error = $state<string | null>(null);
@@ -167,6 +172,10 @@ const ctx: SessionStoreContext = createSessionStoreContext({
     getToolCards: () => toolCards,
     setToolCards: (cards) => {
       toolCards = cards;
+    },
+    getScopeHookFirings: () => scopeHookFirings,
+    setScopeHookFirings: (firings) => {
+      scopeHookFirings = firings;
     },
     getEvents: () => events,
     setEvents: (e) => {
@@ -324,6 +333,7 @@ export function useSession() {
       getSession: () => session,
       getChatFlowItems: () => chatFlowItems,
       getToolCards: () => toolCards,
+      getScopeHookFirings: () => scopeHookFirings,
       getEvents: () => events,
       getLoading: () => loading,
       getError: () => error,

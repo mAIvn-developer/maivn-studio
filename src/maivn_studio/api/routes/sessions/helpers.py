@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 # MARK: Registry
 
 
-def _refresh_registry_from_disk() -> None:
+def refresh_registry_from_disk() -> None:
     try:
         config_path = get_config_path()
         config = reload_config()
@@ -37,7 +37,7 @@ def _refresh_registry_from_disk() -> None:
 # MARK: Session Helpers
 
 
-def _get_session_or_404(session_id: str, *, manager: Any | None = None) -> Any:
+def get_session_or_404(session_id: str, *, manager: Any | None = None) -> Any:
     active_manager = manager or get_session_manager()
     session = active_manager.get(session_id)
     if session is None:
@@ -48,7 +48,7 @@ def _get_session_or_404(session_id: str, *, manager: Any | None = None) -> Any:
 # MARK: Request Helpers
 
 
-def _build_structured_output_config(
+def build_structured_output_config(
     structured_output: StructuredOutputRequest | None,
 ) -> dict[str, Any] | None:
     if structured_output and structured_output.enabled:
@@ -60,7 +60,7 @@ def _build_structured_output_config(
     return None
 
 
-def _build_invocation_kwargs(invocation: InvocationConfig | None) -> dict[str, Any]:
+def build_invocation_kwargs(invocation: InvocationConfig | None) -> dict[str, Any]:
     kwargs: dict[str, Any] = {}
     if invocation is None:
         return kwargs
@@ -91,7 +91,7 @@ def _build_invocation_kwargs(invocation: InvocationConfig | None) -> dict[str, A
     return kwargs
 
 
-def _build_batch_config(
+def build_batch_config(
     batch: BatchInvocationRequest | None,
     *,
     message_type: str,
@@ -115,7 +115,7 @@ def _build_batch_config(
     }
 
 
-def _serialize_attachments(
+def serialize_attachments(
     attachments: list[MessageAttachmentPayload] | None,
 ) -> list[dict[str, Any]] | None:
     if not attachments:
@@ -123,7 +123,7 @@ def _serialize_attachments(
     return [item.model_dump(exclude_none=True) for item in attachments]
 
 
-def _merge_private_data(
+def merge_private_data(
     *private_data_sources: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     merged_private_data: dict[str, Any] = {}

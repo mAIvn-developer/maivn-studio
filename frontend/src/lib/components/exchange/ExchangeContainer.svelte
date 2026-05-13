@@ -1,6 +1,7 @@
 <script lang="ts">
   import type {
     BatchResult,
+    HookFiring,
     InterruptData,
     Message,
     PhaseChipData,
@@ -29,6 +30,7 @@
     humanMessage: Message;
     toolCards: ToolCardType[];
     phaseChips?: PhaseChipData[];
+    scopeHookFirings?: Map<string, HookFiring[]>;
     statusMessages?: Message[];
     interruptCards?: InterruptData[];
     batchResults?: BatchResult[];
@@ -51,6 +53,7 @@
     humanMessage,
     toolCards,
     phaseChips = [],
+    scopeHookFirings,
     statusMessages = [],
     interruptCards = [],
     batchResults = [],
@@ -111,6 +114,7 @@
       <ExchangeScopeGroupList
         scopeGroups={scopeGroups()}
         {phaseChips}
+        {scopeHookFirings}
         latestStatusMessage={latestStatusMessage()}
         {isLive}
         {showToolArgs}

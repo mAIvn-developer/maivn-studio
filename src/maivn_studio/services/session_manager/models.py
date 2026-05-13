@@ -16,7 +16,7 @@ from ..app_loader.models import LoadedApp
 
 # MARK: Constants
 
-_STUDIO_EVENT_CATEGORIES: tuple[str, ...] = (
+STUDIO_EVENT_CATEGORIES: tuple[str, ...] = (
     "enrichment",
     "response",
     "func",
@@ -32,7 +32,7 @@ _STUDIO_EVENT_CATEGORIES: tuple[str, ...] = (
 # MARK: Helpers
 
 
-def _latest_response_text(value: Any) -> str | None:
+def latest_response_text(value: Any) -> str | None:
     """Return the last non-empty string from a list of response texts.
 
     Used to extract the most recent assistant response from the SDK result's
