@@ -74,7 +74,7 @@ ignore = []
 required-imports = ["from __future__ import annotations"]
 
 [tool.pytest.ini_options]
-addopts = "-q -ra --strict-config --strict-markers"
+addopts = "-q -ra --strict-config --strict-markers --import-mode=importlib"
 testpaths = ["tests"]
 asyncio_default_fixture_loop_scope = "function"
 xfail_strict = true

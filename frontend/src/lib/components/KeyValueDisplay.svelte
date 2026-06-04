@@ -17,6 +17,11 @@
 
   let { data, depth = 0, maxDepth = 12, initialExpanded = true, label }: Props = $props();
 
+  // Max characters before a primitive string value is truncated in the full view.
+  const STRING_TRUNCATE_LENGTH = 200;
+  // Max characters per string item inside the collapsed-array preview.
+  const PREVIEW_STRING_LENGTH = 20;
+
   // Compute initial expanded state based on props
   let expanded = $state(false);
 
@@ -68,8 +73,8 @@
     if (value === undefined) return "undefined";
     if (typeof value === "string") {
       // Truncate long strings
-      if (value.length > 200) {
-        return `"${value.slice(0, 200)}..."`;
+      if (value.length > STRING_TRUNCATE_LENGTH) {
+        return `"${value.slice(0, STRING_TRUNCATE_LENGTH)}..."`;
       }
       return `"${value}"`;
     }
@@ -91,7 +96,9 @@
             if (t === "array") return "[...]";
             if (t === "string") {
               const s = v as string;
-              return s.length > 20 ? `"${s.slice(0, 20)}..."` : `"${s}"`;
+              return s.length > PREVIEW_STRING_LENGTH
+                ? `"${s.slice(0, PREVIEW_STRING_LENGTH)}..."`
+                : `"${s}"`;
             }
             return String(v);
           })

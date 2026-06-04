@@ -2,6 +2,8 @@ import type { App } from "$lib/types";
 
 export const RECENT_APPS_KEY = "maivn-studio-recent-apps";
 
+const MAX_RECENT_APPS = 5;
+
 export function loadRecentApps(): App[] {
   try {
     const stored = localStorage.getItem(RECENT_APPS_KEY);
@@ -26,8 +28,8 @@ export function saveRecentApps(apps: App[]): void {
 export function updateRecentApps(existing: App[], app: App): App[] {
   const filtered = existing.filter((item) => item.id !== app.id);
   filtered.unshift(app);
-  if (filtered.length > 5) {
-    filtered.length = 5;
+  if (filtered.length > MAX_RECENT_APPS) {
+    filtered.length = MAX_RECENT_APPS;
   }
   saveRecentApps(filtered);
   return filtered;

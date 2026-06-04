@@ -7,6 +7,8 @@ Submodules:
 - sessions.routes: session lifecycle and SSE endpoints
 """
 
+# pyright: strict
+
 from __future__ import annotations
 
 from . import apps, discovery, prompts, sessions

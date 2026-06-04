@@ -79,9 +79,7 @@ export class InterruptManager {
     this.cards.set(nextInterrupt.interruptId, { ...nextInterrupt });
 
     const hasExistingCard = chatFlowItems.some(
-      (item) =>
-        item.type === "interrupt_card" &&
-        (item.data as InterruptData).cardId === nextInterrupt.cardId,
+      (item) => item.type === "interrupt_card" && item.data.cardId === nextInterrupt.cardId,
     );
 
     if (hasExistingCard) {
@@ -89,7 +87,7 @@ export class InterruptManager {
         if (item.type !== "interrupt_card") {
           return item;
         }
-        const data = item.data as InterruptData;
+        const data = item.data;
         if (data.cardId !== nextInterrupt.cardId) {
           return item;
         }
@@ -133,7 +131,7 @@ export class InterruptManager {
 
     const updatedItems = chatFlowItems.map((item) => {
       if (item.type === "interrupt_card") {
-        const data = item.data as InterruptData;
+        const data = item.data;
         if (data.cardId === updated.cardId) {
           return { ...item, data: updated };
         }

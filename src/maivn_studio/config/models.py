@@ -1,5 +1,7 @@
 """Pydantic configuration models for maivn-studio."""
 
+# pyright: strict
+
 from __future__ import annotations
 
 from pydantic import BaseModel, Field

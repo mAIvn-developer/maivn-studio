@@ -1,11 +1,13 @@
 """Live :class:`ScheduleManager` — owns the per-app schedule registry."""
 
+# pyright: strict
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import threading
-from typing import Any
+from collections.abc import Callable
 
 from maivn import RunRecord, ScheduledJob
 from maivn.messages import HumanMessage
@@ -21,7 +23,7 @@ from maivn_studio.services.event_bridge import (
 from maivn_studio.services.session_manager.models import STUDIO_EVENT_CATEGORIES
 
 from ..models import ScheduleConfig, ScheduleJobSummary, ScheduleRunSummary
-from .builders import build_builder, invoke_builder
+from .builders import Executor, build_builder, invoke_builder
 from .fire_bridge import wire_fire_event_bridge
 from .ids import app_event_bridge_id
 
@@ -35,16 +37,16 @@ class ScheduleManager:
     """Owns the set of Studio-driven scheduled jobs, indexed by app."""
 
     def __init__(self) -> None:
-        self._lock = threading.Lock()
+        self.lock: threading.Lock = threading.Lock()
         self._jobs_by_app: dict[str, ScheduledJob] = {}
         self._configs_by_app: dict[str, ScheduleConfig] = {}
         # Track in-flight fires so the UI can render a card before the run
         # completes (history is only populated after _execute_run's finally
         # block). Keyed by app_id → {fire_id: RunRecord}.
-        self._active_runs_by_app: dict[str, dict[str, RunRecord]] = {}
+        self.active_runs_by_app: dict[str, dict[str, RunRecord]] = {}
         # Track all event-session ids we've created per app so removing a
         # schedule cleans up bridges instead of leaking them.
-        self._fire_session_ids_by_app: dict[str, list[str]] = {}
+        self.fire_session_ids_by_app: dict[str, list[str]] = {}
         # Per-app locks serialize start() calls — without this, two concurrent
         # PUT /schedules/{app} requests can both pass the existence check and
         # create separate ScheduledJob instances. Both jobs then fire on every
@@ -55,14 +57,14 @@ class ScheduleManager:
     # MARK: - Public API
 
     def list_jobs(self) -> list[ScheduleJobSummary]:
-        with self._lock:
+        with self.lock:
             return [
                 self._summarize(app_id, job, self._configs_by_app[app_id])
                 for app_id, job in self._jobs_by_app.items()
             ]
 
     def get(self, app_id: str) -> ScheduleJobSummary | None:
-        with self._lock:
+        with self.lock:
             job = self._jobs_by_app.get(app_id)
             cfg = self._configs_by_app.get(app_id)
         if job is None or cfg is None:
@@ -77,7 +79,7 @@ class ScheduleManager:
         # registry. Whichever store-call lands second wins the dict slot, but
         # the loser's _bootstrap task keeps running and firing — that's what
         # produced the dozens of skipped_overlap records the user reported.
-        with self._lock:
+        with self.lock:
             app_lock = self._app_locks.setdefault(app_id, threading.Lock())
         with app_lock:
             return self._start_locked(app_id, config)
@@ -115,10 +117,9 @@ class ScheduleManager:
         # assistant chunks, and agent assignments. Without this wrapper, only
         # phase-change enrichment events reach the bridge — every other UI
         # event type stays silent.
-        events_factory = getattr(executor, "events", None)
-        scope_for_schedule: Any = executor
-        if callable(events_factory) and config.method in {"invoke", "stream"}:
-            scope_for_schedule = events_factory(
+        scope_for_schedule: object = executor
+        if config.method in {"invoke", "stream"}:
+            scope_for_schedule = executor.events(
                 include=STUDIO_EVENT_CATEGORIES,
                 auto_verbose=False,
             )
@@ -129,10 +130,12 @@ class ScheduleManager:
             )
         else:
             logger.warning(
-                "Schedule for app %s: executor %s has no events() method; "
-                "tool cards / assistant chunks will not stream to UI",
+                (
+                    "Schedule for app %s: method %s does not stream through events(); "
+                    + "tool cards / assistant chunks will not stream to UI"
+                ),
                 app_id,
-                type(executor).__name__,
+                config.method,
             )
 
         builder = build_builder(executor, config)
@@ -142,19 +145,19 @@ class ScheduleManager:
         # .invoke. We still pass `executor` to build_builder() so any APIs
         # that need the raw scope (jitter, retry) are unaffected.
         if scope_for_schedule is not executor:
-            builder._scope = scope_for_schedule  # type: ignore[attr-defined]
+            _ = builder.with_scope(scope_for_schedule)
 
         prompt_messages = self._resolve_prompt(app_id, config)
         job = invoke_builder(builder, config, prompt_messages)
         wire_fire_event_bridge(self, job, app_id, config, prompt_messages)
 
-        with self._lock:
+        with self.lock:
             self._jobs_by_app[app_id] = job
             self._configs_by_app[app_id] = config
         return self._summarize(app_id, job, config)
 
     def stop(self, app_id: str, *, drain: bool = True) -> ScheduleJobSummary | None:
-        with self._lock:
+        with self.lock:
             job = self._jobs_by_app.get(app_id)
             cfg = self._configs_by_app.get(app_id)
         if job is None or cfg is None:
@@ -177,10 +180,10 @@ class ScheduleManager:
         return self._mutate(app_id, lambda job: job.trigger_now())
 
     def remove(self, app_id: str) -> None:
-        with self._lock:
+        with self.lock:
             job = self._jobs_by_app.pop(app_id, None)
-            self._configs_by_app.pop(app_id, None)
-            self._app_locks.pop(app_id, None)
+            _ = self._configs_by_app.pop(app_id, None)
+            _ = self._app_locks.pop(app_id, None)
         if job is not None:
             job.stop(drain=False, timeout=5)
         self._drain_fire_bridges(app_id)
@@ -197,15 +200,15 @@ class ScheduleManager:
         bridge = get_event_bridge(bridge_id)
         if bridge is None:
             bridge = create_event_bridge(bridge_id)
-        elif bridge._closed:
+        elif bridge.stream_is_closed:
             bridge.reopen()
         return bridge
 
-    def _emit_app_event(
+    def emit_app_event(
         self,
         app_id: str,
         event_name: str,
-        data: dict[str, Any],
+        data: dict[str, object],
         loop: asyncio.AbstractEventLoop,
     ) -> None:
         """Push an event onto the per-app activity bridge.
@@ -215,20 +218,24 @@ class ScheduleManager:
         ``GET /api/schedules`` poll to land.
         """
         bridge = self.get_app_event_bridge(app_id)
-        asyncio.run_coroutine_threadsafe(bridge.emit(event_name, data), loop)
+        _ = asyncio.run_coroutine_threadsafe(bridge.emit(event_name, data), loop)
 
     # MARK: - Helpers
 
-    def _mutate(self, app_id: str, action: Any) -> ScheduleJobSummary | None:
-        with self._lock:
+    def _mutate(
+        self,
+        app_id: str,
+        action: Callable[[ScheduledJob], object],
+    ) -> ScheduleJobSummary | None:
+        with self.lock:
             job = self._jobs_by_app.get(app_id)
             cfg = self._configs_by_app.get(app_id)
         if job is None or cfg is None:
             return None
-        action(job)
+        _ = action(job)
         return self._summarize(app_id, job, cfg)
 
-    def _resolve_executor(self, app_id: str) -> Any:
+    def _resolve_executor(self, app_id: str) -> Executor:
         registry = get_registry()
         app = registry.get(app_id)
         if app is None:
@@ -251,7 +258,7 @@ class ScheduleManager:
         loaded = get_app_loader().load(app)
         prompt = None
         if config.prompt_id:
-            prompt = loaded.get_prompt(config.prompt_id)  # type: ignore[attr-defined]
+            prompt = loaded.get_prompt(config.prompt_id)
         if prompt is None:
             prompt = loaded.get_default_prompt()
         if prompt is None:
@@ -273,7 +280,7 @@ class ScheduleManager:
         # explain.
         active = [
             r
-            for r in self._active_runs_by_app.get(app_id, {}).values()
+            for r in self.active_runs_by_app.get(app_id, {}).values()
             if r.metadata.get("job_id") == job.id
         ]
         # An in-flight record may briefly exist in both maps if a callback
@@ -322,9 +329,9 @@ class ScheduleManager:
         )
 
     def _drain_fire_bridges(self, app_id: str) -> None:
-        with self._lock:
-            session_ids = self._fire_session_ids_by_app.pop(app_id, [])
-            self._active_runs_by_app.pop(app_id, None)
+        with self.lock:
+            session_ids = self.fire_session_ids_by_app.pop(app_id, [])
+            _ = self.active_runs_by_app.pop(app_id, None)
         for session_id in session_ids:
             remove_event_bridge(session_id)
 

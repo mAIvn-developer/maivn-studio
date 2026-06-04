@@ -5,7 +5,7 @@ export interface ScopeGroupStatusColors {
   bg: string;
 }
 
-export const scopeGroupStatusColors: Record<
+const scopeGroupStatusColors: Record<
   ScopeType,
   Record<"pending" | "executing" | "completed" | "failed", ScopeGroupStatusColors>
 > = {

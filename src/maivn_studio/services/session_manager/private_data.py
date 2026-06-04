@@ -1,3 +1,4 @@
+# pyright: strict
 """Private data helpers for session management."""
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ from maivn_shared import DataDependency
 from maivn_studio.private_data import get_default_private_data, is_valid_log_path
 
 from ..app_loader.models import LoadedApp
+from .protocols import Executor
 
 logger = logging.getLogger(__name__)
 
@@ -41,17 +43,14 @@ def apply_private_data(
 
     explicit_private_data = sanitized_user_private_data if user_private_data else {}
 
-    scopes: list[Any] = []
+    scopes: list[Executor] = []
     scopes.extend(loaded.agents)
     scopes.extend(loaded.swarms)
     for swarm in loaded.swarms:
-        if hasattr(swarm, "agents"):
-            scopes.extend(list(swarm.agents))
+        scopes.extend(swarm.agents)
 
     seen: set[int] = set()
     for scope in scopes:
-        if scope is None:
-            continue
         scope_id = id(scope)
         if scope_id in seen:
             continue
@@ -59,16 +58,16 @@ def apply_private_data(
 
         applied_keys = _apply_explicit_private_data(scope, explicit_private_data)
         if applied_keys:
-            scope_name = getattr(scope, "name", scope.__class__.__name__)
+            scope_name = scope.name or scope.__class__.__name__
             logger.info(
                 "Applied explicit private_data to %s: %s",
                 scope_name,
                 ", ".join(applied_keys),
             )
 
-        missing = _fill_missing_private_data(scope, default_private_data)
+        missing = fill_missing_private_data(scope, default_private_data)
         if missing:
-            scope_name = getattr(scope, "name", scope.__class__.__name__)
+            scope_name = scope.name or scope.__class__.__name__
             logger.info(
                 "Filled private_data defaults for %s: %s",
                 scope_name,
@@ -77,14 +76,14 @@ def apply_private_data(
 
 
 def _apply_explicit_private_data(
-    scope: Any,
+    scope: Executor,
     private_data: dict[str, Any],
 ) -> list[str]:
     """Apply explicit session private_data to a scope even without DataDependency declarations."""
     if not private_data:
         return []
 
-    current_private_data = dict(getattr(scope, "private_data", {}) or {})
+    current_private_data: dict[object, object] = dict(scope.private_data)
     applied_keys: list[str] = []
 
     for key, value in private_data.items():
@@ -99,8 +98,8 @@ def _apply_explicit_private_data(
     return sorted(applied_keys)
 
 
-def _fill_missing_private_data(
-    scope: Any,
+def fill_missing_private_data(
+    scope: Executor,
     defaults: dict[str, Any],
 ) -> list[str]:
     """Fill missing private data keys on a scope with defaults.
@@ -112,11 +111,11 @@ def _fill_missing_private_data(
     Returns:
         List of keys that were filled.
     """
-    required_keys = _collect_private_data_keys(scope)
+    required_keys = collect_private_data_keys(scope)
     if not required_keys:
         return []
 
-    private_data = dict(getattr(scope, "private_data", {}) or {})
+    private_data: dict[object, object] = dict(scope.private_data)
     missing: list[str] = []
     for key in sorted(required_keys):
         current_value = private_data.get(key)
@@ -143,7 +142,7 @@ def _fill_missing_private_data(
     return missing
 
 
-def _collect_private_data_keys(scope: Any) -> set[str]:
+def collect_private_data_keys(scope: Executor) -> set[str]:
     """Collect all private data keys required by a scope's tools.
 
     Args:
@@ -159,7 +158,8 @@ def _collect_private_data_keys(scope: Any) -> set[str]:
 
     keys: set[str] = set()
     for tool in tools:
-        for dependency in getattr(tool, "dependencies", []) or []:
+        # ``dependencies`` may be ``None`` for duck-typed scopes; guard at runtime.
+        for dependency in tool.dependencies or []:
             if isinstance(dependency, DataDependency) and dependency.data_key:
                 keys.add(dependency.data_key)
 

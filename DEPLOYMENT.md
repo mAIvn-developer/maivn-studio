@@ -13,19 +13,14 @@ pip install maivn-studio
 Release `maivn-studio` only after the target `maivn` and `maivn-shared`
 versions already exist on PyPI.
 
-## Platform Order
+## Publish Order
 
-Use this order for a clean rollout that validates the private services before
-you publish the public SDK packages:
+Publish the public SDK packages in dependency order so each release can resolve
+the versions it depends on:
 
-1. Tag or pin `maivn-shared` in GitHub so service repos can consume an immutable ref.
-2. Tag or pin `maivn-internal-shared` in GitHub and record the immutable ref that services will consume.
-3. Create the production Supabase project and apply the platform migration pipeline.
-4. Deploy `maivn-agents`.
-5. Deploy `maivn-server`.
-6. After service validation, publish `maivn-shared` to PyPI.
-7. Publish `maivn` to PyPI.
-8. Publish `maivn-studio` to PyPI.
+1. Publish `maivn-shared` to PyPI.
+2. Publish `maivn` to PyPI.
+3. Publish `maivn-studio` to PyPI.
 
 ## GitHub Setup
 

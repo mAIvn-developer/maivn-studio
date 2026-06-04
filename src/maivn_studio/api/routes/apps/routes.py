@@ -1,8 +1,11 @@
 """API route handlers for app management."""
 
+# pyright: strict
+
 from __future__ import annotations
 
 import logging
+from typing import cast
 
 from fastapi import APIRouter, HTTPException
 
@@ -76,7 +79,7 @@ def _infer_private_data_type(value: str | int | bool) -> str:
     return "string"
 
 
-def _merge_private_data_schema(
+def merge_private_data_schema(
     schema: list[PrivateDataField], defaults: dict[str, str | int | bool]
 ) -> list[PrivateDataField]:
     """Overlay configured defaults onto extracted schema and add missing keys."""
@@ -279,7 +282,7 @@ async def get_app_full_details(app_id: str, variant: str | None = None) -> AppFu
     from maivn_studio.private_data import extract_private_data_schema
 
     private_data_defaults = _build_private_data_defaults(app, resolved_variant)
-    private_data_schema = _merge_private_data_schema(
+    private_data_schema = merge_private_data_schema(
         extract_private_data_schema(loaded),
         private_data_defaults,
     )
@@ -411,14 +414,11 @@ async def update_agent(
     if request.description is not None:
         agent.description = request.description
     if request.system_prompt is not None:
-        from langchain_core.messages import SystemMessage
-
-        agent.system_prompt = request.system_prompt if request.system_prompt else None
-        # Reset the internal system message so it gets recomputed
-        if hasattr(agent, "_system_message"):
-            agent._system_message = (
-                SystemMessage(content=request.system_prompt) if request.system_prompt else None
-            )
+        new_system_prompt = request.system_prompt if request.system_prompt else None
+        agent.system_prompt = new_system_prompt
+        # Re-point the resolved system message via the SDK's public setter, which
+        # applies the same normalization used at construction time.
+        agent.set_system_message(new_system_prompt)
     if request.tags is not None:
         agent.tags = request.tags
     if request.memory_config is not None:
@@ -436,7 +436,9 @@ async def update_agent(
     if request.allow_private_in_system_tools is not None:
         agent.allow_private_in_system_tools = request.allow_private_in_system_tools
     if request.private_data is not None:
-        agent.private_data = dict(request.private_data)
+        # SDK ``private_data`` is typed ``dict[object, object]``; widen the
+        # request's ``dict[str, Any]`` to match the invariant field type.
+        agent.private_data = cast("dict[object, object]", dict(request.private_data))
 
     # Build swarm membership info
     swarm_agents: dict[str, str] = {}
@@ -486,13 +488,11 @@ async def update_swarm(
     if request.description is not None:
         swarm.description = request.description
     if request.system_prompt is not None:
-        from langchain_core.messages import SystemMessage
-
-        swarm.system_prompt = request.system_prompt if request.system_prompt else None
-        if hasattr(swarm, "_system_message"):
-            swarm._system_message = (
-                SystemMessage(content=request.system_prompt) if request.system_prompt else None
-            )
+        new_system_prompt = request.system_prompt if request.system_prompt else None
+        swarm.system_prompt = new_system_prompt
+        # See update_agent: re-point the resolved system message via the SDK's
+        # public setter, which applies the construction-time normalization.
+        swarm.set_system_message(new_system_prompt)
     if request.tags is not None:
         swarm.tags = request.tags
     if request.memory_config is not None:
@@ -504,6 +504,6 @@ async def update_swarm(
     if request.allow_private_in_system_tools is not None:
         swarm.allow_private_in_system_tools = request.allow_private_in_system_tools
     if request.private_data is not None:
-        swarm.private_data = dict(request.private_data)
+        swarm.private_data = cast("dict[object, object]", dict(request.private_data))
 
     return build_swarm_info(swarm)

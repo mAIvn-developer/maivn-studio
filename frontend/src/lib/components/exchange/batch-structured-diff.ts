@@ -45,7 +45,7 @@ function canonicalize(value: unknown): string {
   }
 }
 
-export function formatDiffValue(value: unknown): string {
+function formatDiffValue(value: unknown): string {
   if (value === null) return "null";
   if (value === undefined) return "undefined";
   if (typeof value === "string") return value;

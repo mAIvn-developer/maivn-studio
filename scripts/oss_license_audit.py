@@ -1,3 +1,5 @@
+# pyright: strict
+
 from __future__ import annotations
 
 import argparse
@@ -11,7 +13,7 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import tomllib
 from packaging.markers import default_environment
@@ -117,7 +119,9 @@ def parse_requirement_names(lines: list[str]) -> dict[str, str]:
 
 
 def canonical_audit_environment() -> dict[str, str]:
-    environment = cast(dict[str, str], default_environment())
+    # packaging's Environment is a TypedDict of str values; copy into a plain str->str dict.
+    source = cast(dict[str, str], cast(object, default_environment()))
+    environment: dict[str, str] = dict(source)
     environment.update(
         {
             "os_name": "posix",
@@ -231,13 +235,14 @@ def fetch_package_metadata(package_name: str, requirement_line: str) -> tuple[st
     )
     # Fixed HTTPS PyPI API URL; package_name only fills the package path.
     with urllib.request.urlopen(url, timeout=20) as response:  # nosec B310
-        payload = json.load(response)
+        payload = cast(dict[str, Any], json.load(response))
 
-    info = payload["info"]
+    info = cast(dict[str, Any], payload["info"])
     resolved_version = str(info.get("version") or version or "UNKNOWN")
+    classifiers = cast(list[Any], info.get("classifiers") or [])
     license_name = normalize_license_metadata(
         str(info.get("license_expression") or ""),
-        [str(value) for value in info.get("classifiers") or []],
+        [str(value) for value in classifiers],
         str(info.get("license") or ""),
     )
     return resolved_version, license_name

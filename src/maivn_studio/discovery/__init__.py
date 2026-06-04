@@ -5,6 +5,8 @@ Submodules:
 - scanner: repo scanning and app-config discovery helpers
 """
 
+# pyright: strict
+
 from __future__ import annotations
 
 from . import registry, scanner

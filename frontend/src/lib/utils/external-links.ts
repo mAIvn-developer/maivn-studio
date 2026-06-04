@@ -22,7 +22,7 @@ function joinUrl(origin: string, path: string): string {
 
 // MARK: Public API
 
-export function getMarketingSiteOrigin(): string {
+function getMarketingSiteOrigin(): string {
   const configured = readPublicEnv("PUBLIC_MARKETING_SITE_URL");
   if (configured && configured.trim().length > 0) {
     return normalizeOrigin(configured.trim());
@@ -30,7 +30,7 @@ export function getMarketingSiteOrigin(): string {
   return DEFAULT_MARKETING_SITE_ORIGIN;
 }
 
-export function getDeveloperPortalOrigin(): string {
+function getDeveloperPortalOrigin(): string {
   const configured = readPublicEnv("PUBLIC_DEVELOPER_PORTAL_URL");
   if (configured && configured.trim().length > 0) {
     return normalizeOrigin(configured.trim());

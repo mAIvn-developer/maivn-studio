@@ -36,9 +36,19 @@ export const KNOWN_ENRICHMENT_PHASE_ORDER: Record<string, number> = {
   searching_tools: 2,
   loading_tools: 3,
   planning_assignments: 4,
+  // executing_actions (depth=0) and executing_assignments (depth>0, nested) are
+  // the SAME tier. A nested job emits `executing_assignments` AFTER the parent
+  // emitted `executing_actions` on the same (root) scope in non-swarm runs;
+  // giving them an equal rank stops `shouldSkipPhase` from dropping that nested
+  // update as a "stale regression" and leaving the chip stuck on "Executing
+  // actions...".
   executing_assignments: 5,
-  executing_actions: 6,
+  executing_actions: 5,
+  // `synthesizing` and `finalizing` are both the final leg. `finalizing` is
+  // emitted after execution on synthesis-bypass paths so the indicator does not
+  // remain pinned to an execution phase while the response is assembled.
   synthesizing: 7,
+  finalizing: 7,
   complete: 8,
   completed: 8,
   failed: 8,
@@ -66,6 +76,7 @@ export const ENRICHMENT_PHASE_LABELS: Record<string, string> = {
   executing_assignments: "Executing assignments...",
   executing_actions: "Executing actions...",
   synthesizing: "Synthesizing response...",
+  finalizing: "Finalizing response...",
   memory_skill_extracting: "Extracting skills from execution trace...",
   memory_skill_extracted: "Skills extracted from execution trace.",
   memory_insight_extracting: "Extracting insights from execution trace...",
@@ -142,9 +153,9 @@ export function resolveProcessingScopePriority(scopeType: "agent" | "swarm" | un
 /**
  * Tracks enrichment phase state across scopes.
  *
- * Manages the 3 scope-tracking Maps (lastEnrichmentEventByScope,
- * phaseChipItemIdByScope, highestKnownPhaseRankByScope) and provides
- * methods for processing enrichment events.
+ * Manages the scope-tracking Maps (lastEnrichmentEventByScope,
+ * phaseChipItemIdByScope, highestKnownPhaseRankByScope) and provides methods
+ * for processing enrichment events.
  */
 export class EnrichmentTracker {
   readonly lastEnrichmentEventByScope = new Map<string, string>();

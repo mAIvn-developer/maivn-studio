@@ -1,4 +1,4 @@
-import type { PhaseChipData } from "$lib/types";
+import type { PhaseChipData, ReevaluateChipData } from "$lib/types";
 import {
   KNOWN_ENRICHMENT_PHASE_ORDER,
   buildEnrichmentScopeKey,
@@ -10,7 +10,40 @@ import {
 } from "../../utils/enrichmentTracker";
 import { asRecord, readScopeValue } from "./event-utils";
 import { coerceMemoryActivityData, coerceRedactionActivityData } from "../memory";
+import { resetStreamingAssistantContent } from "./assistant-events";
 import type { SessionStoreContext } from "../types";
+
+function coerceReevaluateChipData(
+  raw: unknown,
+  fallback: Record<string, unknown>,
+): ReevaluateChipData | undefined {
+  const record = asRecord(raw);
+  const sourceRaw = normalizeScopeValue(record?.source ?? fallback.source);
+  const source = sourceRaw === "dependency" || sourceRaw === "llm" ? sourceRaw : undefined;
+  const triggerTool = normalizeScopeValue(record?.trigger_tool ?? fallback.trigger_tool);
+  const targetTool = normalizeScopeValue(record?.target_tool ?? fallback.target_tool);
+  const cycleRaw = record?.reevaluate_count ?? fallback.reevaluate_count;
+  const collectedRaw = record?.collected_count ?? fallback.collected_count;
+  const cycle = typeof cycleRaw === "number" ? cycleRaw : undefined;
+  const collectedCount = typeof collectedRaw === "number" ? collectedRaw : undefined;
+
+  if (
+    !source &&
+    !triggerTool &&
+    !targetTool &&
+    cycle === undefined &&
+    collectedCount === undefined
+  ) {
+    return undefined;
+  }
+  return {
+    source: source ?? "llm",
+    triggerTool,
+    targetTool,
+    cycle,
+    collectedCount,
+  };
+}
 
 export function handleEnrichment(ctx: SessionStoreContext, eventData: Record<string, unknown>) {
   const enrichment = asRecord(eventData.enrichment);
@@ -23,6 +56,10 @@ export function handleEnrichment(ctx: SessionStoreContext, eventData: Record<str
   );
   const memory = coerceMemoryActivityData(enrichment?.memory ?? eventData.memory);
   const redaction = coerceRedactionActivityData(enrichment?.redaction ?? eventData.redaction);
+  const reevaluate = coerceReevaluateChipData(
+    enrichment?.reevaluate ?? eventData.reevaluate,
+    eventData,
+  );
   const scopeType = normalizeScopeType(readScopeValue(eventData, "type") ?? eventData.scope_type);
   const scopeName = normalizeScopeValue(readScopeValue(eventData, "name") ?? eventData.scope_name);
   const legacyScopeId = normalizeScopeValue(readScopeValue(eventData, "id") ?? eventData.scope_id);
@@ -36,16 +73,34 @@ export function handleEnrichment(ctx: SessionStoreContext, eventData: Record<str
         : legacyScopeId;
 
   const memoryScopeKey = resolveMemoryScopeKey(phase);
-  const scopeKey = memoryScopeKey ?? buildEnrichmentScopeKey(scopeType, scopeId, scopeName);
+  // Each reevaluate cycle (and each `@depends_on_reevaluate` trigger pair) gets
+  // its own scope key so successive chips render as separate inline markers
+  // rather than overwriting each other. Without this every reevaluate cycle
+  // would collide with the root scope and be replaced by the next `evaluating`
+  // / `synthesizing` chip that fires after the re-plan completes.
+  const reevaluateScopeKey =
+    phase === "reevaluate_accrued"
+      ? `__reevaluate:${reevaluate?.cycle ?? "x"}:${reevaluate?.triggerTool ?? ""}->${reevaluate?.targetTool ?? ""}__`
+      : null;
+  const persistentScopeKey = memoryScopeKey ?? reevaluateScopeKey;
+  const scopeKey = persistentScopeKey ?? buildEnrichmentScopeKey(scopeType, scopeId, scopeName);
   const incomingScopePriority = resolveProcessingScopePriority(scopeType);
 
   const tracker = ctx.enrichmentTracker;
 
-  if (!memoryScopeKey && tracker.shouldSkipPhase(scopeKey, phase)) return;
+  if (!persistentScopeKey && tracker.shouldSkipPhase(scopeKey, phase)) return;
   if (tracker.isDuplicateEvent(scopeKey, phase, message)) return;
-  if (!memoryScopeKey) tracker.recordPhaseRank(scopeKey, phase);
+  if (!persistentScopeKey) tracker.recordPhaseRank(scopeKey, phase);
 
-  if (!memoryScopeKey) {
+  if (phase === "reevaluate_accrued") {
+    // Reset the currently-streaming bubble's content (in place) so the next
+    // cycle's chunks populate it fresh. We deliberately do NOT create a new
+    // bubble — the UI shows a single continuous assistant message that
+    // updates as each cycle re-synthesises.
+    resetStreamingAssistantContent(ctx);
+  }
+
+  if (!persistentScopeKey) {
     if (
       ctx.getProcessingScopeKey() === null ||
       scopeKey === ctx.getProcessingScopeKey() ||
@@ -78,6 +133,7 @@ export function handleEnrichment(ctx: SessionStoreContext, eventData: Record<str
   if (scopeType) chipData.scopeType = scopeType;
   if (memory) chipData.memory = memory;
   if (redaction) chipData.redaction = redaction;
+  if (reevaluate) chipData.reevaluate = reevaluate;
 
   const chipResult = tracker.applyPhaseChip(scopeKey, chipData, ctx.getChatFlowItems());
   ctx.setChatFlowItems(chipResult.chatFlowItems);

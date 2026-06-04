@@ -64,12 +64,15 @@ export function getLatestRootPhaseChip(phaseChips: PhaseChipData[]): PhaseChipDa
   let latest: PhaseChipData | null = null;
   for (const chip of phaseChips) {
     if (chip.scopeType) continue;
+    // Reevaluate chips render via their own inline component so the root
+    // preamble doesn't replay them as the generic "evaluating..." line.
+    if (isReevaluatePhaseChip(chip)) continue;
     latest = chip;
   }
   return latest;
 }
 
-export function isMemoryPhaseChip(chip: PhaseChipData): boolean {
+function isMemoryPhaseChip(chip: PhaseChipData): boolean {
   const normalizedPhase = typeof chip.phase === "string" ? chip.phase.trim().toLowerCase() : "";
   if (normalizedPhase.startsWith("memory_")) {
     return true;
@@ -84,13 +87,17 @@ export function isMemoryPhaseChip(chip: PhaseChipData): boolean {
   return chip.memory !== undefined || chip.redaction !== undefined;
 }
 
-export function getLatestMemoryPhaseChip(phaseChips: PhaseChipData[]): PhaseChipData | null {
-  let latest: PhaseChipData | null = null;
-  for (const chip of phaseChips) {
-    if (!isMemoryPhaseChip(chip)) continue;
-    latest = chip;
-  }
-  return latest;
+function isReevaluatePhaseChip(chip: PhaseChipData): boolean {
+  if (chip.reevaluate) return true;
+  const normalizedPhase = typeof chip.phase === "string" ? chip.phase.trim().toLowerCase() : "";
+  return normalizedPhase === "reevaluate_accrued";
+}
+
+// Return every reevaluate_accrued chip in order so the inline trail of
+// boundary firings is preserved (cycle 1, cycle 2, ...) rather than
+// collapsed to the latest.
+export function getReevaluatePhaseChips(phaseChips: PhaseChipData[]): PhaseChipData[] {
+  return phaseChips.filter(isReevaluatePhaseChip);
 }
 
 // One panel per distinct memory/redaction phase so input redaction (multi-key)

@@ -1,12 +1,13 @@
 """API routes for repo discovery and app selection."""
 
-from __future__ import annotations
+# pyright: strict
 
-from pathlib import Path
+from __future__ import annotations
 
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
+from maivn_studio.api.state import get_app_state
 from maivn_studio.config.loader import DEFAULT_CONFIG_FILENAME, save_config, set_config
 from maivn_studio.discovery.registry import init_registry
 from maivn_studio.discovery.scanner import build_app_config, scan_repo_for_apps
@@ -67,9 +68,9 @@ class ApplyDiscoveryResponse(BaseModel):
 @router.post("/scan", response_model=RepoScanResponse)
 async def scan_repo(request: Request) -> RepoScanResponse:
     """Scan configured discovery paths for app candidates."""
-    state = request.app.state
+    state = get_app_state(request)
     config = state.config
-    base_path: Path = state.base_path
+    base_path = state.base_path
 
     discovery_paths = config.discovery.paths or ["."]
     items = scan_repo_for_apps(
@@ -93,14 +94,14 @@ async def apply_repo_selection(
     payload: ApplyDiscoveryRequest,
 ) -> ApplyDiscoveryResponse:
     """Persist selected app candidates to config and reload registry."""
-    state = request.app.state
+    state = get_app_state(request)
     config = state.config
-    base_path: Path = state.base_path
-    config_path: Path | None = getattr(state, "config_path", None)
+    base_path = state.base_path
+    config_path = state.config_path
 
     if config_path is None:
         config_path = base_path / DEFAULT_CONFIG_FILENAME
-        state.config_path = config_path
+        request.app.state.config_path = config_path
 
     apps = list(config.apps)
     index_by_id = {app.id: idx for idx, app in enumerate(apps)}
@@ -129,11 +130,10 @@ async def apply_repo_selection(
         if existing_index is not None:
             continue
 
-        else:
-            index_by_id[app.id] = len(apps)
-            index_by_module[app.module.strip().lower()] = len(apps)
-            apps.append(app)
-            added += 1
+        index_by_id[app.id] = len(apps)
+        index_by_module[app.module.strip().lower()] = len(apps)
+        apps.append(app)
+        added += 1
 
     config.apps = apps
     set_config(config, config_path)

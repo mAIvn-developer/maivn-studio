@@ -1,3 +1,5 @@
+# pyright: strict
+
 from __future__ import annotations
 
 import logging
@@ -8,12 +10,14 @@ from fastapi import HTTPException
 
 from maivn_studio.config.loader import get_config_path, reload_config, set_config
 from maivn_studio.discovery.registry import init_registry
-from maivn_studio.services.session_manager.manager import get_session_manager
+from maivn_studio.services.session_manager.manager import SessionManager, get_session_manager
+from maivn_studio.services.session_manager.models import StudioSession
 
 from .models import (
     BatchInvocationRequest,
     InvocationConfig,
     MessageAttachmentPayload,
+    SessionResponse,
     StructuredOutputRequest,
 )
 
@@ -29,7 +33,7 @@ def refresh_registry_from_disk() -> None:
         config = reload_config()
         set_config(config, config_path)
         base_path = config_path.parent if config_path is not None else Path.cwd()
-        init_registry(config, base_path)
+        _ = init_registry(config, base_path)
     except Exception as exc:
         logger.warning("Failed to refresh studio registry from disk before session start: %s", exc)
 
@@ -37,12 +41,22 @@ def refresh_registry_from_disk() -> None:
 # MARK: Session Helpers
 
 
-def get_session_or_404(session_id: str, *, manager: Any | None = None) -> Any:
+def get_session_or_404(session_id: str, *, manager: SessionManager | None = None) -> StudioSession:
     active_manager = manager or get_session_manager()
     session = active_manager.get(session_id)
     if session is None:
         raise HTTPException(status_code=404, detail=f"Session not found: {session_id}")
     return session
+
+
+def session_response(session: StudioSession) -> SessionResponse:
+    """Build the API response model from a session snapshot.
+
+    ``StudioSession.to_dict`` is declared ``dict[str, Any]`` by the session
+    manager; ``model_validate`` validates and coerces that mapping into the
+    concrete ``SessionResponse`` fields at this boundary.
+    """
+    return SessionResponse.model_validate(session.to_dict())
 
 
 # MARK: Request Helpers

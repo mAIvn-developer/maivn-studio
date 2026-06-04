@@ -1,5 +1,7 @@
 """Synthetic ID helpers + next-tick prediction for schedule fires."""
 
+# pyright: strict
+
 from __future__ import annotations
 
 from datetime import datetime

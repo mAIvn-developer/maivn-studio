@@ -1,5 +1,7 @@
 """Pydantic models for app API requests and responses."""
 
+# pyright: strict
+
 from __future__ import annotations
 
 from typing import Any, Literal

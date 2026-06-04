@@ -4,7 +4,7 @@ export function hasAiTextResponse(aiMessage: Message | null): boolean {
   return !!(aiMessage && aiMessage.content && aiMessage.content.trim());
 }
 
-export function isMetadataOnlyResponseEnvelope(value: unknown): boolean {
+function isMetadataOnlyResponseEnvelope(value: unknown): boolean {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const record = value as Record<string, unknown>;
   const keys = Object.keys(record);

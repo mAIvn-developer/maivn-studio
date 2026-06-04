@@ -8,6 +8,8 @@ Submodules:
 - models: request/response models used by the session routes
 """
 
+# pyright: strict
+
 from __future__ import annotations
 
 from . import helpers, models, reads, routes, writes

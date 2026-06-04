@@ -21,7 +21,7 @@ export function normalizeScopePart(value: string | undefined): string | undefine
   return normalized.length > 0 ? normalized : undefined;
 }
 
-export function scopePartMatches(left: string | undefined, right: string | undefined): boolean {
+function scopePartMatches(left: string | undefined, right: string | undefined): boolean {
   const normalizedLeft = normalizeScopePart(left);
   const normalizedRight = normalizeScopePart(right);
   return normalizedLeft !== undefined && normalizedLeft === normalizedRight;
@@ -88,7 +88,7 @@ const ENRICHMENT_PHASE_LABELS: Record<string, string> = {
   failed: "Failed",
 };
 
-export function resolvePhaseMessage(chip: PhaseChipData): string {
+function resolvePhaseMessage(chip: PhaseChipData): string {
   const phase =
     typeof chip.phase === "string" && chip.phase.trim() ? chip.phase.trim().toLowerCase() : "";
   return ENRICHMENT_PHASE_LABELS[phase] ?? chip.message ?? chip.phase ?? "";
@@ -183,7 +183,7 @@ export function getStatusTools(
   return [...displayTools, ...nestedStatus];
 }
 
-export function getControlStatusTools(
+function getControlStatusTools(
   scopeType: ScopeType,
   tools: ToolCardType[],
   nestedAgents: NestedAgent[],

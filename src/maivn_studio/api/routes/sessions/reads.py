@@ -1,6 +1,6 @@
-from __future__ import annotations
+# pyright: strict
 
-from typing import Any
+from __future__ import annotations
 
 from fastapi import APIRouter
 from sse_starlette.sse import EventSourceResponse
@@ -9,7 +9,7 @@ from maivn_studio.services.event_bridge import create_event_bridge, get_event_br
 from maivn_studio.services.session_manager.manager import get_session_manager
 from maivn_studio.services.session_manager.models import SessionStatus
 
-from .helpers import get_session_or_404
+from .helpers import get_session_or_404, session_response
 from .models import SessionListResponse, SessionResponse
 
 router = APIRouter()
@@ -35,7 +35,7 @@ async def list_sessions(
             pass
 
     return SessionListResponse(
-        sessions=[SessionResponse(**s.to_dict()) for s in sessions],
+        sessions=[session_response(s) for s in sessions],
         total=len(sessions),
     )
 
@@ -53,7 +53,7 @@ async def get_session(session_id: str) -> SessionResponse:
     """Return the current snapshot of a session."""
     manager = get_session_manager()
     session = get_session_or_404(session_id, manager=manager)
-    return SessionResponse(**session.to_dict())
+    return session_response(session)
 
 
 @router.get("/{session_id}", response_model=SessionResponse)
@@ -68,7 +68,7 @@ async def get_session_events(
 ) -> EventSourceResponse:
     """Open an SSE stream for the session, replaying from ``last_event_id``."""
     manager = get_session_manager()
-    get_session_or_404(session_id, manager=manager)
+    _ = get_session_or_404(session_id, manager=manager)
 
     bridge = get_event_bridge(session_id)
     if bridge is None:
@@ -86,10 +86,10 @@ async def get_session_events_route(
     return await get_session_events(session_id, last_event_id=last_event_id)
 
 
-async def get_session_history(session_id: str) -> dict[str, Any]:
+async def get_session_history(session_id: str) -> dict[str, object]:
     """Return the captured event history for the session."""
     manager = get_session_manager()
-    get_session_or_404(session_id, manager=manager)
+    _ = get_session_or_404(session_id, manager=manager)
 
     bridge = get_event_bridge(session_id)
     events = bridge.get_history() if bridge else []
@@ -102,6 +102,6 @@ async def get_session_history(session_id: str) -> dict[str, Any]:
 
 
 @router.get("/{session_id}/history")
-async def get_session_history_route(session_id: str) -> dict[str, Any]:
+async def get_session_history_route(session_id: str) -> dict[str, object]:
     """Return the captured event history for the session."""
     return await get_session_history(session_id)

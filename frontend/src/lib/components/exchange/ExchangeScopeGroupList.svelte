@@ -6,6 +6,7 @@
   interface Props {
     scopeGroups: ScopeGroup[];
     phaseChips: PhaseChipData[];
+    reevaluatePhaseChips?: PhaseChipData[];
     scopeHookFirings?: Map<string, HookFiring[]>;
     latestStatusMessage?: string | null;
     isLive?: boolean;
@@ -18,6 +19,7 @@
   let {
     scopeGroups,
     phaseChips,
+    reevaluatePhaseChips = [],
     scopeHookFirings,
     latestStatusMessage = null,
     isLive = false,
@@ -56,6 +58,7 @@
         tools={group.tools}
         nestedAgents={group.nestedAgents}
         phaseChips={resolveScopePhaseChips(group, phaseChips)}
+        {reevaluatePhaseChips}
         hookFirings={resolveScopeHookFirings(group)}
         {scopeHookFirings}
         {latestStatusMessage}

@@ -1,11 +1,8 @@
-import type { ChatFlowItem, Message } from "$lib/types";
+import type { ChatFlowItem } from "$lib/types";
 
 import type { SessionStoreContext } from "../types";
 
-export function clearQueuedUserMessageFlags(
-  items: ChatFlowItem[],
-  consumedCount: number,
-): ChatFlowItem[] {
+function clearQueuedUserMessageFlags(items: ChatFlowItem[], consumedCount: number): ChatFlowItem[] {
   if (consumedCount <= 0) return items;
 
   let remaining = consumedCount;
@@ -14,7 +11,7 @@ export function clearQueuedUserMessageFlags(
       return item;
     }
 
-    const message = item.data as Message;
+    const message = item.data;
     if (message.role !== "user" || message.metadata?.queuedForNextTurn !== true) {
       return item;
     }

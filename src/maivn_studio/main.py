@@ -1,5 +1,7 @@
 """MAIVN Studio entry point."""
 
+# pyright: strict
+
 from __future__ import annotations
 
 import argparse

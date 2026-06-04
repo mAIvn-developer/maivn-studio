@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ChatFlowItem, Message, ToolCard } from "$lib/types";
+import type { ChatFlowItem, Message, ToolCard, ToolCardFlowItem } from "$lib/types";
 import {
   coerceMemoryActivityData,
   computeAccumulatedStats,
@@ -262,9 +262,9 @@ describe("filterChatFlowItems", () => {
     });
     // Messages pass (not tool_card), plus only "completed" tools
     expect(result).toHaveLength(2);
-    const toolItems = result.filter((i) => i.type === "tool_card");
+    const toolItems = result.filter((i): i is ToolCardFlowItem => i.type === "tool_card");
     expect(toolItems).toHaveLength(1);
-    expect((toolItems[0].data as ToolCard).status).toBe("completed");
+    expect(toolItems[0].data.status).toBe("completed");
   });
 
   it("combines itemType and toolStatus filters", () => {
@@ -274,7 +274,10 @@ describe("filterChatFlowItems", () => {
       toolStatus: "failed",
     });
     expect(result).toHaveLength(1);
-    expect((result[0].data as ToolCard).status).toBe("failed");
+    const failedItem = result[0];
+    expect(failedItem.type).toBe("tool_card");
+    if (failedItem.type !== "tool_card") throw new Error("expected tool_card item");
+    expect(failedItem.data.status).toBe("failed");
   });
 
   it("returns empty array when no items match", () => {
@@ -503,16 +506,43 @@ describe("coerceMemoryActivityData", () => {
     });
 
     it("trims whitespace from string fields", () => {
+      // memory_level/policy_mode mirror the canonical maivn_shared unions
+      // (MemoryLevel / MemoryPersistenceMode), so the trimmed value must be a
+      // recognized member to survive boundary narrowing.
       const details = coerceMemoryActivityData({
         mode: "  retrieve  ",
-        memory_level: "  high  ",
-        policy_mode: "  strict  ",
+        memory_level: "  focus  ",
+        policy_mode: "  vector_only  ",
       });
 
       expect(details).toMatchObject({
         mode: "retrieve",
-        memoryLevel: "high",
-        policyMode: "strict",
+        memoryLevel: "focus",
+        policyMode: "vector_only",
+      });
+    });
+
+    it("drops memory_level/policy_mode values outside the canonical unions", () => {
+      // Unknown server values are dropped gracefully (field left unset) rather
+      // than crashing — `mode` stays a free-form string and is preserved.
+      const details = coerceMemoryActivityData({
+        mode: "retrieve",
+        memory_level: "ultra",
+        policy_mode: "strict",
+      });
+
+      expect(details).toEqual({ mode: "retrieve" });
+    });
+
+    it("normalizes memory_level/policy_mode casing to the canonical lowercase members", () => {
+      const details = coerceMemoryActivityData({
+        memory_level: "Clarity",
+        policy_mode: "Vector_Plus_Graph",
+      });
+
+      expect(details).toEqual({
+        memoryLevel: "clarity",
+        policyMode: "vector_plus_graph",
       });
     });
 

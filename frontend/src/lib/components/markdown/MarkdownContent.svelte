@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Check, Copy } from "lucide-svelte";
+  import { copyToClipboard } from "$lib/utils/clipboard";
   import {
     decodeHtml as decodeMarkdownHtml,
     parseMarkdown as parseMarkdownContent,
@@ -35,18 +36,16 @@
     const raw = block.code;
     const code = decodeMarkdownHtml(raw);
 
-    try {
-      await navigator.clipboard.writeText(code);
-      copiedIndex = index;
-      if (copyTimeout) {
-        window.clearTimeout(copyTimeout);
-      }
-      copyTimeout = window.setTimeout(() => {
-        copiedIndex = null;
-      }, 2000);
-    } catch {
-      return;
+    const copied = await copyToClipboard(code);
+    if (!copied) return;
+
+    copiedIndex = index;
+    if (copyTimeout) {
+      window.clearTimeout(copyTimeout);
     }
+    copyTimeout = window.setTimeout(() => {
+      copiedIndex = null;
+    }, 2000);
   }
 
   $effect(() => {

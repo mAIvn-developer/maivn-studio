@@ -1,7 +1,15 @@
 import type { Message } from "./messages";
-import type { TokenUsage } from "./session";
+import type { ExecutionStatus, TokenUsage } from "./session";
 import type { InterruptData } from "./interrupts";
-import type { ExtractedSkillSummary, ExtractedInsightSummary } from "./memory";
+import type {
+  ExtractedSkillSummary,
+  ExtractedInsightSummary,
+  MemoryActivityMode,
+  MemoryActivitySource,
+  MemoryActivityStatus,
+  MemoryLevel,
+  MemoryPersistenceMode,
+} from "./memory";
 
 // MARK: Chat Flow Types
 
@@ -13,9 +21,18 @@ export type ChatFlowItemType =
   | "batch_result";
 
 export interface MemoryActivityData {
-  mode?: string;
-  source?: string;
-  status?: string;
+  // `mode`, `source`, and `status` are open-enum unions (see
+  // `MemoryActivityMode`/`MemoryActivitySource`/`MemoryActivityStatus` in
+  // `./memory`): each lists the documented-known server vocabulary for
+  // autocomplete while staying assignable from any `string`, because these
+  // values arrive as opaque dict entries forwarded verbatim from the maivn
+  // memory enrichment builders and the server may emit others. `memoryLevel`/
+  // `policyMode` mirror the canonical `maivn_shared` Literal unions; see
+  // `coerceMemoryActivityData` for the wire-boundary narrowing (the open enums
+  // need none — they accept any trimmed string).
+  mode?: MemoryActivityMode;
+  source?: MemoryActivitySource;
+  status?: MemoryActivityStatus;
   hitCount?: number;
   vectorHits?: number;
   keywordHits?: number;
@@ -27,8 +44,8 @@ export interface MemoryActivityData {
   graphEdges?: number;
   traceEventCount?: number;
   latencyMs?: number;
-  memoryLevel?: string;
-  policyMode?: string;
+  memoryLevel?: MemoryLevel;
+  policyMode?: MemoryPersistenceMode;
   registeredCount?: number;
   reusedCount?: number;
   skippedCount?: number;
@@ -62,12 +79,28 @@ export interface RedactionActivityData {
 
 // MARK: Phase Chip
 
+/**
+ * Attribution for a `reevaluate_accrued` chip. `source="dependency"` means a
+ * `@depends_on_reevaluate` boundary forced the re-plan (the server synthesised
+ * it); `source="llm"` means the LLM itself asked to re-plan. The chip should
+ * make this distinction visible so users can tell deterministic enforcement
+ * from model-driven cycles.
+ */
+export interface ReevaluateChipData {
+  source: "dependency" | "llm";
+  triggerTool?: string;
+  targetTool?: string;
+  cycle?: number;
+  collectedCount?: number;
+}
+
 export interface PhaseChipData {
   phase: string;
   message: string;
   timestamp: string;
   memory?: MemoryActivityData;
   redaction?: RedactionActivityData;
+  reevaluate?: ReevaluateChipData;
   // Scope routing (set when session belongs to a swarm or swarm agent)
   scopeId?: string; // Agent ID or Swarm name
   scopeName?: string; // Display name
@@ -86,16 +119,55 @@ export interface PhaseChipData {
  */
 export type ChatFlowOrigin = "user" | "schedule";
 
-export interface ChatFlowItem {
+/**
+ * Fields shared by every {@link ChatFlowItem} variant. The discriminant
+ * (`type`) and its correlated `data` payload live on the per-variant
+ * interfaces below; everything here is identical across variants.
+ */
+interface ChatFlowItemBase {
   id: string;
-  type: ChatFlowItemType;
   timestamp: string;
-  data: Message | ToolCard | InterruptData | PhaseChipData | BatchResult;
   /** Optional — defaults to "user". Set to "schedule" for cron-triggered items. */
   origin?: ChatFlowOrigin;
   /** Optional — fire ID from the schedule that triggered this item, if any. */
   scheduleFireId?: string;
 }
+
+export interface MessageFlowItem extends ChatFlowItemBase {
+  type: "message";
+  data: Message;
+}
+
+export interface ToolCardFlowItem extends ChatFlowItemBase {
+  type: "tool_card";
+  data: ToolCard;
+}
+
+export interface InterruptFlowItem extends ChatFlowItemBase {
+  type: "interrupt_card";
+  data: InterruptData;
+}
+
+export interface PhaseChipFlowItem extends ChatFlowItemBase {
+  type: "phase_chip";
+  data: PhaseChipData;
+}
+
+export interface BatchResultFlowItem extends ChatFlowItemBase {
+  type: "batch_result";
+  data: BatchResult;
+}
+
+/**
+ * Discriminated union over `type`. Narrowing on `item.type` correlates the
+ * `data` payload to its concrete shape, removing the need to cast `data`.
+ */
+export type ChatFlowItem =
+  | MessageFlowItem
+  | ToolCardFlowItem
+  | InterruptFlowItem
+  | PhaseChipFlowItem
+  | BatchResultFlowItem;
 
 // MARK: Batch Result Types
 
@@ -165,8 +237,8 @@ export interface HookFiring {
 
 // MARK: Tool Card Types
 
-export type ToolCardStatus = "pending" | "executing" | "completed" | "failed";
-export type ToolType = "func" | "model" | "mcp" | "agent" | "system";
+export type ToolCardStatus = ExecutionStatus;
+export type ToolType = "func" | "method" | "model" | "mcp" | "agent" | "system";
 
 export interface ToolCard {
   toolId: string;

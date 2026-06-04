@@ -1,11 +1,4 @@
-import type {
-  BatchResult,
-  ChatFlowFilters,
-  ChatFlowItem,
-  EventSummary,
-  Message,
-  ToolCard,
-} from "$lib/types";
+import type { ChatFlowFilters, ChatFlowItem, EventSummary, ToolCard } from "$lib/types";
 import type { AccumulatedStats } from "./types";
 
 function resolveAgentGroupKey(card: ToolCard): string | null {
@@ -62,7 +55,7 @@ export function computeEventSummary(items: ChatFlowItem[]): EventSummary {
     if (item.type === "message") {
       totalMessages++;
     } else if (item.type === "tool_card") {
-      const card = item.data as ToolCard;
+      const card = item.data;
       if (card.toolType !== "agent") {
         switch (card.status) {
           case "pending":
@@ -138,7 +131,7 @@ export function filterChatFlowItems(
     if (filterOpts.itemType === "tools" && item.type !== "tool_card") return false;
 
     if (item.type === "tool_card" && filterOpts.toolStatus !== "all") {
-      const card = item.data as ToolCard;
+      const card = item.data;
       if (card.status !== filterOpts.toolStatus) return false;
     }
 
@@ -162,7 +155,7 @@ export function computeAccumulatedStats(items: ChatFlowItem[]): AccumulatedStats
 
   for (const item of items) {
     if (item.type === "message") {
-      const message = item.data as Message;
+      const message = item.data;
       if (message.role === "assistant" && message.sessionDetails) {
         stats.sessionCount++;
         if (message.sessionDetails.duration_ms !== undefined) {
@@ -178,7 +171,7 @@ export function computeAccumulatedStats(items: ChatFlowItem[]): AccumulatedStats
         }
       }
     } else if (item.type === "batch_result") {
-      const batch = item.data as BatchResult;
+      const batch = item.data;
       if (batch.status === "completed" || batch.status === "failed") {
         stats.sessionCount += batch.itemCount;
       }

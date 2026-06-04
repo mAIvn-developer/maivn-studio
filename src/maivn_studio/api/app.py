@@ -1,14 +1,17 @@
 """FastAPI application factory."""
 
+# pyright: strict
+
 from __future__ import annotations
 
 import logging
 import re
 import shutil
 import subprocess
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import cast
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -147,33 +150,21 @@ def _ensure_frontend_built(static_dir: Path, *, force: bool = False) -> None:
         logger.warning("Frontend build completed but static assets still look invalid.")
 
 
-# MARK: Application State
-
-
-class AppState:
-    """Application state container."""
-
-    config: StudioConfig
-    base_path: Path
-    config_path: Path | None
-
-
 # MARK: Lifespan
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Application lifespan manager."""
     # Startup
     logger.info("Starting MAIVN Studio...")
 
-    state: AppState = app.state  # type: ignore
-    init_registry(state.config, state.base_path)
-    init_app_loader(state.base_path)
+    config = cast(StudioConfig, app.state.config)
+    base_path = cast(Path, app.state.base_path)
+    init_registry(config, base_path)
+    init_app_loader(base_path)
 
-    logger.info(
-        f"MAIVN Studio ready at http://{state.config.studio.host}:{state.config.studio.port}"
-    )
+    logger.info(f"MAIVN Studio ready at http://{config.studio.host}:{config.studio.port}")
 
     yield
 
@@ -249,7 +240,6 @@ def create_app(
     app.include_router(sessions_router)
 
     # Health check
-    @app.get("/health")
     async def health() -> dict[str, str]:
         """Health check endpoint."""
         result: dict[str, str] = {"status": "ok"}
@@ -257,11 +247,14 @@ def create_app(
             result["frontend"] = "stale"
         return result
 
+    app.add_api_route("/health", health, methods=["GET"])
+
     # Config endpoint
-    @app.get("/config")
-    async def get_config() -> dict:
+    async def get_config() -> dict[str, object]:
         """Get current studio configuration."""
         return config.model_dump()
+
+    app.add_api_route("/config", get_config, methods=["GET"])
 
     # Static frontend serving
     static_dir = Path(__file__).parent.parent / "static"
@@ -277,13 +270,14 @@ def create_app(
             app.mount("/_app", StaticFiles(directory=app_dir), name="sveltekit_app")
 
         # Serve index.html for root
-        @app.get("/")
         async def serve_index() -> FileResponse:
             """Serve the SPA index page."""
             return FileResponse(
                 static_dir / "index.html",
                 headers={"Cache-Control": "no-store"},
             )
+
+        app.add_api_route("/", serve_index, methods=["GET"])
 
         # Serve favicon explicitly (and keep old paths backward-compatible)
         def _resolve_favicon_for_path(path: str) -> tuple[Path, str, str] | None:
@@ -351,7 +345,6 @@ def create_app(
 
         # Serve robots.txt and other static files at root level
         # Note: This must NOT intercept /api/* or /health or /config routes
-        @app.get("/{path:path}")
         async def serve_spa(_request: Request, path: str) -> FileResponse:
             """Serve the SPA frontend for all non-API routes."""
             # Skip API routes - let them 404 properly if not handled
@@ -370,6 +363,8 @@ def create_app(
                 static_dir / "index.html",
                 headers={"Cache-Control": "no-store"},
             )
+
+        app.add_api_route("/{path:path}", serve_spa, methods=["GET"])
 
         logger.info(f"Serving frontend from {static_dir}")
     else:

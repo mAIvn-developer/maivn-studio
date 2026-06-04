@@ -1,5 +1,7 @@
 """App discovery and scanning."""
 
+# pyright: strict
+
 from __future__ import annotations
 
 import ast

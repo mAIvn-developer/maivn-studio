@@ -12,6 +12,7 @@
     buildScopeGroups,
     getMemoryPhaseChipsByPhase,
     getLatestRootPhaseChip,
+    getReevaluatePhaseChips,
     resolveScopePhaseChips,
   } from "./exchange-scope-groups";
   import {
@@ -72,6 +73,7 @@
 
   const latestRootPhaseChip = $derived(() => getLatestRootPhaseChip(phaseChips));
   const memoryPhaseChips = $derived(() => getMemoryPhaseChipsByPhase(phaseChips));
+  const reevaluatePhaseChips = $derived(() => getReevaluatePhaseChips(phaseChips));
   const scopeGroups = $derived(() => buildScopeGroups(toolCards));
   const latestStatusMessage = $derived(() => {
     const latest = statusMessages.at(-1);
@@ -114,6 +116,7 @@
       <ExchangeScopeGroupList
         scopeGroups={scopeGroups()}
         {phaseChips}
+        reevaluatePhaseChips={reevaluatePhaseChips()}
         {scopeHookFirings}
         latestStatusMessage={latestStatusMessage()}
         {isLive}

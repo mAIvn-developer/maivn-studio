@@ -6,6 +6,8 @@ Submodules:
 - introspection: helpers for agent/swarm/tool summary construction
 """
 
+# pyright: strict
+
 from __future__ import annotations
 
 from . import introspection, models, routes

@@ -14,7 +14,6 @@ interface CreateDiscoveryActionsParams {
   setDiscoverySelections: (selections: Set<string>) => void;
   setDiscoveryOpen: (open: boolean) => void;
   setDiscoveryLoading: (loading: boolean) => void;
-  getDiscoveryError: () => string | null;
   setDiscoveryError: (error: string | null) => void;
   reloadApps: () => Promise<void>;
 }

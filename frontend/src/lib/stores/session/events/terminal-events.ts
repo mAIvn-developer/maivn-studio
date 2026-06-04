@@ -1,4 +1,4 @@
-import type { Message, TokenUsage, ToolCard } from "$lib/types";
+import type { Message, TokenUsage } from "$lib/types";
 
 import { asRecord } from "./event-utils";
 import type { SessionStoreContext } from "../types";
@@ -55,7 +55,7 @@ function reconcileTerminalToolCards(
         return item;
       }
 
-      const card = item.data as ToolCard;
+      const card = item.data;
       if (!changedIds.has(card.toolId)) {
         return item;
       }
@@ -102,7 +102,7 @@ export function handleTurnCompleteOrFinal(
         if (item.id !== targetItemId || item.type !== "message") {
           return item;
         }
-        const existing = item.data as Message;
+        const existing = item.data;
         return {
           ...item,
           data: {

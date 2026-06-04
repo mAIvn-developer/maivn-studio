@@ -1,4 +1,10 @@
-import type { ChatFlowFilters, MemoryConfig, Message, SendableMessageType } from "$lib/types";
+import type {
+  ChatFlowFilters,
+  MemoryConfig,
+  Message,
+  MessageFlowItem,
+  SendableMessageType,
+} from "$lib/types";
 
 import { computeAccumulatedStats, computeEventSummary, filterChatFlowItems } from "./tools";
 
@@ -66,8 +72,8 @@ interface CreateSessionStoreApiParams {
 
 function getMessages(chatFlowItems: import("$lib/types").ChatFlowItem[]): Message[] {
   return chatFlowItems
-    .filter((item) => item.type === "message")
-    .map((item) => item.data as Message);
+    .filter((item): item is MessageFlowItem => item.type === "message")
+    .map((item) => item.data);
 }
 
 export function createSessionStoreApi(params: CreateSessionStoreApiParams) {

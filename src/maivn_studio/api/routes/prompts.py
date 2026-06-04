@@ -1,5 +1,7 @@
 """API routes for saved prompts management."""
 
+# pyright: strict
+
 from __future__ import annotations
 
 import uuid

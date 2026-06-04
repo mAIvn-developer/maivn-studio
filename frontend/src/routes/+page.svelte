@@ -14,7 +14,7 @@
   import { formatMemoryIndexedToastDetails as formatMemoryIndexedToastDetailsHelper } from "$lib/pages/studio/memory-toast";
   import { createPromptActions } from "$lib/pages/studio/prompt-actions";
   import {
-    getCollapsedAppLabel as getCollapsedAppLabelHelper,
+    getCollapsedAppLabel,
     loadRecentApps as loadStoredRecentApps,
     updateRecentApps,
   } from "$lib/pages/studio/recent-apps";
@@ -223,10 +223,6 @@
     recentAppObjects = updateRecentApps(recentAppObjects, app);
   }
 
-  function getCollapsedAppLabel(name: string): string {
-    return getCollapsedAppLabelHelper(name);
-  }
-
   function refreshSelectedAppDetails(): void {
     if (apps.selectedAppId) {
       void apps.selectApp(apps.selectedAppId, selectedVariant);
@@ -274,7 +270,6 @@
     setDiscoveryLoading: (loading) => {
       discoveryLoading = loading;
     },
-    getDiscoveryError: () => discoveryError,
     setDiscoveryError: (error) => {
       discoveryError = error;
     },

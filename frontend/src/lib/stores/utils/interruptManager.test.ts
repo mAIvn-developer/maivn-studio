@@ -22,6 +22,13 @@ function makeEvent(overrides: Partial<InterruptRequiredEvent> = {}): InterruptRe
   };
 }
 
+function interruptDataOf(item: ChatFlowItem): InterruptData {
+  if (item.type !== "interrupt_card") {
+    throw new Error(`expected interrupt_card item, got ${item.type}`);
+  }
+  return item.data;
+}
+
 // MARK: InterruptManager
 
 describe("InterruptManager", () => {
@@ -130,7 +137,7 @@ describe("InterruptManager", () => {
 
       // Cards map and chatFlowItems should still be "waiting"
       expect(mgr.cards.get("int-1")?.status).toBe("waiting");
-      expect((chatFlowItems[0].data as InterruptData).status).toBe("waiting");
+      expect(interruptDataOf(chatFlowItems[0]).status).toBe("waiting");
     });
 
     it("updates an existing interrupt_card when the same interrupt is replayed", () => {
@@ -147,7 +154,7 @@ describe("InterruptManager", () => {
       );
 
       expect(second.chatFlowItems).toHaveLength(1);
-      const card = second.chatFlowItems[0].data as InterruptData;
+      const card = interruptDataOf(second.chatFlowItems[0]);
       expect(card.cardId).toBe(first.interruptData.cardId);
       expect(card.interruptId).toBe("int-1");
       expect(card.prompt).toBe("Updated prompt");
@@ -183,8 +190,8 @@ describe("InterruptManager", () => {
       );
 
       expect(second.chatFlowItems).toHaveLength(2);
-      const firstCard = second.chatFlowItems[0].data as InterruptData;
-      const secondCard = second.chatFlowItems[1].data as InterruptData;
+      const firstCard = interruptDataOf(second.chatFlowItems[0]);
+      const secondCard = interruptDataOf(second.chatFlowItems[1]);
       expect(firstCard.cardId).not.toBe(secondCard.cardId);
       expect(firstCard.status).toBe("completed");
       expect(secondCard.status).toBe("waiting");
@@ -209,7 +216,7 @@ describe("InterruptManager", () => {
       expect(result.cards.get("int-1")?.submittedValue).toBe("hello");
 
       // ChatFlowItems updated
-      const card = result.chatFlowItems[0].data as InterruptData;
+      const card = interruptDataOf(result.chatFlowItems[0]);
       expect(card.status).toBe("submitting");
       expect(card.submittedValue).toBe("hello");
     });

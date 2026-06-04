@@ -1,5 +1,7 @@
 """Route handlers for session management."""
 
+# pyright: strict
+
 from __future__ import annotations
 
 from fastapi import APIRouter

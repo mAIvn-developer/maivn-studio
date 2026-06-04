@@ -1,5 +1,7 @@
 """Request and response models for session routes."""
 
+# pyright: strict
+
 from __future__ import annotations
 
 import base64

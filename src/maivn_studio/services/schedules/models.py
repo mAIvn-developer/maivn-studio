@@ -1,5 +1,7 @@
 """Pydantic models for Studio schedule configuration and reporting."""
 
+# pyright: strict
+
 from __future__ import annotations
 
 from datetime import datetime

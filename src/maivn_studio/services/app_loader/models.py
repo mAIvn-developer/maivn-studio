@@ -1,17 +1,29 @@
 """Data models for loaded apps and prompts."""
 
+# pyright: strict
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
 from types import ModuleType
-from typing import Any
 
 from maivn import Agent, Swarm
 
 from maivn_studio.config.models import AppConfig
 
 logger = logging.getLogger(__name__)
+
+
+# MARK: Types
+
+# Canonical executor union for the studio. A LoadedApp resolves to one of these
+# (or None when the module exposes no runnable agent/swarm).
+Executor = Agent | Swarm
+
+# Introspection metadata rows. Values are scalar JSON-friendly types; the
+# ``swarm`` key is only present on swarm-member agent rows.
+ToolMetadata = dict[str, str | bool]
+AgentMetadata = dict[str, str | bool]
 
 
 # MARK: Prompt
@@ -44,11 +56,11 @@ class LoadedApp:
     agents: list[Agent] = field(default_factory=list)
     swarms: list[Swarm] = field(default_factory=list)
     prompts: list[AppPrompt] = field(default_factory=list)
-    default_invocation: dict[str, Any] | None = None
+    default_invocation: dict[str, object] | None = None
     explicit_executor_name: str | None = None
 
     @property
-    def executor(self) -> Agent | Swarm | None:
+    def executor(self) -> Executor | None:
         """Get the primary executor (explicit override, else swarm, else agent)."""
         explicit_name = (
             self.explicit_executor_name.strip()
@@ -78,8 +90,6 @@ class LoadedApp:
             return "none"
         if any(executor is swarm for swarm in self.swarms):
             return "swarm"
-        if any(executor is agent for agent in self.agents):
-            return "agent"
         return "agent"
 
     @property
@@ -123,36 +133,36 @@ class LoadedApp:
                 return prompt
         return None
 
-    def get_tools(self) -> list[dict[str, Any]]:
+    def get_tools(self) -> list[ToolMetadata]:
         """Get all tools registered across all agents."""
-        tools: list[dict[str, Any]] = []
+        tools: list[ToolMetadata] = []
         seen_names: set[str] = set()
 
         for agent in self.agents:
-            if hasattr(agent, "_tool_repo") and agent._tool_repo:
-                for tool in agent._tool_repo.list_tools():
-                    if tool.name not in seen_names:
-                        tools.append(
-                            {
-                                "name": tool.name,
-                                "description": tool.description or "",
-                                "agent": agent.name,
-                                "final_tool": getattr(tool, "final_tool", False),
-                            }
-                        )
-                        seen_names.add(tool.name)
+            for tool in agent.list_tools():
+                tool_name = tool.name or ""
+                if tool_name not in seen_names:
+                    tools.append(
+                        {
+                            "name": tool_name,
+                            "description": tool.description or "",
+                            "agent": agent.name or "",
+                            "final_tool": tool.final_tool,
+                        }
+                    )
+                    seen_names.add(tool_name)
 
         return tools
 
-    def get_all_agents(self) -> list[dict[str, Any]]:
+    def get_all_agents(self) -> list[AgentMetadata]:
         """Get metadata for all agents (including swarm members)."""
-        result: list[dict[str, Any]] = []
+        result: list[AgentMetadata] = []
 
         # Standalone agents
         for agent in self.agents:
             result.append(
                 {
-                    "name": agent.name,
+                    "name": agent.name or "",
                     "description": agent.description or "",
                     "is_swarm_member": False,
                 }
@@ -160,15 +170,14 @@ class LoadedApp:
 
         # Swarm member agents
         for swarm in self.swarms:
-            if hasattr(swarm, "agents"):
-                for agent in swarm.agents:
-                    result.append(
-                        {
-                            "name": agent.name,
-                            "description": agent.description or "",
-                            "is_swarm_member": True,
-                            "swarm": swarm.name,
-                        }
-                    )
+            for agent in swarm.agents:
+                result.append(
+                    {
+                        "name": agent.name or "",
+                        "description": agent.description or "",
+                        "is_swarm_member": True,
+                        "swarm": swarm.name or "",
+                    }
+                )
 
         return result

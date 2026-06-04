@@ -5,6 +5,8 @@ import type {
 } from "./config";
 import type { InvocationMemoryConfig } from "./memory";
 import type { PrivateDataField } from "./config";
+import type { ToolType } from "./chat";
+import type { SendableMessageType } from "./messages";
 
 // MARK: App Types
 
@@ -99,7 +101,7 @@ export interface ToolInfo {
   name: string;
   description: string;
   agent: string;
-  tool_type: string;
+  tool_type: ToolType;
   final_tool: boolean;
   always_execute: boolean;
   tags: string[];
@@ -115,7 +117,7 @@ export interface PromptInfo {
   is_default: boolean;
   source: string;
   structured_output?: string; // Tool name for structured output
-  message_type?: string; // Auto-select message type (human, redacted)
+  message_type?: SendableMessageType; // Auto-select message type (human | redacted)
   variant?: string; // Auto-select variant when prompt is chosen
 }
 

@@ -3,7 +3,6 @@ import type {
   ExtractedInsightSummary,
   ExtractedSkillSummary,
   MemoryActivityData,
-  PhaseChipData,
   RetrievedMemoryContext,
 } from "$lib/types";
 import { resolveEnrichmentDisplayMessage, resolveMemoryScopeKey } from "../utils/enrichmentTracker";
@@ -55,7 +54,7 @@ export function createEnrichmentRuntime(params: CreateEnrichmentRuntimeParams) {
           return item;
         }
 
-        const chipData = item.data as PhaseChipData;
+        const chipData = item.data;
         if (resolveMemoryScopeKey(chipData.phase) !== null) {
           return item;
         }

@@ -5,6 +5,7 @@ Submodules:
 - models: LoadedApp and AppPrompt data structures
 """
 
+# pyright: strict
 from __future__ import annotations
 
 from . import loader, models

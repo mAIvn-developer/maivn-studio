@@ -30,9 +30,12 @@ function appendPendingAssistantChunk(ctx: SessionStoreContext, assistantId: stri
   ctx.pendingAssistantChunks.set(assistantId, existing + text);
 }
 
-function resolveAssistantChunkText(
-  eventData: Record<string, unknown>,
-): { assistantId: string; hasExplicitAssistantId: boolean; text: string } | null {
+function resolveAssistantChunkText(eventData: Record<string, unknown>): {
+  assistantId: string;
+  hasExplicitAssistantId: boolean;
+  text: string;
+  replaceContent: boolean;
+} | null {
   const assistantData = asRecord(eventData.assistant);
   const assistantIdRaw = assistantData?.id ?? eventData.assistant_id;
   const hasExplicitAssistantId =
@@ -49,6 +52,7 @@ function resolveAssistantChunkText(
     assistantId,
     hasExplicitAssistantId,
     text: chunkText,
+    replaceContent: eventData.replace_content === true || assistantData?.replace_content === true,
   };
 }
 
@@ -117,7 +121,7 @@ function updateStreamingAssistantMessage(
         return item;
       }
 
-      const msg = item.data as Message;
+      const msg = item.data;
       return {
         ...item,
         data: updater(msg),
@@ -131,6 +135,42 @@ export function appendAssistantMessageChunk(ctx: SessionStoreContext, text: stri
   updateStreamingAssistantMessage(ctx, targetItemId, (msg) => ({
     ...msg,
     content: (msg.content ?? "") + text,
+    metadata: {
+      ...(msg.metadata ?? {}),
+      isStreaming: true,
+    },
+  }));
+}
+
+function replaceAssistantMessageContent(ctx: SessionStoreContext, text: string) {
+  const targetItemId = ensureStreamingAssistantItemId(ctx);
+  updateStreamingAssistantMessage(ctx, targetItemId, (msg) => ({
+    ...msg,
+    content: text,
+    metadata: {
+      ...(msg.metadata ?? {}),
+      isStreaming: true,
+    },
+  }));
+}
+
+/**
+ * Clear the content of the currently-streaming assistant bubble (if any) so
+ * the next chunk starts fresh, while keeping the same chat-flow item in place
+ * — the UI continues to show a single, in-progress assistant bubble across
+ * the reevaluate boundary instead of splitting it into two stacked bubbles.
+ *
+ * Used by the enrichment handler when ``reevaluate_accrued`` fires: the
+ * server is about to restart synthesis on a new thread, so the next stream
+ * chunk represents cycle 2's fresh content rather than a continuation of
+ * cycle 1's text.
+ */
+export function resetStreamingAssistantContent(ctx: SessionStoreContext): void {
+  const targetItemId = ctx.getStreamingAssistantItemId();
+  if (!targetItemId) return;
+  updateStreamingAssistantMessage(ctx, targetItemId, (msg) => ({
+    ...msg,
+    content: "",
     metadata: {
       ...(msg.metadata ?? {}),
       isStreaming: true,
@@ -227,7 +267,7 @@ export function handleAssistantChunk(ctx: SessionStoreContext, eventData: Record
   if (!chunk) {
     return;
   }
-  const { assistantId, hasExplicitAssistantId, text } = chunk;
+  const { assistantId, hasExplicitAssistantId, text, replaceContent } = chunk;
 
   const agentToolId = resolveAgentToolIdByAssistantId(ctx, assistantId);
 
@@ -238,6 +278,10 @@ export function handleAssistantChunk(ctx: SessionStoreContext, eventData: Record
   }
 
   if (shouldAppendToRootAssistant(ctx, assistantId, hasExplicitAssistantId)) {
+    if (replaceContent) {
+      replaceAssistantMessageContent(ctx, text);
+      return;
+    }
     appendAssistantMessageChunk(ctx, text);
     return;
   }

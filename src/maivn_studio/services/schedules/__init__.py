@@ -1,5 +1,7 @@
 """Studio service for configuring and running scheduled app invocations."""
 
+# pyright: strict
+
 from __future__ import annotations
 
 from .manager import ScheduleManager, get_schedule_manager

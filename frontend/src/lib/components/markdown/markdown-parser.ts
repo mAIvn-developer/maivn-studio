@@ -1,4 +1,4 @@
-export function escapeHtml(text: string): string {
+function escapeHtml(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
@@ -377,7 +377,8 @@ export function parseMarkdown(text: string): string {
       segments.push({ type: "text", value: before });
     }
 
-    const lang = rawLang.trim();
+    const rawLangTrimmed = rawLang.trim();
+    const lang = /^[A-Za-z0-9+#._-]{1,30}$/.test(rawLangTrimmed) ? rawLangTrimmed : "";
     const langClass = lang ? ` class="language-${lang}"` : "";
     const langLabel = lang ? ` data-lang="${lang.toUpperCase()}"` : "";
     const cleanedCode = code.replace(/\n$/, "");

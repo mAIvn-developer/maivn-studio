@@ -1,10 +1,12 @@
 """App registry for managing discovered and configured apps."""
 
+# pyright: strict
+
 from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from maivn_studio.config.models import AppConfig, StudioConfig
 
@@ -185,9 +187,9 @@ class AppRegistry:
             discovered_count,
         )
 
-    def to_dict(self) -> dict[str, list[dict]]:
+    def to_dict(self) -> dict[str, list[dict[str, Any]]]:
         """Export registry as a dictionary grouped by category."""
-        result: dict[str, list[dict]] = {}
+        result: dict[str, list[dict[str, Any]]] = {}
         for category in sorted(self._by_category.keys()):
             apps = self.get_by_category(category)
             result[category] = [a.model_dump() for a in apps]

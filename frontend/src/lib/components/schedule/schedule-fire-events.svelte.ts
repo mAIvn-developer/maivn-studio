@@ -3,6 +3,7 @@ import type {
   ChatFlowItem,
   Message,
   PhaseChipData,
+  ReevaluateChipData,
   TokenUsage,
   ToolCard,
   ToolType,
@@ -82,7 +83,7 @@ export function createScheduleFireEventStream(
 
   function ensureUserMessage(prompt: string): void {
     const hasUserMessage = state.chatFlowItems.some(
-      (item) => item.type === "message" && (item.data as Message).role === "user",
+      (item) => item.type === "message" && item.data.role === "user",
     );
     if (hasUserMessage) return;
     const message: Message = {
@@ -125,7 +126,7 @@ export function createScheduleFireEventStream(
     const itemId = ensureStreamingAssistantItem();
     const item = findItem(itemId);
     if (!item || item.type !== "message") return;
-    const msg = item.data as Message;
+    const msg = item.data;
     replaceItem(itemId, {
       ...item,
       data: {
@@ -142,7 +143,7 @@ export function createScheduleFireEventStream(
       streamingAssistantItemId = null;
       return;
     }
-    const msg = item.data as Message;
+    const msg = item.data;
     replaceItem(streamingAssistantItemId, {
       ...item,
       data: {
@@ -158,6 +159,44 @@ export function createScheduleFireEventStream(
       return value as Record<string, unknown>;
     }
     return undefined;
+  }
+
+  function asString(value: unknown): string | undefined {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  }
+
+  function coerceReevaluate(raw: unknown): ReevaluateChipData | undefined {
+    const record = asRecord(raw);
+    if (!record) return undefined;
+
+    const sourceRaw = asString(record.source)?.toLowerCase();
+    const source = sourceRaw === "dependency" || sourceRaw === "llm" ? sourceRaw : undefined;
+    const triggerTool = asString(record.trigger_tool ?? record.triggerTool);
+    const targetTool = asString(record.target_tool ?? record.targetTool);
+    const cycleRaw = record.reevaluate_count ?? record.cycle;
+    const collectedRaw = record.collected_count ?? record.collectedCount;
+    const cycle = typeof cycleRaw === "number" ? cycleRaw : undefined;
+    const collectedCount = typeof collectedRaw === "number" ? collectedRaw : undefined;
+
+    if (
+      !source &&
+      !triggerTool &&
+      !targetTool &&
+      cycle === undefined &&
+      collectedCount === undefined
+    ) {
+      return undefined;
+    }
+
+    return {
+      source: source ?? "llm",
+      triggerTool,
+      targetTool,
+      cycle,
+      collectedCount,
+    };
   }
 
   function latestResponseText(value: unknown): string | undefined {
@@ -186,7 +225,7 @@ export function createScheduleFireEventStream(
         streamingAssistantItemId = null;
         return;
       }
-      const msg = item.data as Message;
+      const msg = item.data;
       replaceItem(streamingAssistantItemId, {
         ...item,
         data: {
@@ -289,6 +328,7 @@ export function createScheduleFireEventStream(
       if (existingItem) {
         replaceItem(existingItemId, {
           ...existingItem,
+          type: "tool_card",
           data: card,
           timestamp: card.completedAt ?? card.startedAt,
         });
@@ -352,7 +392,7 @@ export function createScheduleFireEventStream(
       if (!itemId) return;
       const item = findItem(itemId);
       if (!item) return;
-      replaceItem(itemId, { ...item, data: updated });
+      replaceItem(itemId, { ...item, type: "tool_card", data: updated });
       return;
     }
 
@@ -372,6 +412,7 @@ export function createScheduleFireEventStream(
       if (!item) return;
       replaceItem(itemId, {
         ...item,
+        type: "tool_card",
         data: updated,
         timestamp: updated.completedAt ?? item.timestamp,
       });
@@ -382,12 +423,14 @@ export function createScheduleFireEventStream(
     const phase = (data.phase as string | undefined) ?? "";
     const message = (data.message as string | undefined) ?? "";
     if (!phase || !message) return;
+    const reevaluate = coerceReevaluate(data.reevaluate ?? data);
     const phaseChip: PhaseChipData = {
       phase,
       message,
       timestamp: (data.timestamp as string | undefined) ?? new Date().toISOString(),
       memory: data.memory as PhaseChipData["memory"],
       redaction: data.redaction as PhaseChipData["redaction"],
+      reevaluate,
       scopeId: data.scope_id as string | undefined,
       scopeName: data.scope_name as string | undefined,
       scopeType: data.scope_type as PhaseChipData["scopeType"],

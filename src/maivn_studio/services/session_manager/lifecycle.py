@@ -1,3 +1,4 @@
+# pyright: strict
 """Lifecycle helpers for session management."""
 
 from __future__ import annotations
@@ -12,17 +13,19 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from maivn_studio.config.models import AppConfig
 
 from ..app_loader.loader import get_app_loader
+from ..app_loader.models import LoadedApp
 from ..event_bridge import remove_event_bridge
 from .messages import apply_turn_configuration
 from .models import SessionStatus, StudioSession
 from .private_data import apply_private_data
+from .protocols import Executor, SessionManagerLike
 
 # MARK: Resource Cleanup
 
 
 def close_loaded_app_resources(session: StudioSession) -> None:
     """Close loaded app executors during process-level shutdown."""
-    loaded_app = session._loaded_app
+    loaded_app = session.loaded_app
     if loaded_app is None:
         return
 
@@ -33,28 +36,28 @@ def close_loaded_app_resources(session: StudioSession) -> None:
             continue
         seen.add(resource_id)
 
-        close = getattr(resource, "close", None)
+        # Duck-type ``close()``: ``Agent`` exposes it, ``Swarm`` does not, and
+        # tests pass lightweight closeable stubs. Skip anything not closeable.
+        close: object = getattr(resource, "close", None)
         if not callable(close):
             continue
         try:
-            close()
+            _ = close()
         except Exception:  # noqa: BLE001 - resource close() should never block shutdown
             pass
 
 
-def _iter_loaded_app_resources(loaded_app: Any) -> list[Any]:
-    resources: list[Any] = []
-    executor = getattr(loaded_app, "executor", None)
+def _iter_loaded_app_resources(loaded_app: LoadedApp) -> list[Executor]:
+    resources: list[Executor] = []
+    executor = loaded_app.executor
     if executor is not None:
         resources.append(executor)
 
-    swarms = list(getattr(loaded_app, "swarms", []) or [])
-    agents = list(getattr(loaded_app, "agents", []) or [])
-    resources.extend(swarms)
-    resources.extend(agents)
+    resources.extend(loaded_app.swarms)
+    resources.extend(loaded_app.agents)
 
-    for swarm in swarms:
-        resources.extend(list(getattr(swarm, "agents", []) or []))
+    for swarm in loaded_app.swarms:
+        resources.extend(swarm.agents)
 
     return resources
 
@@ -88,15 +91,15 @@ def release_loaded_app(session: StudioSession) -> None:
     down pool on the next ``submit()``, so a previous version's
     ``close()`` can no longer brick a cached Agent.
     """
-    if session._loaded_app is None:
+    if session.loaded_app is None:
         return
-    session._loaded_app = None
+    session.loaded_app = None
 
 
 async def shutdown_sessions(sessions: list[StudioSession]) -> None:
     """Cancel all running sessions and release associated resources."""
     for session in sessions:
-        task = session._task
+        task = session.task
         if task and not task.done():
             task.cancel()
             try:
@@ -105,7 +108,7 @@ async def shutdown_sessions(sessions: list[StudioSession]) -> None:
                 pass
             except Exception:  # noqa: BLE001 - shutdown must drain tasks even if they erred
                 pass
-        session._task = None
+        session.task = None
 
     for session in sessions:
         close_loaded_app_resources(session)
@@ -150,7 +153,7 @@ async def create_session_record(
 
 
 async def start_session_execution(
-    manager: Any,
+    manager: SessionManagerLike,
     session: StudioSession,
     *,
     message: str,
@@ -167,7 +170,7 @@ async def start_session_execution(
 
     loader = get_app_loader()
     loaded = loader.load(session.app_config, force_reload=True, variant=session.variant)
-    session._loaded_app = loaded
+    session.loaded_app = loaded
 
     user_private_data = session.metadata.get("user_private_data", {})
     apply_private_data(loaded, user_private_data)
@@ -187,17 +190,17 @@ async def start_session_execution(
     if system_message:
         session.messages.append(SystemMessage(content=system_message))
 
-    session.messages.append(manager._create_message(message, message_type, attachments=attachments))
+    session.messages.append(manager.create_message(message, message_type, attachments=attachments))
     session.status = SessionStatus.RUNNING
     session.started_at = datetime.now()
-    session._task = asyncio.create_task(
-        manager._execute_session(session),
+    session.task = asyncio.create_task(
+        manager.run_session(session),
         name=f"session-{session.session_id}",
     )
 
 
 async def send_followup_message(
-    manager: Any,
+    manager: SessionManagerLike,
     session: StudioSession,
     *,
     message: str,
@@ -209,7 +212,7 @@ async def send_followup_message(
 ) -> None:
     """Queue or start a follow-up message for an existing session."""
     if session.can_stage_message:
-        manager._enqueue_message(
+        manager.enqueue_message(
             session,
             message=message,
             message_type=message_type,
@@ -232,10 +235,10 @@ async def send_followup_message(
         batch_config=batch_config,
     )
 
-    session.messages.append(manager._create_message(message, message_type, attachments=attachments))
+    session.messages.append(manager.create_message(message, message_type, attachments=attachments))
     session.status = SessionStatus.RUNNING
-    session._task = asyncio.create_task(
-        manager._execute_session(session),
+    session.task = asyncio.create_task(
+        manager.run_session(session),
         name=f"session-{session.session_id}",
     )
 
@@ -260,29 +263,30 @@ async def submit_interrupt_response(
     ):
         raise ValueError(f"Session {session.session_id} not accepting interrupts")
 
-    if "interrupt_responses" not in session.metadata:
-        session.metadata["interrupt_responses"] = {}
-    session.metadata["interrupt_responses"][data_key] = value
+    interrupt_responses: dict[str, Any] = session.metadata.get("interrupt_responses") or {}
+    interrupt_responses[data_key] = value
+    session.metadata["interrupt_responses"] = interrupt_responses
     session.status = SessionStatus.RUNNING
 
 
-async def end_session_record(manager: Any, session: StudioSession) -> None:
+async def end_session_record(manager: SessionManagerLike, session: StudioSession) -> None:
     """End a session and emit the terminal event."""
     if not session.is_active:
         return
 
-    if session._task and not session._task.done():
-        session._task.cancel()
+    task = session.task
+    if task and not task.done():
+        task.cancel()
         try:
-            await session._task
+            await task
         except asyncio.CancelledError:
             pass
 
     session.status = SessionStatus.COMPLETED
     session.completed_at = datetime.now()
-    session._task = None
+    session.task = None
 
-    await manager._emit_event(
+    await manager.emit_event(
         session,
         "session_end",
         {
@@ -296,14 +300,15 @@ async def end_session_record(manager: Any, session: StudioSession) -> None:
 
 async def cancel_session_record(session: StudioSession) -> None:
     """Cancel a running session and release resources."""
-    if session._task and not session._task.done():
-        session._task.cancel()
+    task = session.task
+    if task and not task.done():
+        task.cancel()
         try:
-            await session._task
+            await task
         except asyncio.CancelledError:
             pass
 
     session.status = SessionStatus.CANCELLED
     session.completed_at = datetime.now()
-    session._task = None
+    session.task = None
     release_loaded_app(session)

@@ -160,7 +160,7 @@ export class ToolCardBatcher {
     const updatedIds = new Set(updates.keys());
     return chatFlowItems.map((item) => {
       if (item.type === "tool_card") {
-        const cardData = item.data as ToolCard;
+        const cardData = item.data;
         if (updatedIds.has(cardData.toolId)) {
           return { ...item, data: updates.get(cardData.toolId)! };
         }

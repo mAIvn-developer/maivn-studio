@@ -518,8 +518,7 @@
   const hasWaitingInterrupts = $derived(
     pendingInterrupts.some((i) => i.status === "waiting") ||
       chatFlowItems.some(
-        (item) =>
-          item.type === "interrupt_card" && (item.data as InterruptData).status === "waiting",
+        (item) => item.type === "interrupt_card" && item.data.status === "waiting",
       ),
   );
 

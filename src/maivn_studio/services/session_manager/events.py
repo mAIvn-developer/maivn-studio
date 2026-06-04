@@ -1,26 +1,29 @@
+# pyright: strict
 """Event helpers for session management."""
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from .models import StudioSession
+from .protocols import Executor, SessionManagerLike
 
 # MARK: Session Events
 
 
 async def emit_session_start_event(
-    manager: Any,
+    manager: SessionManagerLike,
     session: StudioSession,
     *,
-    executor: Any,
+    executor: Executor,
     executor_type: str,
     consumed_queued_message_count: int = 0,
 ) -> None:
     """Emit a session_start SSE event with queue telemetry."""
     structured_output_config = session.metadata.get("structured_output")
     batch_config = session.metadata.get("batch_config")
-    await manager._emit_event(
+    await manager.emit_event(
         session,
         "session_start",
         {
@@ -41,7 +44,7 @@ async def emit_event(
     event_type: str,
     data: dict[str, Any],
     *,
-    logger: Any,
+    logger: logging.Logger,
 ) -> None:
     """Emit an event to the session's event bridge for SSE streaming."""
     from ..event_bridge import create_event_bridge, get_event_bridge
