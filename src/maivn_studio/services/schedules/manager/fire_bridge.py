@@ -6,12 +6,16 @@ needs four cooperating callbacks (~200 LOC) that all close over the same
 the manager class.
 """
 
+# pyright: strict
+
 from __future__ import annotations
 
 import asyncio
 import logging
+import threading
+from contextvars import ContextVar
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from typing import Protocol, cast
 
 from maivn import RunRecord, ScheduledJob
 from maivn._internal.utils.reporting.context import (
@@ -30,14 +34,46 @@ from ..models import ScheduleConfig
 from .ids import fire_event_session_id, predict_next_run_iso
 from .serialization import build_terminal_event_data, duration_ms
 
-if TYPE_CHECKING:
-    from .core import ScheduleManager
-
 logger = logging.getLogger(__name__)
 
 
+# MARK: Manager seam
+
+
+class ScheduleManagerLike(Protocol):
+    """Minimal :class:`ScheduleManager` surface the fire callbacks reach back into.
+
+    Typing the seam with a Protocol (instead of importing the concrete
+    ``ScheduleManager``) keeps ``fire_bridge`` free of a back-import on
+    ``core`` — ``core`` imports ``wire_fire_event_bridge`` at runtime, so a
+    reverse import would form a module cycle.
+    """
+
+    lock: threading.Lock
+    active_runs_by_app: dict[str, dict[str, RunRecord]]
+    fire_session_ids_by_app: dict[str, list[str]]
+
+    def emit_app_event(
+        self,
+        app_id: str,
+        event_name: str,
+        data: dict[str, object],
+        loop: asyncio.AbstractEventLoop,
+    ) -> None: ...
+
+
+# The SDK stores ``BaseReporter | None`` in this context var; narrow it to the
+# concrete StudioReporter we set so callers see the precise type.
+_current_reporter: ContextVar[StudioReporter | None] = cast(
+    "ContextVar[StudioReporter | None]", current_reporter
+)
+
+
+# MARK: Fire bridge wiring
+
+
 def wire_fire_event_bridge(
-    manager: ScheduleManager,
+    manager: ScheduleManagerLike,
     job: ScheduledJob,
     app_id: str,
     config: ScheduleConfig,
@@ -58,7 +94,12 @@ def wire_fire_event_bridge(
     # forward through the bridge.
     delivery_mode = "stream" if method in {"stream", "astream"} else "invoke"
 
-    prompt_text = prompt_messages[0].content if prompt_messages else ""
+    # ``HumanMessage.content`` is ``str | list[...]`` whose list arm carries
+    # langchain's partially-unstubbed ``dict`` element; cast to object so the
+    # str-coercion below stays type-clean. Schedule prompts are always plain
+    # text, so non-string content collapses to "".
+    first_content: object = cast("object", prompt_messages[0].content) if prompt_messages else ""
+    prompt_text = first_content if isinstance(first_content, str) else ""
 
     def _on_fire(record: RunRecord) -> None:
         try:
@@ -89,16 +130,16 @@ def wire_fire_event_bridge(
         # to a previous job (its on_fire still mutates this shared map).
         record.metadata["job_id"] = job.id
 
-        with manager._lock:
-            manager._active_runs_by_app.setdefault(app_id, {})[record.fire_id] = record
-            session_ids = manager._fire_session_ids_by_app.setdefault(app_id, [])
+        with manager.lock:
+            manager.active_runs_by_app.setdefault(app_id, {})[record.fire_id] = record
+            session_ids = manager.fire_session_ids_by_app.setdefault(app_id, [])
             if event_session_id not in session_ids:
                 session_ids.append(event_session_id)
 
         bridge = get_event_bridge(event_session_id)
         if bridge is None:
             bridge = create_event_bridge(event_session_id)
-        elif bridge._closed:
+        elif bridge.stream_is_closed:
             bridge.reopen()
 
         reporter = StudioReporter(bridge, loop)
@@ -106,8 +147,8 @@ def wire_fire_event_bridge(
         # ContextVars set in this callback persist for the rest of the
         # runner Task, so the upcoming executor invoke picks up the
         # reporter and delivery mode.
-        current_reporter.set(reporter)
-        current_sdk_delivery_mode.set(delivery_mode)
+        _ = _current_reporter.set(reporter)
+        _ = current_sdk_delivery_mode.set(delivery_mode)
         # In stream mode, StudioReporter normally suppresses
         # ``report_response_chunk`` / ``print_final_response`` because chat
         # sessions replay normalized events themselves. Schedules don't run
@@ -119,22 +160,20 @@ def wire_fire_event_bridge(
 
         # Mirror the chat panel's session_start event so the frontend's
         # existing event handlers light up phase chips, tool cards, etc.
-        asyncio.run_coroutine_threadsafe(
-            bridge.emit(
-                "session_start",
-                {
-                    "session_id": event_session_id,
-                    "app_id": app_id,
-                    "schedule_job_id": job.id,
-                    "schedule_fire_id": record.fire_id,
-                    "scheduled_at": record.scheduled_at.isoformat(),
-                    "fired_at": (record.fired_at.isoformat() if record.fired_at else None),
-                    "attempt": record.attempt,
-                    "method": method,
-                    "prompt": prompt_text,
-                    "origin": "schedule",
-                },
-            ),
+        session_start: dict[str, object] = {
+            "session_id": event_session_id,
+            "app_id": app_id,
+            "schedule_job_id": job.id,
+            "schedule_fire_id": record.fire_id,
+            "scheduled_at": record.scheduled_at.isoformat(),
+            "fired_at": (record.fired_at.isoformat() if record.fired_at else None),
+            "attempt": record.attempt,
+            "method": method,
+            "prompt": prompt_text,
+            "origin": "schedule",
+        }
+        _ = asyncio.run_coroutine_threadsafe(
+            bridge.emit("session_start", session_start),
             loop,
         )
 
@@ -144,7 +183,7 @@ def wire_fire_event_bridge(
         # /fires/{fire_id}/events can be opened immediately, and
         # next_run_at so the upcoming-card countdown rolls over to the
         # next tick without waiting for a poll.
-        manager._emit_app_event(
+        manager.emit_app_event(
             app_id,
             "schedule_fire_started",
             {
@@ -160,8 +199,8 @@ def wire_fire_event_bridge(
         )
 
     def _on_terminal(record: RunRecord, *, terminal: str) -> None:
-        with manager._lock:
-            manager._active_runs_by_app.get(app_id, {}).pop(record.fire_id, None)
+        with manager.lock:
+            _ = manager.active_runs_by_app.get(app_id, {}).pop(record.fire_id, None)
 
         event_session_id = record.metadata.get("event_session_id") if record.metadata else None
         if not isinstance(event_session_id, str):
@@ -174,7 +213,7 @@ def wire_fire_event_bridge(
         except RuntimeError:
             return
 
-        asyncio.run_coroutine_threadsafe(
+        _ = asyncio.run_coroutine_threadsafe(
             bridge.emit(
                 "turn_complete" if terminal == "success" else "error",
                 build_terminal_event_data(
@@ -192,7 +231,7 @@ def wire_fire_event_bridge(
         # Push to the per-app bridge so the frontend flips the card's
         # status pill from running -> succeeded/failed without waiting
         # for the next reconciliation poll.
-        manager._emit_app_event(
+        manager.emit_app_event(
             app_id,
             "schedule_fire_completed",
             {
@@ -223,13 +262,13 @@ def wire_fire_event_bridge(
     # still push to the per-app bridge so the UI's skipped-runs counter
     # updates without waiting for a reconciliation poll.
     def _on_skip(record: RunRecord) -> None:
-        with manager._lock:
-            manager._active_runs_by_app.get(app_id, {}).pop(record.fire_id, None)
+        with manager.lock:
+            _ = manager.active_runs_by_app.get(app_id, {}).pop(record.fire_id, None)
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
             return
-        manager._emit_app_event(
+        manager.emit_app_event(
             app_id,
             "schedule_fire_skipped",
             {
@@ -248,10 +287,10 @@ def wire_fire_event_bridge(
     def _on_terminal_error(record: RunRecord) -> None:
         _on_terminal(record, terminal="error")
 
-    job.on_fire(_on_fire)
-    job.on_success(_on_terminal_success)
-    job.on_error(_on_terminal_error)
-    job.on_skip(_on_skip)
+    _ = job.on_fire(_on_fire)
+    _ = job.on_success(_on_terminal_success)
+    _ = job.on_error(_on_terminal_error)
+    _ = job.on_skip(_on_skip)
 
 
 __all__ = ["wire_fire_event_bridge"]

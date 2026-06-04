@@ -5,6 +5,8 @@ Submodules:
 - models: StudioConfig and related Pydantic configuration models
 """
 
+# pyright: strict
+
 from __future__ import annotations
 
 from . import loader, models

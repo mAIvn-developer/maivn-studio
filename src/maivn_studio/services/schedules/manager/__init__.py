@@ -5,6 +5,8 @@ singleton accessor :func:`get_schedule_manager` — so callers can keep
 importing from ``maivn_studio.services.schedules.manager``.
 """
 
+# pyright: strict
+
 from __future__ import annotations
 
 from .core import ScheduleManager, get_schedule_manager

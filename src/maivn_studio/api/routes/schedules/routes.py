@@ -1,5 +1,7 @@
 """API route handlers for app cron-job scheduling."""
 
+# pyright: strict
+
 from __future__ import annotations
 
 import logging

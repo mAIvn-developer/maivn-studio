@@ -1,6 +1,6 @@
 import type { ToolCard as ToolCardType } from "$lib/types";
 
-export function extractAgentResponse(result: unknown, depth = 0): string | null {
+function extractAgentResponse(result: unknown, depth = 0): string | null {
   if (depth > 4 || result === null || result === undefined) {
     return null;
   }
@@ -56,7 +56,7 @@ export function extractAgentResponse(result: unknown, depth = 0): string | null 
   return null;
 }
 
-export function sanitizeAgentResponseText(text: string | null): string | null {
+function sanitizeAgentResponseText(text: string | null): string | null {
   if (!text) return null;
   const trimmed = text.trim();
   if (!trimmed) return null;

@@ -1,3 +1,4 @@
+# pyright: strict
 """Data models and helpers for session management."""
 
 from __future__ import annotations
@@ -6,7 +7,7 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, cast
 
 from langchain_core.messages import BaseMessage
 
@@ -32,7 +33,7 @@ STUDIO_EVENT_CATEGORIES: tuple[str, ...] = (
 # MARK: Helpers
 
 
-def latest_response_text(value: Any) -> str | None:
+def latest_response_text(value: object) -> str | None:
     """Return the last non-empty string from a list of response texts.
 
     Used to extract the most recent assistant response from the SDK result's
@@ -40,7 +41,8 @@ def latest_response_text(value: Any) -> str | None:
     """
     if not isinstance(value, list):
         return None
-    for item in reversed(value):
+    items = cast("list[object]", value)
+    for item in reversed(items):
         if isinstance(item, str) and item.strip():
             return item.strip()
     return None
@@ -111,9 +113,9 @@ class StudioSession:
     metadata: dict[str, Any] = field(default_factory=dict)
     queued_messages: list[QueuedMessage] = field(default_factory=list, repr=False)
 
-    # Internal state
-    _loaded_app: LoadedApp | None = field(default=None, repr=False)
-    _task: asyncio.Task | None = field(default=None, repr=False)
+    # Internal state (public attributes: read by lifecycle/execution helpers and tests).
+    loaded_app: LoadedApp | None = field(default=None, repr=False)
+    task: asyncio.Task[None] | None = field(default=None, repr=False)
 
     @property
     def can_send_message(self) -> bool:

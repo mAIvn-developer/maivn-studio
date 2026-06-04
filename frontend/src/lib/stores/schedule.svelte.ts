@@ -383,8 +383,13 @@ export function useSchedule(appId: string): ScheduleStore {
   }
   store._refCount += 1;
 
+  // Each wrapper releases at most once. Without this guard a consumer
+  // calling `dispose()` twice (or after the store was already torn down)
+  // would decrement the refcount of a stale instance.
+  let released = false;
   const release = () => {
-    if (!store) return;
+    if (released || !store) return;
+    released = true;
     store._refCount -= 1;
     if (store._refCount <= 0) {
       store.dispose();

@@ -69,6 +69,29 @@ describe("constants", () => {
     }
   });
 
+  it("ranks executing_actions and executing_assignments at the same tier", () => {
+    // Nested execution emits executing_assignments AFTER executing_actions on
+    // the same scope; equal ranks prevent the nested update being dropped as a
+    // stale regression (see shouldSkipPhase tests below).
+    expect(KNOWN_ENRICHMENT_PHASE_ORDER["executing_actions"]).toBe(
+      KNOWN_ENRICHMENT_PHASE_ORDER["executing_assignments"],
+    );
+  });
+
+  it("ranks finalizing as a final-leg phase alongside synthesizing", () => {
+    expect(KNOWN_ENRICHMENT_PHASE_ORDER["finalizing"]).toBe(
+      KNOWN_ENRICHMENT_PHASE_ORDER["synthesizing"],
+    );
+    // ...and below the terminal rank so a real "complete" still advances past it.
+    expect(KNOWN_ENRICHMENT_PHASE_ORDER["finalizing"]).toBeLessThan(
+      KNOWN_ENRICHMENT_PHASE_ORDER["complete"],
+    );
+  });
+
+  it("ENRICHMENT_PHASE_LABELS has a label for the finalizing phase", () => {
+    expect(ENRICHMENT_PHASE_LABELS["finalizing"]).toBe("Finalizing response...");
+  });
+
   it("ENRICHMENT_PHASE_LABELS has labels for memory extraction completion phases", () => {
     expect(ENRICHMENT_PHASE_LABELS["memory_skill_extracted"]).toContain("Skills extracted");
     expect(ENRICHMENT_PHASE_LABELS["memory_insight_extracted"]).toContain("Insights extracted");
@@ -143,6 +166,7 @@ describe("resolveEnrichmentDisplayMessage", () => {
   it("returns label for known phases", () => {
     expect(resolveEnrichmentDisplayMessage("evaluating", undefined)).toBe("Evaluating...");
     expect(resolveEnrichmentDisplayMessage("complete", undefined)).toBe("Complete");
+    expect(resolveEnrichmentDisplayMessage("finalizing", undefined)).toBe("Finalizing response...");
     expect(resolveEnrichmentDisplayMessage("memory_skill_extracted", undefined)).toContain(
       "Skills extracted",
     );
@@ -298,6 +322,21 @@ describe("EnrichmentTracker", () => {
       tracker.highestKnownPhaseRankByScope.set("scope-1", 7); // synthesizing
       // executing_actions (rank 6) is NOT a reset marker, so it should be skipped
       expect(tracker.shouldSkipPhase("scope-1", "executing_actions")).toBe(true);
+    });
+
+    it("does not skip nested executing_assignments after executing_actions (G3)", () => {
+      const tracker = new EnrichmentTracker();
+      // Parent depth=0 executor emitted executing_actions on the root scope.
+      tracker.recordPhaseRank("scope-1", "executing_actions");
+      // A nested job then emits executing_assignments on the SAME scope. Equal
+      // rank means this is not treated as a stale regression.
+      expect(tracker.shouldSkipPhase("scope-1", "executing_assignments")).toBe(false);
+    });
+
+    it("does not skip finalizing after synthesizing", () => {
+      const tracker = new EnrichmentTracker();
+      tracker.recordPhaseRank("scope-1", "synthesizing");
+      expect(tracker.shouldSkipPhase("scope-1", "finalizing")).toBe(false);
     });
 
     it("does not skip phase reset markers even when rank is lower", () => {

@@ -1,10 +1,15 @@
+# pyright: strict
 """Streaming-mode helpers: append-only delta computation + delivery-mode check."""
 
 from __future__ import annotations
 
-from maivn._internal.utils.reporting.context import current_sdk_delivery_mode
+from maivn._internal.utils.reporting.context import (
+    current_sdk_delivery_mode,
+)
 
-from .context import _normalized_stream_replay_active
+from .context import normalized_stream_replay_active
+
+# MARK: Delta Computation
 
 
 def compute_stream_delta(previous: str, incoming: str) -> str:
@@ -36,6 +41,9 @@ def compute_stream_delta(previous: str, incoming: str) -> str:
     return incoming[shared:]
 
 
+# MARK: Delivery Mode
+
+
 def is_contract_stream_mode() -> bool:
     """Return ``True`` when we're delivering through the SDK's contract stream.
 
@@ -43,10 +51,10 @@ def is_contract_stream_mode() -> bool:
     normalized replay loop in :mod:`session_manager.execution.replay`, so the
     reporter must suppress its own response/chunk delivery to avoid emitting
     the same chunk twice. Replay code marks itself with the
-    ``_normalized_stream_replay_active`` contextvar to opt out of suppression.
+    ``normalized_stream_replay_active`` contextvar to opt out of suppression.
     """
     return current_sdk_delivery_mode.get() == "stream" and not (
-        _normalized_stream_replay_active.get()
+        normalized_stream_replay_active.get()
     )
 
 

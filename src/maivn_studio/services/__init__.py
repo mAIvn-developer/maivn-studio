@@ -1,3 +1,4 @@
+# pyright: strict
 """Business logic services.
 
 Submodules:

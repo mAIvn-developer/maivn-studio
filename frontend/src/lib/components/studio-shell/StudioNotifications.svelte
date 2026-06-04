@@ -62,11 +62,12 @@
 
 {#if error}
   <div
-    class="fixed bottom-4 right-4 z-50 animate-in overflow-hidden rounded-xl shadow-lg
+    class="fixed bottom-4 right-4 z-[100] animate-in rounded-xl shadow-lg
            bg-[var(--color-error-container)] border border-[var(--color-error)]/20"
-    style="min-width: 320px; max-width: 480px;"
+    style="width: min(640px, calc(100vw - 2rem)); max-height: min(60vh, 480px);
+           display: flex; flex-direction: column;"
   >
-    <div class="flex items-start gap-3 p-4">
+    <div class="flex items-start gap-3 p-4 min-h-0 flex-1 overflow-hidden">
       <div
         class="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-lg
                bg-[var(--color-error)]/20"
@@ -74,9 +75,14 @@
         <AlertCircle size={20} class="text-[var(--color-error)]" />
       </div>
 
-      <div class="flex-1 min-w-0">
+      <div class="flex-1 min-w-0 overflow-y-auto pr-1">
         <p class="text-sm font-medium text-[var(--color-error)]">Error</p>
-        <p class="mt-1 text-sm text-[var(--color-text-secondary)] break-words">{error}</p>
+        <p
+          class="mt-1 text-xs font-mono text-[var(--color-text-secondary)]"
+          style="overflow-wrap: anywhere; word-break: break-word; white-space: pre-wrap;"
+        >
+          {error}
+        </p>
       </div>
 
       <button
@@ -88,7 +94,7 @@
       </button>
     </div>
 
-    <div class="h-1 bg-[var(--color-error)]/20">
+    <div class="h-1 bg-[var(--color-error)]/20 flex-shrink-0 rounded-b-xl overflow-hidden">
       <div
         class="h-full bg-[var(--color-error)] transition-all duration-100"
         style="width: {errorProgress}%"

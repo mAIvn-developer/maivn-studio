@@ -1,19 +1,23 @@
+# pyright: strict
 """Message helpers for session management."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
 try:
     from maivn.messages import HumanMessage as SDKHumanMessage
-    from maivn.messages import RedactedMessage
-except ImportError:
-    SDKHumanMessage = HumanMessage
-    RedactedMessage = None  # type: ignore[assignment, misc]
+    from maivn.messages import RedactedMessage as _RedactedMessage
 
+    RedactedMessage: type[BaseMessage] | None = _RedactedMessage
+except ImportError:  # pragma: no cover - exercised only when the SDK is absent
+    SDKHumanMessage = HumanMessage
+    RedactedMessage = None
+
+from ..app_loader.models import LoadedApp
 from .models import QueuedMessage, StudioSession
 
 # MARK: Turn Configuration
@@ -51,18 +55,22 @@ def apply_turn_configuration(
 
 def resolve_structured_output_metadata_fallback(
     *,
-    loaded_app: Any,
+    loaded_app: LoadedApp,
     structured_output_model: type[Any] | None,
-    user_invoke_kwargs: dict[str, Any] | None,
+    user_invoke_kwargs: object,
 ) -> dict[str, Any] | None:
     """Reuse app-level metadata when structured output turns omit it."""
     if structured_output_model is None:
         return None
-    if isinstance(user_invoke_kwargs, dict) and "metadata" in user_invoke_kwargs:
-        metadata = user_invoke_kwargs.get("metadata")
-        return dict(metadata) if isinstance(metadata, dict) else None
+    if isinstance(user_invoke_kwargs, dict):
+        user_kwargs = cast("dict[str, Any]", user_invoke_kwargs)
+        if "metadata" in user_kwargs:
+            metadata = user_kwargs.get("metadata")
+            if isinstance(metadata, dict):
+                return dict(cast("dict[str, Any]", metadata))
+            return None
 
-    default_invocation = getattr(loaded_app, "default_invocation", None)
+    default_invocation = loaded_app.default_invocation
     if not isinstance(default_invocation, dict):
         return None
 
@@ -70,31 +78,33 @@ def resolve_structured_output_metadata_fallback(
     if not isinstance(default_metadata, dict):
         return None
 
-    return dict(default_metadata)
+    return dict(cast("dict[str, Any]", default_metadata))
 
 
 def resolve_structured_output_invocation_fallbacks(
     *,
-    loaded_app: Any,
+    loaded_app: LoadedApp,
     structured_output_model: type[Any] | None,
-    user_invoke_kwargs: dict[str, Any] | None,
+    user_invoke_kwargs: object,
 ) -> dict[str, Any]:
     """Reuse app-level typed invocation defaults when structured output turns omit them."""
     if structured_output_model is None:
         return {}
 
-    default_invocation = getattr(loaded_app, "default_invocation", None)
+    default_invocation = loaded_app.default_invocation
     if not isinstance(default_invocation, dict):
         return {}
 
-    user_kwargs = user_invoke_kwargs if isinstance(user_invoke_kwargs, dict) else {}
+    user_kwargs: dict[str, Any] = (
+        cast("dict[str, Any]", user_invoke_kwargs) if isinstance(user_invoke_kwargs, dict) else {}
+    )
     fallback: dict[str, Any] = {}
     for key in _STRUCTURED_OUTPUT_DEFAULT_INVOCATION_KEYS:
         if key in user_kwargs:
             continue
         value = default_invocation.get(key)
         if isinstance(value, dict):
-            fallback[key] = dict(value)
+            fallback[key] = dict(cast("dict[str, Any]", value))
         elif value is not None:
             fallback[key] = value
     return fallback

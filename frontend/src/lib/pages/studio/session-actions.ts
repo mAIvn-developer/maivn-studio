@@ -6,23 +6,21 @@ import type {
   StructuredOutputConfig,
 } from "$lib/types";
 
+interface StartSessionOptions {
+  variant?: string;
+  messageType?: SendableMessageType;
+  attachments?: MessageAttachmentPayload[];
+  systemMessage?: string;
+  structuredOutput?: StructuredOutputConfig;
+  batch?: BatchInvocationConfig;
+}
+
 interface CreateStudioSessionActionsParams {
   getSelectedApp: () => { id: string } | null;
   selectApp: (appId: string) => void;
   addRecentApp: (app: App) => void;
   resetSession: () => void;
-  startSession: (
-    appId: string,
-    message: string,
-    options?: {
-      variant?: string;
-      messageType?: SendableMessageType;
-      attachments?: MessageAttachmentPayload[];
-      systemMessage?: string;
-      structuredOutput?: StructuredOutputConfig;
-      batch?: BatchInvocationConfig;
-    },
-  ) => void;
+  startSession: (appId: string, message: string, options?: StartSessionOptions) => void;
   sendMessage: (
     message: string,
     messageType?: SendableMessageType,
@@ -47,17 +45,7 @@ export function createStudioSessionActions(params: CreateStudioSessionActionsPar
     params.addRecentApp(app);
   }
 
-  function handleStart(
-    message: string,
-    options?: {
-      variant?: string;
-      messageType?: SendableMessageType;
-      attachments?: MessageAttachmentPayload[];
-      systemMessage?: string;
-      structuredOutput?: StructuredOutputConfig;
-      batch?: BatchInvocationConfig;
-    },
-  ) {
+  function handleStart(message: string, options?: StartSessionOptions) {
     const selectedApp = params.getSelectedApp();
     if (!selectedApp) return;
     params.startSession(selectedApp.id, message, options);

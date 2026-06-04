@@ -30,6 +30,7 @@ function readNonEmptyText(value: unknown): string | undefined {
 function buildAssistantChunkEvent(
   assistantId: string,
   text: string,
+  options: { replaceContent?: boolean } = {},
 ): NormalizedIncomingEvent | null {
   if (text.length === 0) {
     return null;
@@ -40,9 +41,11 @@ function buildAssistantChunkEvent(
     data: {
       assistant_id: assistantId,
       text,
+      replace_content: options.replaceContent === true,
       assistant: {
         id: assistantId,
         delta: text,
+        replace_content: options.replaceContent === true,
       },
     },
   };
@@ -76,27 +79,27 @@ function computeStreamingDelta(
   ctx: SessionStoreContext,
   assistantId: string,
   streamingContent: string,
-): string {
+): { text: string; replaceContent: boolean } {
   const previousSnapshot = ctx.assistantSnapshots.get(assistantId) ?? "";
   ctx.assistantSnapshots.set(assistantId, streamingContent);
 
   if (!streamingContent) {
-    return "";
+    return { text: "", replaceContent: false };
   }
 
   if (!previousSnapshot) {
-    return streamingContent;
+    return { text: streamingContent, replaceContent: false };
   }
 
   if (streamingContent.startsWith(previousSnapshot)) {
-    return streamingContent.slice(previousSnapshot.length);
+    return { text: streamingContent.slice(previousSnapshot.length), replaceContent: false };
   }
 
   if (previousSnapshot.startsWith(streamingContent)) {
-    return "";
+    return { text: "", replaceContent: false };
   }
 
-  return streamingContent;
+  return { text: streamingContent, replaceContent: true };
 }
 
 function normalizeAssistantChunkEvent(
@@ -108,7 +111,16 @@ function normalizeAssistantChunkEvent(
     readTrimmedString(assistantData?.id) ??
     "assistant";
   const text = readNonEmptyText(eventData.text) ?? readNonEmptyText(assistantData?.delta) ?? "";
-  return buildAssistantChunkEvent(assistantId, text);
+  // ``replace_content`` is the wire signal from the SDK that this chunk
+  // should overwrite the existing assistant bubble's content rather than
+  // append onto it. It's set on the first chunk after a reevaluate cycle
+  // so the second cycle's text doesn't visually concatenate onto the
+  // first cycle's text. Either top-level or nested under ``assistant``
+  // is accepted (the bridge payload sets both, but defensive readers may
+  // see only one).
+  const replaceContent =
+    eventData.replace_content === true || assistantData?.replace_content === true;
+  return buildAssistantChunkEvent(assistantId, text, { replaceContent });
 }
 
 function normalizeProgressUpdateEvent(
@@ -130,7 +142,9 @@ function normalizeLegacyUpdateEvent(
   }
 
   const delta = computeStreamingDelta(ctx, assistantId, streamingContent);
-  const assistantChunk = buildAssistantChunkEvent(assistantId, delta);
+  const assistantChunk = buildAssistantChunkEvent(assistantId, delta.text, {
+    replaceContent: delta.replaceContent,
+  });
   return assistantChunk ? [assistantChunk] : [];
 }
 

@@ -1,5 +1,6 @@
 import type { InvocationMemoryConfig } from "./memory";
 import type { MessageType } from "./messages";
+import type { ExecutionStatus } from "./session";
 
 // MARK: Private Data Types
 
@@ -27,7 +28,7 @@ export interface SavedPrompt {
 // MARK: Filter/Control Types
 
 export type ChatFlowFilter = "all" | "messages" | "tools";
-export type ToolStatusFilter = "all" | "pending" | "executing" | "completed" | "failed";
+export type ToolStatusFilter = "all" | ExecutionStatus;
 
 export interface ChatFlowFilters {
   itemType: ChatFlowFilter;

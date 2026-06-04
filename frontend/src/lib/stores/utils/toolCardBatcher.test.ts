@@ -28,6 +28,13 @@ function makeToolFlowItem(card: ToolCard): ChatFlowItem {
   };
 }
 
+function toolCardOf(item: ChatFlowItem): ToolCard {
+  if (item.type !== "tool_card") {
+    throw new Error(`expected tool_card item, got ${item.type}`);
+  }
+  return item.data;
+}
+
 // Stub requestAnimationFrame globally for all tests in this file since
 // the test environment is node (no DOM APIs).
 beforeEach(() => {
@@ -275,8 +282,8 @@ describe("ToolCardBatcher", () => {
       const result = ToolCardBatcher.applyChatFlowUpdates(items, updates);
 
       expect(result).toHaveLength(2);
-      expect((result[0].data as ToolCard).status).toBe("completed");
-      expect((result[1].data as ToolCard).status).toBe("executing");
+      expect(toolCardOf(result[0]).status).toBe("completed");
+      expect(toolCardOf(result[1]).status).toBe("executing");
     });
 
     it("preserves non-tool_card items", () => {
@@ -303,7 +310,7 @@ describe("ToolCardBatcher", () => {
       const result = ToolCardBatcher.applyChatFlowUpdates(items, updates);
 
       expect(result[0].type).toBe("message");
-      expect((result[1].data as ToolCard).status).toBe("completed");
+      expect(toolCardOf(result[1]).status).toBe("completed");
     });
 
     it("does not mutate the original array", () => {
@@ -315,7 +322,7 @@ describe("ToolCardBatcher", () => {
         new Map([["tool-1", { ...card, status: "completed" }]]),
       );
 
-      expect((items[0].data as ToolCard).status).toBe("executing");
+      expect(toolCardOf(items[0]).status).toBe("executing");
     });
 
     it("handles empty updates map", () => {

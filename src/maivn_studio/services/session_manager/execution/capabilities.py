@@ -5,22 +5,44 @@ stream paths. Kept here so the orchestration module can stay focused on the
 turn loop.
 """
 
+# pyright: strict
 from __future__ import annotations
 
 import inspect
-from collections.abc import Awaitable, Callable, Iterable
-from typing import Any, cast
+from collections.abc import Awaitable, Callable
+from typing import Protocol, cast
 
 from ..models import StudioSession
+from ..protocols import Executor
+from .protocols import ExecutionManagerLike, ToolMetadataMap, ToolNameMap
+
+# MARK: Configuration
 
 # Give the frontend a chance to open EventSource after the create/send POST
 # returns. If no UI subscribes, execution still proceeds quickly for API users.
-_FIRST_EVENT_SUBSCRIBER_WAIT_SECONDS = 1.0
+FIRST_EVENT_SUBSCRIBER_WAIT_SECONDS = 1.0
+
+
+# MARK: Protocols
+
+
+class LoggerLike(Protocol):
+    """The logging surface the execution helpers depend on.
+
+    Production passes a :class:`logging.Logger`; tests pass lightweight fakes,
+    so this captures only the level methods the helpers actually call.
+    """
+
+    def debug(self, msg: object, *args: object) -> None: ...
+    def info(self, msg: object, *args: object) -> None: ...
+    def warning(self, msg: object, *args: object) -> None: ...
+    def exception(self, msg: object, *args: object) -> None: ...
+
 
 # MARK: Capability Helpers
 
 
-def supports_structured_output_kwarg(executor: Any) -> bool:
+def supports_structured_output_kwarg(executor: object) -> bool:
     """Return whether the executor accepts a structured_output invoke kwarg."""
     invoke_fn = getattr(executor, "invoke", None)
     if not callable(invoke_fn):
@@ -36,7 +58,7 @@ def supports_structured_output_kwarg(executor: Any) -> bool:
     return any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values())
 
 
-async def flush_reporter_events(reporter: Any | None, logger: Any) -> None:
+async def flush_reporter_events(reporter: object, logger: LoggerLike) -> None:
     """Flush buffered reporter output if supported."""
     flush_fn = getattr(reporter, "flush", None)
     if not callable(flush_fn):
@@ -52,8 +74,8 @@ async def flush_reporter_events(reporter: Any | None, logger: Any) -> None:
 async def wait_for_event_subscriber(
     *,
     session: StudioSession,
-    bridge: Any | None,
-    logger: Any,
+    bridge: object,
+    logger: LoggerLike,
 ) -> None:
     """Wait briefly for the first UI event subscriber when requested."""
     if not session.metadata.pop("_wait_for_event_subscriber", False):
@@ -63,7 +85,7 @@ async def wait_for_event_subscriber(
         return
     wait_for_subscriber_fn = cast(Callable[..., Awaitable[bool]], wait_for_subscriber)
     try:
-        subscribed = await wait_for_subscriber_fn(timeout=_FIRST_EVENT_SUBSCRIBER_WAIT_SECONDS)
+        subscribed = await wait_for_subscriber_fn(timeout=FIRST_EVENT_SUBSCRIBER_WAIT_SECONDS)
     except Exception as exc:  # noqa: BLE001 - subscriber wait is best-effort
         logger.debug(
             "Session %s: subscriber wait skipped after bridge error: %s",
@@ -75,7 +97,7 @@ async def wait_for_event_subscriber(
         logger.debug(
             "Session %s: no SSE subscriber connected within %.2fs; starting anyway",
             session.session_id,
-            _FIRST_EVENT_SUBSCRIBER_WAIT_SECONDS,
+            FIRST_EVENT_SUBSCRIBER_WAIT_SECONDS,
         )
 
 
@@ -83,29 +105,22 @@ async def wait_for_event_subscriber(
 
 
 def build_stream_tool_contract_maps(
-    manager: Any,
-    executor: Any,
-) -> tuple[dict[str, str], dict[str, dict[str, Any]]]:
+    manager: ExecutionManagerLike,
+    executor: Executor,
+) -> tuple[ToolNameMap, ToolMetadataMap]:
     """Build tool name + metadata maps used when normalizing stream events.
 
     The session manager owns the canonical tool-contract maps; we extend them
     with whatever live tools the executor exposes so streaming events can be
     correlated even when the executor was rebuilt mid-turn.
     """
-    tool_name_map, tool_metadata_map = manager._build_tool_contract_maps(executor)
-    list_tools = getattr(executor, "list_tools", None)
-    raw_tools_candidate = list_tools() if callable(list_tools) else []
-    if isinstance(raw_tools_candidate, Iterable):
-        raw_tools = list(raw_tools_candidate)
-    else:
-        raw_tools = []
+    tool_name_map, tool_metadata_map = manager.build_tool_contract_maps(executor)
 
-    for tool in raw_tools:
-        tool_name = getattr(tool, "name", None)
-        if not isinstance(tool_name, str) or not tool_name.strip():
+    for tool in executor.list_tools():
+        if not tool.name.strip():
             continue
 
-        normalized_tool_name = tool_name.strip()
+        normalized_tool_name = tool.name.strip()
         tool_id = getattr(tool, "tool_id", None)
         if not isinstance(tool_id, str) or not tool_id.strip():
             tool_id = getattr(tool, "id", None)
@@ -138,13 +153,14 @@ def build_stream_tool_contract_maps(
         if isinstance(swarm_name, str) and swarm_name.strip():
             metadata.setdefault("swarm_name", swarm_name.strip())
 
-        tool_name_map.setdefault(normalized_tool_id, normalized_tool_name)
+        _ = tool_name_map.setdefault(normalized_tool_id, normalized_tool_name)
 
     return tool_name_map, tool_metadata_map
 
 
 __all__ = [
-    "_FIRST_EVENT_SUBSCRIBER_WAIT_SECONDS",
+    "FIRST_EVENT_SUBSCRIBER_WAIT_SECONDS",
+    "LoggerLike",
     "build_stream_tool_contract_maps",
     "flush_reporter_events",
     "supports_structured_output_kwarg",

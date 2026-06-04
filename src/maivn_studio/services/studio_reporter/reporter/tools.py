@@ -1,9 +1,12 @@
+# pyright: strict
 """Tool / agent / hook reporting — forwards SDK callbacks onto the EventBridge."""
 
 from __future__ import annotations
 
 import logging
-from typing import Any
+from abc import ABC
+
+from .state import ReporterState
 
 logger = logging.getLogger("maivn_studio.services.studio_reporter.reporter")
 
@@ -11,16 +14,15 @@ logger = logging.getLogger("maivn_studio.services.studio_reporter.reporter")
 # MARK: Tool Reporting Mixin
 
 
-class ToolReportingMixin:
-    """Bridge-forwarding implementation of the tool/agent/hook reporter surface."""
+class ToolReportingMixin(ReporterState, ABC):
+    """Bridge-forwarding implementation of the tool/agent/hook reporter surface.
 
-    # Attributes provided by :class:`StudioReporter` (declared here so pyright
-    # can typecheck the mixin in isolation).
-    _bridge: Any
-    _submit: Any
-    _tool_types: dict[str, tuple[str, str, str | None, str | None]]
-    _stream_text_by_tool_id: dict[str, str]
-    _current_tool_name: str | None
+    The reporter methods here override :class:`BaseReporter` callbacks only once
+    composed into :class:`StudioReporter`; the mixin does not inherit
+    ``BaseReporter``, so ``@override`` is omitted on these methods.
+    """
+
+    # MARK: - Tool lifecycle
 
     def report_tool_start(
         self,
@@ -28,14 +30,17 @@ class ToolReportingMixin:
         event_id: str,
         tool_type: str | None = None,
         agent_name: str | None = None,
-        tool_args: dict[str, Any] | None = None,
+        tool_args: dict[str, object] | None = None,
         swarm_name: str | None = None,
     ) -> None:
         tool_id = str(event_id)
 
         logger.info(
-            f"[STUDIO_REPORTER] report_tool_start: tool={tool_name}, "
-            f"type={tool_type}, agent={agent_name}, swarm={swarm_name}"
+            "[STUDIO_REPORTER] report_tool_start: tool=%s, type=%s, agent=%s, swarm=%s",
+            tool_name,
+            tool_type,
+            agent_name,
+            swarm_name,
         )
         resolved_type = (tool_type or "func").lower()
         self._tool_types[tool_id] = (resolved_type, tool_name, agent_name, swarm_name)
@@ -44,7 +49,7 @@ class ToolReportingMixin:
         self._current_tool_name = tool_name
 
         if resolved_type == "system":
-            self._stream_text_by_tool_id[tool_id] = ""
+            self.stream_text_by_tool_id[tool_id] = ""
             self._submit(
                 self._bridge.emit_system_tool_start(
                     tool_type=tool_name,
@@ -72,17 +77,16 @@ class ToolReportingMixin:
         self,
         event_id: str,
         elapsed_ms: int | None = None,
-        result: Any | None = None,
+        result: object | None = None,
     ) -> None:
         _ = elapsed_ms
         tool_id = str(event_id)
-        tool_info = self._tool_types.pop(tool_id, ("", tool_id, None, None))
-        tool_type, tool_name = tool_info[0], tool_info[1]
-        agent_name = tool_info[2] if len(tool_info) > 2 else None
-        swarm_name = tool_info[3] if len(tool_info) > 3 else None
+        tool_type, tool_name, agent_name, swarm_name = self._tool_types.pop(
+            tool_id, ("", tool_id, None, None)
+        )
 
         if tool_type == "system":
-            self._stream_text_by_tool_id.pop(tool_id, None)
+            _ = self.stream_text_by_tool_id.pop(tool_id, None)
             self._submit(self._bridge.emit_system_tool_complete(tool_id=tool_id, result=result))
             return
 
@@ -107,7 +111,7 @@ class ToolReportingMixin:
     ) -> None:
         _ = elapsed_ms
         tool_id = str(event_id or tool_name)
-        self._stream_text_by_tool_id.pop(tool_id, None)
+        _ = self.stream_text_by_tool_id.pop(tool_id, None)
         self._submit(
             self._bridge.emit_tool_event(
                 tool_name=tool_name,
@@ -123,7 +127,7 @@ class ToolReportingMixin:
         event_id: str | None = None,
         agent_name: str | None = None,
         swarm_name: str | None = None,
-        result: Any | None = None,
+        result: object | None = None,
     ) -> None:
         tool_id = str(event_id or tool_name)
         self._submit(
@@ -138,6 +142,8 @@ class ToolReportingMixin:
             )
         )
 
+    # MARK: - Agent assignment
+
     def report_agent_assignment(
         self,
         *,
@@ -146,7 +152,7 @@ class ToolReportingMixin:
         assignment_id: str | None = None,
         swarm_name: str | None = None,
         error: str | None = None,
-        result: Any | None = None,
+        result: object | None = None,
     ) -> None:
         self._submit(
             self._bridge.emit_agent_assignment(
@@ -158,6 +164,8 @@ class ToolReportingMixin:
                 result=result,
             )
         )
+
+    # MARK: - Hook firing
 
     def report_hook_fired(
         self,

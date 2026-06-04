@@ -1,3 +1,4 @@
+# pyright: strict
 """Bridge submission management — :meth:`flush` and the worker→loop hop.
 
 Studio dispatches reporter callbacks from worker threads via
@@ -11,10 +12,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import threading
+from abc import ABC
 from collections.abc import Coroutine
 from concurrent.futures import Future
-from typing import Any
+from typing import Any, override
+
+from .state import ReporterState
 
 logger = logging.getLogger("maivn_studio.services.studio_reporter.reporter")
 
@@ -22,14 +25,8 @@ logger = logging.getLogger("maivn_studio.services.studio_reporter.reporter")
 # MARK: Submission Mixin
 
 
-class SubmissionMixin:
+class SubmissionMixin(ReporterState, ABC):
     """Manage cross-thread coroutine submissions and group-flush semantics."""
-
-    # Attributes provided by :class:`StudioReporter` (declared here so pyright
-    # can typecheck the mixin in isolation).
-    _loop: asyncio.AbstractEventLoop
-    _pending_submissions: set[Future[Any]]
-    _pending_submissions_lock: threading.Lock
 
     async def flush(self) -> None:
         """Wait for in-flight bridge submissions to finish.
@@ -60,7 +57,8 @@ class SubmissionMixin:
                         result,
                     )
 
-    def _submit(self, coro: Coroutine[Any, Any, Any]) -> None:
+    @override
+    def _submit(self, coro: Coroutine[Any, Any, None]) -> None:
         if self._loop.is_closed():
             logger.warning("[STUDIO_REPORTER] Event loop is closed, cannot submit event")
             coro.close()
@@ -76,12 +74,12 @@ class SubmissionMixin:
         with self._pending_submissions_lock:
             self._pending_submissions.add(future)
 
-        def _cleanup_submission(done_future: Future[Any]) -> None:
+        def _cleanup_submission(done_future: Future[None]) -> None:
             with self._pending_submissions_lock:
                 self._pending_submissions.discard(done_future)
 
             try:
-                done_future.result()
+                _ = done_future.result()
             except Exception as exc:  # noqa: BLE001 - log + drop; submissions are best-effort
                 logger.warning("[STUDIO_REPORTER] Bridge submission failed: %s", exc)
 

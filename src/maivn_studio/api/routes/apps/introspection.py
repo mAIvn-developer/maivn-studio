@@ -1,8 +1,10 @@
 """Introspection helpers for extracting info from live SDK objects."""
 
+# pyright: strict
+
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, Protocol, cast
 
 from maivn_shared import MemoryConfig, SessionOrchestrationConfig, SystemToolsConfig
 
@@ -15,6 +17,26 @@ from .models import (
     SwarmInfo,
     ToolInfo,
 )
+
+# MARK: Types
+
+
+class _ToolSpecLike(Protocol):
+    """Minimal studio-side view of an SDK ``ToolSpec`` (which exposes ``tool_id``).
+
+    Used to tighten the ``maivn._internal.core.tool_specs`` boundary, whose stubs
+    are not reachable to the type checker.
+    """
+
+    @property
+    def tool_id(self) -> str: ...
+
+
+class _HasModelJsonSchema(Protocol):
+    """A Pydantic-like object exposing ``model_json_schema``."""
+
+    def model_json_schema(self) -> dict[str, Any]: ...
+
 
 # MARK: App Summary
 
@@ -89,22 +111,26 @@ def collect_runtime_tool_count(scope: Any) -> int:
         return 0
 
     try:
-        from maivn._internal.core.tool_specs import ToolSpecFactory
+        from maivn._internal.core.tool_specs import (
+            ToolSpecFactory,
+        )
 
         factory = ToolSpecFactory()
         agent_id = getattr(scope, "id", None) or getattr(scope, "agent_id", "") or ""
-        specs = []
+        tool_ids: set[str] = set()
         for tool in tools:
-            specs.extend(
+            specs = cast(
+                "list[_ToolSpecLike]",
                 factory.create_all(
                     agent_id=str(agent_id),
                     tool=tool,
                     dependencies=getattr(tool, "dependencies", None),
                     always_execute=getattr(tool, "always_execute", False),
                     final_tool=getattr(tool, "final_tool", False),
-                )
+                ),
             )
-        return len({spec.tool_id for spec in specs})
+            tool_ids.update(spec.tool_id for spec in specs)
+        return len(tool_ids)
     except Exception:  # noqa: BLE001 - ToolSpec expansion is best-effort; fall back to authored count
         return len(tools)
 
@@ -250,15 +276,14 @@ def build_tool_info(tool: Any, agent_name: str) -> ToolInfo:
 
     # Extract args schema
     args_schema: dict[str, Any] | None = None
-    raw_schema = getattr(tool, "args_schema", None)
-    if raw_schema is not None:
-        if isinstance(raw_schema, dict):
-            args_schema = raw_schema
-        elif hasattr(raw_schema, "model_json_schema"):
-            try:
-                args_schema = raw_schema.model_json_schema()
-            except Exception:  # noqa: BLE001 - Pydantic schema dump can fail on dynamic models; omit
-                pass
+    raw_schema: object = getattr(tool, "args_schema", None)
+    if isinstance(raw_schema, dict):
+        args_schema = cast("dict[str, Any]", raw_schema)
+    elif raw_schema is not None and hasattr(raw_schema, "model_json_schema"):
+        try:
+            args_schema = cast("_HasModelJsonSchema", raw_schema).model_json_schema()
+        except Exception:  # noqa: BLE001 - Pydantic schema dump can fail on dynamic models; omit
+            pass
 
     return ToolInfo(
         name=tool_name,

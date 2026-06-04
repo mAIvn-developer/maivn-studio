@@ -4,15 +4,30 @@ Pulled out of :class:`ScheduleManager` so the class stays focused on lifecycle
 state. These are free functions because they don't read any manager state.
 """
 
+# pyright: strict
+
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import Any
 
-from maivn import JitterSpec, Retry, ScheduledJob
+from maivn import (
+    Agent,
+    CronInvocationBuilder,
+    JitterSpec,
+    Retry,
+    ScheduledJob,
+    Swarm,
+)
 from maivn.messages import HumanMessage
 
 from ..models import ScheduleConfig
+
+# An executor is either a single agent or a swarm — both expose the SDK
+# scheduling entry points (`cron` / `every` / `at`).
+Executor = Agent | Swarm
+
+
+# MARK: Spec builders
 
 
 def build_jitter(config: ScheduleConfig) -> JitterSpec | None:
@@ -50,39 +65,43 @@ def build_retry(config: ScheduleConfig) -> Retry:
     )
 
 
-def build_builder(executor: Any, config: ScheduleConfig) -> Any:
+# MARK: Builder construction / dispatch
+
+
+def build_builder(executor: Executor, config: ScheduleConfig) -> CronInvocationBuilder:
     """Construct the SDK schedule builder (cron / interval / at) for the executor."""
     jitter = build_jitter(config)
     retry = build_retry(config)
-
-    common_kwargs: dict[str, Any] = {
-        "tz": config.tz,
-        "jitter": jitter,
-        "name": config.name,
-        "max_runs": config.max_runs,
-        "end_at": config.end_at,
-        "retry": retry,
-    }
 
     if config.schedule_type == "cron":
         if not config.cron_expression:
             raise ValueError("cron_expression is required for schedule_type='cron'")
         return executor.cron(
             config.cron_expression,
+            tz=config.tz,
+            jitter=jitter,
+            name=config.name,
             misfire=config.misfire,
             max_overlap=config.max_overlap,
             overlap_policy=config.overlap_policy,
-            **common_kwargs,
+            end_at=config.end_at,
+            max_runs=config.max_runs,
+            retry=retry,
         )
     if config.schedule_type == "interval":
         if not config.interval_seconds:
             raise ValueError("interval_seconds is required for schedule_type='interval'")
         return executor.every(
             timedelta(seconds=config.interval_seconds),
+            tz=config.tz,
+            jitter=jitter,
+            name=config.name,
             misfire=config.misfire,
             max_overlap=config.max_overlap,
             overlap_policy=config.overlap_policy,
-            **common_kwargs,
+            end_at=config.end_at,
+            max_runs=config.max_runs,
+            retry=retry,
         )
     if config.schedule_type == "at":
         if not config.fire_at:
@@ -98,7 +117,7 @@ def build_builder(executor: Any, config: ScheduleConfig) -> Any:
 
 
 def invoke_builder(
-    builder: Any,
+    builder: CronInvocationBuilder,
     config: ScheduleConfig,
     messages: list[HumanMessage],
 ) -> ScheduledJob:
@@ -120,6 +139,7 @@ def invoke_builder(
 
 
 __all__ = [
+    "Executor",
     "build_builder",
     "build_jitter",
     "build_retry",

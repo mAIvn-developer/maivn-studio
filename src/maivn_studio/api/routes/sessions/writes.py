@@ -1,10 +1,13 @@
+# pyright: strict
+
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import cast
 
 from fastapi import APIRouter, HTTPException
 
+from maivn_studio.config.models import AppConfig
 from maivn_studio.discovery.registry import get_registry
 from maivn_studio.services.event_bridge import create_event_bridge
 from maivn_studio.services.session_manager.manager import get_session_manager
@@ -17,6 +20,7 @@ from .helpers import (
     merge_private_data,
     refresh_registry_from_disk,
     serialize_attachments,
+    session_response,
 )
 from .models import (
     CreateSessionRequest,
@@ -30,19 +34,23 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _request_event_subscriber_wait(session: Any) -> None:
+def _request_event_subscriber_wait(session: object) -> None:
+    # ``session`` is a ``StudioSession`` in production, but tests pass lightweight
+    # doubles that may lack ``metadata``; keep the defensive guard so the route
+    # tolerates off-contract objects (see typecheck-strict-policy defensive guard).
     metadata = getattr(session, "metadata", None)
     if isinstance(metadata, dict):
+        metadata = cast("dict[str, object]", metadata)
         metadata["_wait_for_event_subscriber"] = True
 
 
-def _resolve_app_variant(app, requested_variant: str | None) -> str | None:
+def _resolve_app_variant(app: AppConfig, requested_variant: str | None) -> str | None:
     """Resolve the effective session variant, falling back to the app default."""
     if requested_variant:
         return requested_variant
 
-    default_variant = getattr(app, "default_variant", None)
-    if not isinstance(default_variant, str) or not default_variant.strip():
+    default_variant = app.default_variant
+    if not default_variant or not default_variant.strip():
         return None
 
     normalized_variant = default_variant.strip()
@@ -91,7 +99,7 @@ async def create_session(request: CreateSessionRequest) -> SessionResponse:
         ),
     )
 
-    create_event_bridge(session.session_id)
+    _ = create_event_bridge(session.session_id)
     _request_event_subscriber_wait(session)
 
     structured_output_config = build_structured_output_config(request.structured_output)
@@ -117,7 +125,7 @@ async def create_session(request: CreateSessionRequest) -> SessionResponse:
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    return SessionResponse(**session.to_dict())
+    return session_response(session)
 
 
 @router.post("/", response_model=SessionResponse, include_in_schema=False)
@@ -160,7 +168,7 @@ async def send_message(session_id: str, request: SendMessageRequest) -> SessionR
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    return SessionResponse(**session.to_dict())
+    return session_response(session)
 
 
 @router.post("/{session_id}/messages", response_model=SessionResponse)
@@ -195,12 +203,11 @@ async def submit_interrupt(
             break
 
     if not resolved:
-        logger.warning(
-            "Interrupt candidates %s not found for session %s, "
-            "they may have already been resolved or timed out",
-            unique_candidates,
-            session_id,
+        msg = (
+            "Interrupt candidates %s not found for session %s,"
+            + " they may have already been resolved or timed out"
         )
+        logger.warning(msg, unique_candidates, session_id)
 
     try:
         await manager.submit_interrupt(session, request.data_key, request.value)
@@ -212,7 +219,7 @@ async def submit_interrupt(
             exc,
         )
 
-    return SessionResponse(**session.to_dict())
+    return session_response(session)
 
 
 @router.post("/{session_id}/interrupt", response_model=SessionResponse)
@@ -229,7 +236,7 @@ async def end_session(session_id: str) -> SessionResponse:
     manager = get_session_manager()
     session = get_session_or_404(session_id, manager=manager)
     await manager.end_session(session)
-    return SessionResponse(**session.to_dict())
+    return session_response(session)
 
 
 @router.post("/{session_id}/end", response_model=SessionResponse)
@@ -243,7 +250,7 @@ async def cancel_session_compat(session_id: str) -> SessionResponse:
     manager = get_session_manager()
     session = get_session_or_404(session_id, manager=manager)
     await manager.cancel_session(session)
-    return SessionResponse(**session.to_dict())
+    return session_response(session)
 
 
 @router.post("/{session_id}/cancel", response_model=SessionResponse)
@@ -257,7 +264,7 @@ async def cancel_session(session_id: str) -> SessionResponse:
     manager = get_session_manager()
     session = get_session_or_404(session_id, manager=manager)
     await manager.cancel_session(session)
-    return SessionResponse(**session.to_dict())
+    return session_response(session)
 
 
 @router.delete("/{session_id}", response_model=SessionResponse)

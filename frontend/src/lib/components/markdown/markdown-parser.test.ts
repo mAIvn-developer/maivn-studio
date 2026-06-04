@@ -35,3 +35,22 @@ describe("parseMarkdown links", () => {
     expect(html).not.toContain("<a ");
   });
 });
+
+describe("parseMarkdown fenced code language sanitization", () => {
+  it("preserves a normal language token", () => {
+    const html = parseMarkdown("```python\nprint(1)\n```");
+
+    expect(html).toContain('class="language-python"');
+    expect(html).toContain('data-lang="PYTHON"');
+  });
+
+  it("drops a crafted language token that breaks out of the attribute", () => {
+    const html = parseMarkdown('```"><img src=x onerror=alert(1)>\ncode\n```');
+
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain("onerror");
+    // The crafted token is rejected by the allowlist, so no language class/label is emitted.
+    expect(html).not.toContain('class="language-');
+    expect(html).not.toContain("data-lang=");
+  });
+});

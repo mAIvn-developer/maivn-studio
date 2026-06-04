@@ -110,7 +110,7 @@ async function ensureOk(res: Response, fallback: string): Promise<void> {
   }
 }
 
-export async function listSchedules(): Promise<ScheduleJobSummary[]> {
+async function listSchedules(): Promise<ScheduleJobSummary[]> {
   const res = await fetch(`${API_BASE}/schedules`);
   await ensureOk(res, "Failed to list schedules");
   return res.json();

@@ -24,6 +24,15 @@
   let searchQuery = $state("");
   let searchInput: HTMLInputElement;
 
+  type SourceFilter = "all" | "configured" | "discovered";
+  let sourceFilter = $state<SourceFilter>("all");
+
+  const SOURCE_FILTERS: { id: SourceFilter; label: string; title: string }[] = [
+    { id: "all", label: "All", title: "Show all apps" },
+    { id: "configured", label: "Config", title: "Defined in maivn_studio.json" },
+    { id: "discovered", label: "Auto", title: "Auto-discovered from discovery paths" },
+  ];
+
   // Category collapse state - all expanded by default
   let collapsedCategories = $state<Set<string>>(new Set());
 
@@ -45,20 +54,28 @@
     return null;
   }
 
-  // Filter apps by search query
-  const filteredApps = $derived.by(() => {
-    if (!searchQuery.trim()) return apps;
+  function matchesSource(app: App): boolean {
+    if (sourceFilter === "all") return true;
+    if (sourceFilter === "discovered") return app.source === "discovered";
+    // "configured" — treat missing source as configured to stay backward compatible
+    return app.source !== "discovered";
+  }
 
-    const query = searchQuery.toLowerCase();
+  // Filter apps by source toggle + search query
+  const filteredApps = $derived.by(() => {
+    const query = searchQuery.trim().toLowerCase();
     const result: Record<string, App[]> = {};
 
     for (const [category, categoryApps] of Object.entries(apps)) {
-      const filtered = categoryApps.filter(
-        (app) =>
+      const filtered = categoryApps.filter((app) => {
+        if (!matchesSource(app)) return false;
+        if (!query) return true;
+        return (
           app.name.toLowerCase().includes(query) ||
           app.description?.toLowerCase().includes(query) ||
-          app.tags.some((tag) => tag.toLowerCase().includes(query)),
-      );
+          app.tags.some((tag) => tag.toLowerCase().includes(query))
+        );
+      });
       if (filtered.length > 0) {
         result[category] = filtered;
       }
@@ -114,6 +131,26 @@
       {/if}
     </div>
 
+    <!-- Source Filter -->
+    <div
+      class="mb-2 inline-flex items-center gap-0.5 rounded-xl border border-[var(--color-outline-variant)] bg-[var(--color-bg-secondary)]/88 p-0.5"
+      role="group"
+      aria-label="Filter apps by source"
+    >
+      {#each SOURCE_FILTERS as filter}
+        <button
+          type="button"
+          class="source-filter-btn"
+          class:active={sourceFilter === filter.id}
+          title={filter.title}
+          aria-pressed={sourceFilter === filter.id}
+          onclick={() => (sourceFilter = filter.id)}
+        >
+          {filter.label}
+        </button>
+      {/each}
+    </div>
+
     <!-- Search Input -->
     <div class="relative">
       <Search
@@ -150,7 +187,7 @@
       <span
         class="inline-flex items-center gap-2 rounded-full border border-[var(--color-outline-variant)] bg-[var(--color-bg-secondary)]/80 px-2.5 py-1"
       >
-        {#if searchQuery}
+        {#if searchQuery || sourceFilter !== "all"}
           {filteredCount} of {totalCount} apps
         {:else}
           {totalCount} apps
@@ -424,5 +461,33 @@
     border: 1px solid color-mix(in srgb, var(--color-primary) 24%, var(--color-outline-variant));
     background: color-mix(in srgb, var(--color-primary) 12%, transparent);
     color: var(--color-primary);
+  }
+
+  .source-filter-btn {
+    appearance: none;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--color-text-tertiary);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 0.25rem 0.625rem;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition:
+      background-color var(--transition-fast),
+      color var(--transition-fast),
+      border-color var(--transition-fast);
+  }
+
+  .source-filter-btn:hover {
+    color: var(--color-text-secondary);
+    background: color-mix(in srgb, var(--color-bg-tertiary) 50%, transparent);
+  }
+
+  .source-filter-btn.active {
+    color: var(--color-secondary);
+    background: color-mix(in srgb, var(--color-secondary) 14%, transparent);
+    border-color: color-mix(in srgb, var(--color-secondary) 28%, var(--color-outline-variant));
   }
 </style>

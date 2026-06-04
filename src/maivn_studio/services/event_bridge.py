@@ -1,3 +1,4 @@
+# pyright: strict
 """Event bridge for streaming SDK events to UI via SSE.
 
 Studio uses :class:`maivn.events.EventBridge` directly. Both interrupt
@@ -34,16 +35,30 @@ def create_event_bridge(session_id: str) -> EventBridge:
     return _registry.create(session_id, factory=_studio_bridge_factory)
 
 
-get_event_bridge = _registry.get
-remove_event_bridge = _registry.remove
+def get_event_bridge(session_id: str) -> EventBridge | None:
+    """Return the registered bridge for a session, or ``None``."""
+    return _registry.get(session_id)
 
-# Expose internal dict for test introspection.
-_bridges = _registry._bridges
+
+def remove_event_bridge(session_id: str) -> None:
+    """Remove and close the registered bridge for a session."""
+    _registry.remove(session_id)
+
+
+def clear_event_bridges() -> None:
+    """Close and drop every registered bridge.
+
+    Test-only reset seam. Delegates to the SDK ``BridgeRegistry.clear()``,
+    which closes every bridge before emptying the registry.
+    """
+    _registry.clear()
+
 
 __all__ = [
     "EventBridge",
     "MAX_EVENT_HISTORY",
     "UIEvent",
+    "clear_event_bridges",
     "create_event_bridge",
     "get_event_bridge",
     "remove_event_bridge",

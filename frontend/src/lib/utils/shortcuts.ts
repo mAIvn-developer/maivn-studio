@@ -33,13 +33,6 @@ export function registerShortcut(shortcut: ShortcutAction): () => void {
   };
 }
 
-/**
- * Get all currently registered shortcuts (for display in command palette).
- */
-export function getRegisteredShortcuts(): ShortcutAction[] {
-  return [...shortcuts];
-}
-
 // MARK: Global Handler
 
 /**

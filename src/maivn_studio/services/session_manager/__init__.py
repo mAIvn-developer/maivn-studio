@@ -1,3 +1,4 @@
+# pyright: strict
 """Session management for app execution.
 
 Submodules:
@@ -8,11 +9,12 @@ Submodules:
 - messages: message creation, queue management, and turn config helpers
 - models: StudioSession, SessionStatus, and queue data structures
 - private_data: private-data application helpers
+- protocols: shared executor / manager type contracts
 """
 
 from __future__ import annotations
 
-from . import events, execution, lifecycle, manager, messages, models, private_data
+from . import events, execution, lifecycle, manager, messages, models, private_data, protocols
 
 __all__ = [
     "events",
@@ -22,4 +24,5 @@ __all__ = [
     "messages",
     "models",
     "private_data",
+    "protocols",
 ]

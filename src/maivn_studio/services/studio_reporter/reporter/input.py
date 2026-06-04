@@ -1,9 +1,12 @@
+# pyright: strict
 """User-input routing: SDK ``get_input`` → SSE interrupt → frontend → response."""
 
 from __future__ import annotations
 
 import logging
-from typing import Any
+from abc import ABC
+
+from .state import ReporterState
 
 logger = logging.getLogger("maivn_studio.services.studio_reporter.reporter")
 
@@ -11,7 +14,7 @@ logger = logging.getLogger("maivn_studio.services.studio_reporter.reporter")
 # MARK: Input Mixin
 
 
-class InputMixin:
+class InputMixin(ReporterState, ABC):
     """Implements :meth:`BaseReporter.get_input` by emitting an interrupt event.
 
     Studio routes user input through the bridge instead of stdin. The flow:
@@ -23,18 +26,6 @@ class InputMixin:
        answer; the route resolves the registered future.
     4. We collect the value and return it to the SDK, which proceeds.
     """
-
-    # Attributes provided by :class:`StudioReporter` (declared here so pyright
-    # can typecheck the mixin in isolation).
-    _bridge: Any
-    _turn_id: str
-    _interrupt_counter: int
-    _current_tool_name: str | None
-    _submit: Any
-
-    @property
-    def session_id(self) -> str:  # pragma: no cover - provided by StudioReporter
-        raise NotImplementedError
 
     def get_input(
         self,
@@ -60,11 +51,12 @@ class InputMixin:
         Returns:
             The user's input string.
         """
-        # Look the interrupt helpers up via the reporter package each call so
-        # ``mock.patch("maivn_studio.services.studio_reporter.reporter.<name>", ...)``
-        # — used heavily by the test suite — continues to intercept the call
-        # after the reporter module was split into a subpackage.
-        from . import cleanup_interrupt, get_interrupt_response, register_interrupt
+        # Look the interrupt helpers up via the ``interrupts`` module each call
+        # so ``mock.patch(
+        # "maivn_studio.services.studio_reporter.interrupts.<name>", ...)``
+        # intercepts the call. Importing the helpers' source module here (rather
+        # than the reporter package) keeps the import graph acyclic.
+        from .. import interrupts
 
         # Generate unique interrupt ID (includes turn_id to avoid collisions across turns)
         self._interrupt_counter += 1
@@ -72,7 +64,7 @@ class InputMixin:
 
         logger.info(
             f'[STUDIO_REPORTER] get_input called: prompt="{prompt[:50]}...", '
-            f"interrupt_id={interrupt_id}, input_type={input_type}, choices={choices}"
+            + f"interrupt_id={interrupt_id}, input_type={input_type}, choices={choices}"
         )
 
         resolved_data_key = data_key or arg_name or interrupt_id
@@ -81,7 +73,7 @@ class InputMixin:
             interrupt_aliases.append(f"{self.session_id}:{arg_name}")
 
         # Register the interrupt and get the event to wait on
-        wait_event = register_interrupt(interrupt_id, aliases=interrupt_aliases)
+        wait_event = interrupts.register_interrupt(interrupt_id, aliases=interrupt_aliases)
 
         # Always emit the interrupt event from the reporter — the reporter
         # owns the interrupt_id that the resolve API uses.  The contract
@@ -106,16 +98,16 @@ class InputMixin:
         # checkpoints them so they don't hold up resources.
         if not wait_event.wait(timeout=604800):
             logger.warning(f"[STUDIO_REPORTER] Interrupt {interrupt_id} timed out")
-            cleanup_interrupt(interrupt_id)
+            interrupts.cleanup_interrupt(interrupt_id)
             return ""
 
         # Get the response
-        response = get_interrupt_response(interrupt_id)
-        cleanup_interrupt(interrupt_id)
+        response = interrupts.get_interrupt_response(interrupt_id)
+        interrupts.cleanup_interrupt(interrupt_id)
 
         logger.info(
             f"[STUDIO_REPORTER] Received interrupt response: {interrupt_id} -> "
-            f'"{response[:50] if response else "(empty)"}"'
+            + f'"{response[:50] if response else "(empty)"}"'
         )
 
         return response or ""

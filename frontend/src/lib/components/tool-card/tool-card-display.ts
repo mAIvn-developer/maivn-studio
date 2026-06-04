@@ -1,4 +1,5 @@
 import type { ToolCard, ToolCardStatus, ToolType } from "$lib/types";
+import { formatValue, isValueTruncated } from "$lib/utils/format";
 
 export interface ToolTypeDisplayConfig {
   label: string;
@@ -16,6 +17,14 @@ const toolTypeConfig: Record<ToolType, ToolTypeDisplayConfig> = {
     label: "FUNC",
     color: "#A78BFA",
     bg: "rgba(167, 139, 250, 0.15)",
+  },
+  method: {
+    // Method tools (@toolset / @toolify) — visually grouped with FUNC
+    // but distinct teal hue so users can tell at a glance that the
+    // call came from a toolset class rather than a plain function.
+    label: "METHOD",
+    color: "#2DD4BF",
+    bg: "rgba(45, 212, 191, 0.15)",
   },
   model: {
     label: "MODEL",
@@ -76,23 +85,11 @@ export function getToolDuration(card: ToolCard): string | null {
 }
 
 export function formatToolValue(value: unknown, truncate = true): string {
-  if (value === undefined || value === null) return "null";
-  if (typeof value === "string") {
-    if (!truncate) return value;
-    return value.length > 200 ? value.slice(0, 200) + "..." : value;
-  }
-  const str = JSON.stringify(value, null, 2);
-  if (!truncate) return str;
-  return str.length > 400 ? str.slice(0, 400) + "..." : str;
+  return formatValue(value, truncate);
 }
 
 export function isToolValueTruncated(value: unknown): boolean {
-  if (value === undefined || value === null) return false;
-  if (typeof value === "string") {
-    return value.length > 200;
-  }
-  const str = JSON.stringify(value, null, 2);
-  return str.length > 400;
+  return isValueTruncated(value);
 }
 
 export function getCompactArgsPreview(args: Record<string, unknown>): string {

@@ -1,10 +1,13 @@
 """Configuration loading from JSON files."""
 
+# pyright: strict
+
 from __future__ import annotations
 
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 from .models import StudioConfig
 
@@ -80,7 +83,7 @@ def load_config(config_path: Path | None = None) -> StudioConfig:
     logger.info(f"Loading config from {config_path}")
 
     with open(config_path, encoding="utf-8") as f:
-        data = json.load(f)
+        data: dict[str, Any] = json.load(f)
 
     # Remove $schema key if present (JSON Schema reference)
     data.pop("$schema", None)
@@ -97,7 +100,7 @@ def load_config_from_string(json_string: str) -> StudioConfig:
     Returns:
         Parsed StudioConfig instance.
     """
-    data = json.loads(json_string)
+    data: dict[str, Any] = json.loads(json_string)
     data.pop("$schema", None)
     return StudioConfig.model_validate(data)
 
@@ -106,6 +109,13 @@ def load_config_from_string(json_string: str) -> StudioConfig:
 
 _current_config: StudioConfig | None = None
 _current_config_path: Path | None = None
+
+
+def reset_config() -> None:
+    """Clear the cached global configuration and path (test seam)."""
+    global _current_config, _current_config_path
+    _current_config = None
+    _current_config_path = None
 
 
 def get_config_path() -> Path | None:

@@ -1,6 +1,6 @@
 import { copyToClipboard } from "$lib/utils/clipboard";
 
-export function formatStructuredOutputForCopy(structuredOutput: unknown): string {
+function formatStructuredOutputForCopy(structuredOutput: unknown): string {
   return typeof structuredOutput === "string"
     ? structuredOutput
     : JSON.stringify(structuredOutput, null, 2);

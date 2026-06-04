@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
-  InterruptData,
+  InterruptFlowItem,
   InvocationConfig,
   MemoryConfig,
-  Message,
+  MessageFlowItem,
   Session,
-  ToolCard,
+  ToolCardFlowItem,
 } from "$lib/types";
 import { buildExchanges } from "$lib/components/chat/chat-exchanges";
 import { useSession } from "./session/index.svelte";
@@ -369,8 +369,10 @@ describe("useSession - startSession", () => {
 
     // User message should be in chat flow
     expect(s.chatFlowItems).toHaveLength(1);
-    expect(s.chatFlowItems[0].type).toBe("message");
-    const msg = s.chatFlowItems[0].data as Message;
+    const firstItem = s.chatFlowItems[0];
+    expect(firstItem.type).toBe("message");
+    if (firstItem.type !== "message") throw new Error("expected message item");
+    const msg = firstItem.data;
     expect(msg.role).toBe("user");
     expect(msg.content).toBe("Hello agent");
   });
@@ -575,6 +577,66 @@ describe("useSession - event handling", () => {
     expect(s.messages[1].content).toBe("Hello world");
   });
 
+  it("keeps one assistant message when cumulative streaming restarts after reevaluate", async () => {
+    const { s, listeners } = await startWithEvents();
+
+    fireEvent(listeners, "enrichment", {
+      phase: "evaluating",
+      message: "Evaluating...",
+    });
+
+    fireEvent(listeners, "update", {
+      assistant_id: "assistant-1",
+      streaming_content: "Draft",
+    });
+
+    fireEvent(listeners, "enrichment", {
+      phase: "reevaluate_accrued",
+      message: "Reevaluate (cycle 1, 1 results collected)",
+      reevaluate: {
+        source: "llm",
+        reevaluate_count: 1,
+        collected_count: 1,
+      },
+    });
+
+    fireEvent(listeners, "enrichment", {
+      phase: "evaluating",
+      message: "Evaluating...",
+    });
+
+    fireEvent(listeners, "update", {
+      assistant_id: "assistant-1",
+      streaming_content: "Revised",
+    });
+
+    expect(s.messages).toHaveLength(2);
+    expect(s.messages[1].content).toBe("Revised");
+    expect(s.messages[1].metadata?.isStreaming).toBe(true);
+
+    const reevaluateChips = s.chatFlowItems.filter((item) => {
+      if (item.type !== "phase_chip") return false;
+      return Boolean((item.data as { reevaluate?: unknown }).reevaluate);
+    });
+    expect(reevaluateChips).toHaveLength(1);
+
+    fireEvent(listeners, "turn_complete", {
+      responses: ["Final revised"],
+      queued_message_count: 0,
+    });
+
+    expect(s.loading).toBe(false);
+    expect(s.currentPhaseMessage).toBeNull();
+    expect(s.messages).toHaveLength(2);
+    expect(s.messages[1].content).toBe("Final revised");
+    expect(s.messages[1].metadata?.isStreaming).toBe(false);
+
+    const phaseChips = s.chatFlowItems
+      .filter((item) => item.type === "phase_chip")
+      .map((item) => item.data as { message: string });
+    expect(phaseChips.every((chip) => chip.message !== "Evaluating...")).toBe(true);
+  });
+
   it("hydrates tool cards from raw backend tool_event payloads", async () => {
     const { s, listeners } = await startWithEvents();
 
@@ -615,8 +677,7 @@ describe("useSession - event handling", () => {
     });
 
     const toolItems = s.chatFlowItems.filter(
-      (item) =>
-        item.type === "tool_card" && (item.data as ToolCard).toolId === "compose-artifact-1",
+      (item) => item.type === "tool_card" && item.data.toolId === "compose-artifact-1",
     );
 
     expect(toolItems).toHaveLength(1);
@@ -722,9 +783,9 @@ describe("useSession - event handling", () => {
 
     expect(s.toolCards.get("tc-1")?.status).toBe("completed");
     const toolItem = s.chatFlowItems.find(
-      (item) => item.type === "tool_card" && (item.data as ToolCard).toolId === "tc-1",
+      (item): item is ToolCardFlowItem => item.type === "tool_card" && item.data.toolId === "tc-1",
     );
-    expect((toolItem?.data as ToolCard | undefined)?.status).toBe("completed");
+    expect(toolItem?.data.status).toBe("completed");
   });
 
   it("handles error event", async () => {
@@ -937,11 +998,11 @@ describe("useSession - event handling", () => {
 
     // Should have a streaming assistant message
     const assistantItems = s.chatFlowItems.filter(
-      (i) => i.type === "message" && (i.data as Message).role === "assistant",
+      (i): i is MessageFlowItem => i.type === "message" && i.data.role === "assistant",
     );
     expect(assistantItems).toHaveLength(1);
-    expect((assistantItems[0].data as Message).content).toBe("Hello world!");
-    expect((assistantItems[0].data as Message).metadata?.isStreaming).toBe(true);
+    expect(assistantItems[0].data.content).toBe("Hello world!");
+    expect(assistantItems[0].data.metadata?.isStreaming).toBe(true);
   });
 
   it("handles legacy flat status_message payloads", async () => {
@@ -952,10 +1013,11 @@ describe("useSession - event handling", () => {
     });
 
     const statusItems = s.chatFlowItems.filter(
-      (item) => item.type === "message" && (item.data as Message).messageType === "status",
+      (item): item is MessageFlowItem =>
+        item.type === "message" && item.data.messageType === "status",
     );
     expect(statusItems).toHaveLength(1);
-    expect((statusItems[0].data as Message).content).toBe("Planning complete");
+    expect(statusItems[0].data.content).toBe("Planning complete");
   });
 
   it("deduplicates repeated SSE deliveries with the same event id", async () => {
@@ -981,10 +1043,11 @@ describe("useSession - event handling", () => {
     } as MessageEvent);
 
     const statusItems = s.chatFlowItems.filter(
-      (item) => item.type === "message" && (item.data as Message).messageType === "status",
+      (item): item is MessageFlowItem =>
+        item.type === "message" && item.data.messageType === "status",
     );
     expect(statusItems).toHaveLength(1);
-    expect((statusItems[0].data as Message).content).toBe("Dispatching 3 agents");
+    expect(statusItems[0].data.content).toBe("Dispatching 3 agents");
   });
 
   it("mirrors final-output agent assistant chunks into the live assistant message", async () => {
@@ -1006,11 +1069,11 @@ describe("useSession - event handling", () => {
     fireEvent(listeners, "progress_update", { assistant_id: "agent-1", text: "draft" });
 
     const assistantItems = s.chatFlowItems.filter(
-      (i) => i.type === "message" && (i.data as Message).role === "assistant",
+      (i): i is MessageFlowItem => i.type === "message" && i.data.role === "assistant",
     );
     expect(assistantItems).toHaveLength(1);
-    expect((assistantItems[0].data as Message).content).toBe("Memo draft");
-    expect((assistantItems[0].data as Message).metadata?.isStreaming).toBe(true);
+    expect(assistantItems[0].data.content).toBe("Memo draft");
+    expect(assistantItems[0].data.metadata?.isStreaming).toBe(true);
     expect(s.toolCards.get("agent-tool-1")?.status).toBe("executing");
   });
 
@@ -1033,7 +1096,7 @@ describe("useSession - event handling", () => {
     fireEvent(listeners, "progress_update", { assistant_id: "nested-agent", text: "analysis" });
 
     const assistantItems = s.chatFlowItems.filter(
-      (i) => i.type === "message" && (i.data as Message).role === "assistant",
+      (i) => i.type === "message" && i.data.role === "assistant",
     );
     expect(assistantItems).toHaveLength(0);
     expect(s.toolCards.get("final-agent-tool")?.streamContent).toBeUndefined();
@@ -1080,7 +1143,7 @@ describe("useSession - event handling", () => {
     fireEvent(listeners, "progress_update", { assistant_id: "child-agent", text: "draft" });
 
     const assistantItems = s.chatFlowItems.filter(
-      (i) => i.type === "message" && (i.data as Message).role === "assistant",
+      (i) => i.type === "message" && i.data.role === "assistant",
     );
     expect(assistantItems).toHaveLength(0);
   });
@@ -1143,11 +1206,11 @@ describe("useSession - event handling", () => {
     });
 
     const assistantItems = s.chatFlowItems.filter(
-      (item) => item.type === "message" && (item.data as Message).role === "assistant",
+      (item): item is MessageFlowItem => item.type === "message" && item.data.role === "assistant",
     );
     expect(assistantItems).toHaveLength(1);
-    expect((assistantItems[0].data as Message).content).toBe("Nested draft");
-    expect((assistantItems[0].data as Message).metadata?.isStreaming).not.toBe(true);
+    expect(assistantItems[0].data.content).toBe("Nested draft");
+    expect(assistantItems[0].data.metadata?.isStreaming).not.toBe(true);
   });
 
   it("handles interrupt_required event", async () => {
@@ -1188,9 +1251,11 @@ describe("useSession - event handling", () => {
 
     expect(s.interruptCards.size).toBe(1);
     expect(s.pendingInterrupts).toHaveLength(1);
-    const interruptItems = s.chatFlowItems.filter((item) => item.type === "interrupt_card");
+    const interruptItems = s.chatFlowItems.filter(
+      (item): item is InterruptFlowItem => item.type === "interrupt_card",
+    );
     expect(interruptItems).toHaveLength(1);
-    expect((interruptItems[0].data as InterruptData).prompt).toBe("Please enter your full name:");
+    expect(interruptItems[0].data.prompt).toBe("Please enter your full name:");
   });
 
   it("appends a new inline card when the same interrupt id is reused on a follow-up turn", async () => {
@@ -1251,11 +1316,13 @@ describe("useSession - event handling", () => {
       timestamp: "2024-01-01T00:05:00Z",
     });
 
-    const interruptItems = s.chatFlowItems.filter((item) => item.type === "interrupt_card");
+    const interruptItems = s.chatFlowItems.filter(
+      (item): item is InterruptFlowItem => item.type === "interrupt_card",
+    );
     expect(interruptItems).toHaveLength(2);
 
-    const firstInterrupt = interruptItems[0].data as InterruptData;
-    const secondInterrupt = interruptItems[1].data as InterruptData;
+    const firstInterrupt = interruptItems[0].data;
+    const secondInterrupt = interruptItems[1].data;
     expect(firstInterrupt.interruptId).toBe("int-1");
     expect(secondInterrupt.interruptId).toBe("int-1");
     expect(firstInterrupt.cardId).not.toBe(secondInterrupt.cardId);
@@ -1296,9 +1363,11 @@ describe("useSession - event handling", () => {
       timestamp: "2024-01-01T00:01:00Z",
     });
 
-    const interruptItems = s.chatFlowItems.filter((item) => item.type === "interrupt_card");
+    const interruptItems = s.chatFlowItems.filter(
+      (item): item is InterruptFlowItem => item.type === "interrupt_card",
+    );
     expect(interruptItems).toHaveLength(1);
-    expect((interruptItems[0].data as InterruptData).prompt).toBe("Please enter your full name:");
+    expect(interruptItems[0].data.prompt).toBe("Please enter your full name:");
   });
 });
 
@@ -1519,11 +1588,11 @@ describe("useSession - send", () => {
       if (item.type !== "message") {
         return false;
       }
-      return (item.data as Message).content === "Queue this next";
+      return item.data.content === "Queue this next";
     });
     expect(queuedMessageItem?.type).toBe("message");
     if (queuedMessageItem?.type === "message") {
-      const queuedMessage = queuedMessageItem.data as Message;
+      const queuedMessage = queuedMessageItem.data;
       expect(queuedMessage.metadata?.queuedForNextTurn).toBeUndefined();
     }
   });

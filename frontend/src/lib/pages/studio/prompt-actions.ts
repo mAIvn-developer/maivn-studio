@@ -1,9 +1,9 @@
 import { fetchSavedPrompts, savePrompt } from "$lib/api_client/prompts";
-import type { SavedPrompt } from "$lib/types";
+import type { SavedPrompt, SendableMessageType } from "$lib/types";
 
 interface CreatePromptActionsParams {
   getSelectedApp: () => { id: string } | null;
-  getMessageType: () => import("$lib/types").SendableMessageType;
+  getMessageType: () => SendableMessageType;
   getSavedPrompts: () => SavedPrompt[];
   setSavedPrompts: (prompts: SavedPrompt[]) => void;
 }

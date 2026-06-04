@@ -1,3 +1,4 @@
+# pyright: strict
 """Contract-stream replay context for the Studio reporter.
 
 In stream mode the SDK delivers normalized events via a replay loop instead
@@ -5,7 +6,7 @@ of through the reporter. The reporter suppresses ``report_response_chunk`` /
 ``print_final_response`` to avoid duplicate UI chunks — but the replay loop
 itself needs to be exempt so its chunks still flow.
 
-Setting :data:`_normalized_stream_replay_active` to ``True`` is the opt-out
+Setting :data:`normalized_stream_replay_active` to ``True`` is the opt-out
 signal. Scheduled fires use :func:`activate_normalized_stream_replay` because
 they don't run the chat-session replay loop; chat sessions use the
 :func:`normalized_stream_replay_context` context manager around the loop body.
@@ -13,24 +14,29 @@ they don't run the chat-session replay loop; chat sessions use the
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
 
-_normalized_stream_replay_active: ContextVar[bool] = ContextVar(
+# MARK: Replay State
+
+normalized_stream_replay_active: ContextVar[bool] = ContextVar(
     "studio_normalized_stream_replay_active",
     default=False,
 )
 
 
+# MARK: Public API
+
+
 @contextmanager
-def normalized_stream_replay_context() -> Iterator[None]:
+def normalized_stream_replay_context() -> Generator[None, None, None]:
     """Allow normalized replay chunks through contract-stream suppression."""
-    token = _normalized_stream_replay_active.set(True)
+    token = normalized_stream_replay_active.set(True)
     try:
         yield
     finally:
-        _normalized_stream_replay_active.reset(token)
+        normalized_stream_replay_active.reset(token)
 
 
 def activate_normalized_stream_replay() -> None:
@@ -41,11 +47,11 @@ def activate_normalized_stream_replay() -> None:
     of the task and is dropped when the task completes — there's no shared
     context to leak into.
     """
-    _normalized_stream_replay_active.set(True)
+    _ = normalized_stream_replay_active.set(True)
 
 
 __all__ = [
-    "_normalized_stream_replay_active",
     "activate_normalized_stream_replay",
+    "normalized_stream_replay_active",
     "normalized_stream_replay_context",
 ]

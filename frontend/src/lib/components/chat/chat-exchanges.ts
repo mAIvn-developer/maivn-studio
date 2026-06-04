@@ -46,7 +46,7 @@ export function buildExchanges(chatFlowItems: ChatFlowItem[]): Exchange[] {
 
   for (const item of chatFlowItems) {
     if (item.type === "message") {
-      const message = item.data as Message;
+      const message = item.data;
 
       if (message.messageType === "status") {
         if (currentExchange) {
@@ -85,25 +85,25 @@ export function buildExchanges(chatFlowItems: ChatFlowItem[]): Exchange[] {
         }
       }
     } else if (item.type === "tool_card") {
-      const toolCard = item.data as ToolCard;
+      const toolCard = item.data;
       const target = currentExchange ?? result[result.length - 1];
       if (target) {
         target.toolCards.push(toolCard);
       }
     } else if (item.type === "interrupt_card") {
-      const interruptCard = item.data as InterruptData;
+      const interruptCard = item.data;
       const target = currentExchange ?? result[result.length - 1];
       if (target) {
         target.interruptCards.push(interruptCard);
       }
     } else if (item.type === "phase_chip") {
-      const phaseChip = item.data as PhaseChipData;
+      const phaseChip = item.data;
       const target = currentExchange ?? result[result.length - 1];
       if (target) {
         target.phaseChips.push(phaseChip);
       }
     } else if (item.type === "batch_result") {
-      const batchResult = item.data as BatchResult;
+      const batchResult = item.data;
       const target = currentExchange ?? result[result.length - 1];
       if (target) {
         target.batchResults.push(batchResult);

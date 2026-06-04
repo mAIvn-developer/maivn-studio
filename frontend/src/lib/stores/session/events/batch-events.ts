@@ -72,7 +72,7 @@ function updateBatchResult(
     if (item.type !== "batch_result") {
       return item;
     }
-    const current = item.data as BatchResult;
+    const current = item.data;
     if (current.batchId !== batchId) {
       return item;
     }

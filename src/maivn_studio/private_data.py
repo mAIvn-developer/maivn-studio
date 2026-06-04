@@ -1,5 +1,7 @@
 """Shared private data defaults and schema helpers."""
 
+# pyright: strict
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -11,7 +13,7 @@ from maivn_studio.config.models import PrivateDataField
 
 # MARK: Defaults
 
-_DEFAULT_PRIVATE_DATA: dict[str, Any] | None = None
+_default_private_data_cache: dict[str, Any] | None = None
 
 
 def _find_repo_root() -> Path:
@@ -53,13 +55,19 @@ def _build_default_private_data() -> dict[str, Any]:
 
 def get_default_private_data() -> dict[str, Any]:
     """Return a copy of the default private data values."""
-    global _DEFAULT_PRIVATE_DATA
-    if _DEFAULT_PRIVATE_DATA is None:
-        _DEFAULT_PRIVATE_DATA = _build_default_private_data()
-    return _DEFAULT_PRIVATE_DATA.copy()
+    global _default_private_data_cache
+    if _default_private_data_cache is None:
+        _default_private_data_cache = _build_default_private_data()
+    return _default_private_data_cache.copy()
 
 
-def is_valid_log_path(value: Any) -> bool:
+def reset_default_private_data() -> None:
+    """Clear the cached default private data (test seam)."""
+    global _default_private_data_cache
+    _default_private_data_cache = None
+
+
+def is_valid_log_path(value: object) -> bool:
     """Validate a log path value for private data."""
     if not isinstance(value, str):
         return False

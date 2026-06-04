@@ -2,10 +2,40 @@ import type {
   ExtractedInsightSummary,
   ExtractedSkillSummary,
   MemoryActivityData,
+  MemoryLevel,
+  MemoryPersistenceMode,
   RedactionActivityData,
 } from "$lib/types";
 
 // MARK: Coercion Helpers
+
+// Canonical wire vocabularies, mirroring the backend `maivn_shared` unions.
+// Used to narrow untrusted `res.json()` / SSE values into the tightened
+// `MemoryActivityData` fields. Unrecognized values are dropped (the field is
+// left unset) rather than crashing, matching the existing omit-on-invalid
+// behavior of every other field in this coercer.
+const MEMORY_LEVELS: readonly MemoryLevel[] = ["none", "glimpse", "focus", "clarity"];
+const MEMORY_PERSISTENCE_MODES: readonly MemoryPersistenceMode[] = [
+  "persist_none",
+  "vector_only",
+  "vector_plus_graph",
+];
+
+function coerceMemoryLevel(value: unknown): MemoryLevel | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim().toLowerCase();
+  return (MEMORY_LEVELS as readonly string[]).includes(normalized)
+    ? (normalized as MemoryLevel)
+    : undefined;
+}
+
+function coercePolicyMode(value: unknown): MemoryPersistenceMode | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim().toLowerCase();
+  return (MEMORY_PERSISTENCE_MODES as readonly string[]).includes(normalized)
+    ? (normalized as MemoryPersistenceMode)
+    : undefined;
+}
 
 export function normalizeNonNegativeNumber(value: unknown): number | undefined {
   let parsed: number | undefined;
@@ -75,11 +105,13 @@ export function coerceMemoryActivityData(value: unknown): MemoryActivityData | u
   if (typeof payload.status === "string" && payload.status.trim()) {
     details.status = payload.status.trim();
   }
-  if (typeof payload.memory_level === "string" && payload.memory_level.trim()) {
-    details.memoryLevel = payload.memory_level.trim();
+  const memoryLevel = coerceMemoryLevel(payload.memory_level);
+  if (memoryLevel !== undefined) {
+    details.memoryLevel = memoryLevel;
   }
-  if (typeof payload.policy_mode === "string" && payload.policy_mode.trim()) {
-    details.policyMode = payload.policy_mode.trim();
+  const policyMode = coercePolicyMode(payload.policy_mode);
+  if (policyMode !== undefined) {
+    details.policyMode = policyMode;
   }
 
   const hitCount = normalizeNonNegativeNumber(payload.hit_count);

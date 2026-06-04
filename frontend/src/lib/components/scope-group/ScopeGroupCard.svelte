@@ -46,6 +46,12 @@
     isLive?: boolean;
     compact?: boolean;
     depth?: number;
+    /**
+     * Reevaluate chips for this exchange. The nested content interleaves
+     * them with tool cards by timestamp so each chip lands at the position
+     * where the cycle actually fired.
+     */
+    reevaluatePhaseChips?: PhaseChipData[];
   }
 
   let {
@@ -64,6 +70,7 @@
     isLive = false,
     compact = false,
     depth = 0,
+    reevaluatePhaseChips = [],
   }: Props = $props();
   const directPhaseChip = $derived(() =>
     resolveDirectPhaseChip(scopeType, scopeName, scopeId, phaseChips),
@@ -185,6 +192,7 @@
       agentIsFinalOutput={agentIsFinalOutput()}
       bind:bindAgentResponseEl={agentResponseEl}
       displayTools={displayTools()}
+      {reevaluatePhaseChips}
     />
   {/if}
 

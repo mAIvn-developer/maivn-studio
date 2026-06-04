@@ -1,3 +1,12 @@
+// MARK: Execution Status
+
+/**
+ * Lifecycle status shared by tool/agent execution surfaces. Single source for
+ * the `pending → executing → completed | failed` progression used by
+ * `ToolCardStatus`, `ToolEvent.status`, and scope-group status rendering.
+ */
+export type ExecutionStatus = "pending" | "executing" | "completed" | "failed";
+
 // MARK: Session Types
 
 export interface Session {
@@ -39,7 +48,7 @@ export interface UIEvent {
 export interface ToolEvent {
   tool_name: string;
   tool_id: string;
-  status: "pending" | "executing" | "completed" | "failed";
+  status: ExecutionStatus;
   args: Record<string, unknown>;
   result?: unknown;
   error?: string;

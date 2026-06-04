@@ -9,20 +9,25 @@ executor; rows with their own ``variant`` need a freshly reloaded app, which
 means each row gets its own executor instance.
 """
 
+# pyright: strict
 from __future__ import annotations
 
 import asyncio
 import contextvars
 import inspect
+import time
 from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass
 from typing import Any, cast
 
 from langchain_core.messages import BaseMessage, HumanMessage
+from pydantic import BaseModel
 
+from ...app_loader.models import Executor, LoadedApp
 from ..messages import resolve_structured_output_invocation_fallbacks
 from ..models import StudioSession, latest_response_text
-from .capabilities import supports_structured_output_kwarg
+from .capabilities import LoggerLike, supports_structured_output_kwarg
+from .protocols import ExecutionManagerLike
 from .serialization import (
     serialize_structured_result,
     serialize_token_usage,
@@ -36,7 +41,7 @@ from .serialization import (
 class BatchTurnResult:
     """Aggregated outcome of a single batch turn: per-item responses + the event payload."""
 
-    responses: list[Any]
+    responses: list[object]
     event_data: dict[str, Any]
 
 
@@ -57,11 +62,27 @@ class BatchInputSpec:
         return bool(self.variant or self.system_message or self.invocation)
 
 
+# MARK: Helpers
+
+
+def _as_object_list(value: object) -> list[object]:
+    """Return ``value`` as a ``list[object]`` when it is a list, else an empty list.
+
+    The batch config arrives as ``dict[str, Any]``; narrowing those ``Any`` values
+    to ``list`` yields ``list[Unknown]``. Funneling them through this helper gives
+    callers a list of the known ``object`` element type so the per-item
+    ``isinstance`` filters narrow cleanly.
+    """
+    if isinstance(value, list):
+        return cast("list[object]", value)
+    return []
+
+
 # MARK: Item Serialization
 
 
 def _serialize_batch_response(
-    result: Any,
+    result: object,
     *,
     spec: BatchInputSpec,
     duration_ms: int | None = None,
@@ -72,7 +93,7 @@ def _serialize_batch_response(
         raw_response = getattr(result, "response", None)
         response_text = raw_response if isinstance(raw_response, str) else ""
 
-    item = {
+    item: dict[str, Any] = {
         "index": spec.index,
         "label": spec.label,
         "input": spec.message,
@@ -90,7 +111,7 @@ def _serialize_batch_response(
 
 
 def _serialize_batch_pending_spec(spec: BatchInputSpec) -> dict[str, Any]:
-    item = {
+    item: dict[str, Any] = {
         "index": spec.index,
         "label": spec.label,
         "input": spec.message,
@@ -106,20 +127,19 @@ def _serialize_batch_pending_spec(spec: BatchInputSpec) -> dict[str, Any]:
 
 
 def _build_batch_inputs(
-    manager: Any,
+    manager: ExecutionManagerLike,
     session: StudioSession,
     batch_config: dict[str, Any],
 ) -> list[BatchInputSpec]:
-    raw_messages = batch_config.get("messages")
-    if not isinstance(raw_messages, list):
-        raw_messages = []
+    raw_messages = _as_object_list(batch_config.get("messages"))
     messages = [item.strip() for item in raw_messages if isinstance(item, str) and item.strip()]
 
-    raw_rows = batch_config.get("rows")
-    if not isinstance(raw_rows, list):
-        raw_rows = []
+    raw_rows = _as_object_list(batch_config.get("rows"))
+    candidate_rows: list[dict[str, Any]] = [
+        cast("dict[str, Any]", row) for row in raw_rows if isinstance(row, dict)
+    ]
     rows: list[dict[str, Any]] = [
-        row for row in raw_rows if isinstance(row, dict) and str(row.get("message", "")).strip()
+        row for row in candidate_rows if str(row.get("message", "")).strip()
     ]
     if not rows:
         rows = [{"message": message} for message in messages]
@@ -133,9 +153,10 @@ def _build_batch_inputs(
     message_type = batch_config.get("message_type")
     if not isinstance(message_type, str) or not message_type:
         message_type = "human"
-    attachments = batch_config.get("attachments")
-    if not isinstance(attachments, list):
-        attachments = None
+    raw_attachments = batch_config.get("attachments")
+    attachments: list[dict[str, Any]] | None = (
+        cast("list[dict[str, Any]]", raw_attachments) if isinstance(raw_attachments, list) else None
+    )
 
     batch_inputs: list[BatchInputSpec] = []
     for index, row in enumerate(rows):
@@ -143,9 +164,9 @@ def _build_batch_inputs(
         row_messages = list(base_messages)
         system_message = row.get("system_message")
         if isinstance(system_message, str) and system_message.strip():
-            row_messages.append(manager._create_message(system_message.strip(), "system"))
+            row_messages.append(manager.create_message(system_message.strip(), "system"))
         row_messages.append(
-            manager._create_message(
+            manager.create_message(
                 message,
                 message_type,
                 attachments=attachments,
@@ -160,7 +181,9 @@ def _build_batch_inputs(
         targeted_tools = row.get("targeted_tools")
         if isinstance(targeted_tools, list):
             tools = [
-                item.strip() for item in targeted_tools if isinstance(item, str) and item.strip()
+                item.strip()
+                for item in cast("list[object]", targeted_tools)
+                if isinstance(item, str) and item.strip()
             ]
             if tools:
                 invocation["targeted_tools"] = tools
@@ -189,20 +212,22 @@ def _build_batch_inputs(
 def _resolve_structured_output_model(
     *,
     session: StudioSession,
-    executor: Any,
-    structured_output_config: dict[str, Any] | None,
-    logger: Any,
-) -> type[Any] | None:
-    if not structured_output_config:
+    executor: Executor,
+    structured_output_config: object,
+    logger: LoggerLike,
+) -> type[BaseModel] | None:
+    if not isinstance(structured_output_config, dict):
         return None
 
-    tool_name = structured_output_config.get("tool_name")
+    tool_name: object = cast("dict[str, Any]", structured_output_config).get("tool_name")
     if not tool_name:
         return None
 
-    from maivn._internal.core.entities import ModelTool
+    from maivn._internal.core.entities import (
+        ModelTool,
+    )
 
-    model_class = None
+    model_class: type[BaseModel] | None = None
     for tool in executor.list_tools():
         if tool.name == tool_name:
             if isinstance(tool, ModelTool):
@@ -234,9 +259,9 @@ def _resolve_structured_output_model(
 
 def _build_base_invoke_kwargs(
     *,
-    loaded: Any,
+    loaded: LoadedApp,
     session: StudioSession,
-    structured_output_model: type[Any] | None,
+    structured_output_model: type[BaseModel] | None,
 ) -> dict[str, Any]:
     invoke_kwargs: dict[str, Any] = {
         "messages": session.messages,
@@ -250,8 +275,8 @@ def _build_base_invoke_kwargs(
         user_invoke_kwargs=user_invoke_kwargs,
     )
     invoke_kwargs.update(fallback_invocation_kwargs)
-    if user_invoke_kwargs:
-        invoke_kwargs.update(user_invoke_kwargs)
+    if isinstance(user_invoke_kwargs, dict):
+        invoke_kwargs.update(cast("dict[str, Any]", user_invoke_kwargs))
 
     invoke_kwargs.pop("verbose", None)
     return invoke_kwargs
@@ -263,10 +288,10 @@ def _build_base_invoke_kwargs(
 def _resolve_row_executor(
     *,
     session: StudioSession,
-    executor: Any,
+    executor: Executor,
     spec: BatchInputSpec,
-    logger: Any,
-) -> Any:
+    logger: LoggerLike,
+) -> Executor:
     if not spec.variant or spec.variant == session.variant:
         return executor
 
@@ -282,8 +307,12 @@ def _resolve_row_executor(
         variant=spec.variant,
     )
     user_private_data = session.metadata.get("user_private_data", {})
-    apply_private_data(row_loaded, user_private_data)
-    if not row_loaded.has_executor:
+    apply_private_data(
+        row_loaded,
+        cast("dict[str, Any]", user_private_data) if isinstance(user_private_data, dict) else None,
+    )
+    row_executor = row_loaded.executor
+    if row_executor is None:
         raise RuntimeError(
             f"Batch row variant {spec.variant} has no executable agent or swarm "
             f"(session={session.session_id})"
@@ -295,7 +324,7 @@ def _resolve_row_executor(
         spec.variant,
         row_loaded.executor_name,
     )
-    return row_loaded.executor
+    return row_executor
 
 
 # MARK: Matrix Runner
@@ -304,23 +333,23 @@ def _resolve_row_executor(
 async def _execute_batch_matrix_items(
     *,
     session: StudioSession,
-    executor: Any,
+    executor: Executor,
     batch_inputs: list[BatchInputSpec],
     base_invoke_kwargs: dict[str, Any],
-    structured_output_model: type[Any] | None,
+    structured_output_model: type[BaseModel] | None,
     max_concurrency: int | None,
     mode: str,
     ctx: contextvars.Context,
-    logger: Any,
-) -> tuple[list[Any], list[int]]:
-    import time as time_module
-
-    from maivn._internal.utils.reporting.context import current_sdk_delivery_mode
+    logger: LoggerLike,
+) -> tuple[list[object], list[int]]:
+    from maivn._internal.utils.reporting.context import (
+        current_sdk_delivery_mode,
+    )
 
     concurrency = max_concurrency or len(batch_inputs) or 1
     semaphore = asyncio.Semaphore(concurrency)
-    row_executors: dict[int, Any] = {}
-    executor_cache: dict[str, Any] = {}
+    row_executors: dict[int, Executor] = {}
+    executor_cache: dict[str, Executor] = {}
     for spec in batch_inputs:
         cache_key = spec.variant or "__session__"
         if cache_key not in executor_cache:
@@ -332,9 +361,9 @@ async def _execute_batch_matrix_items(
             )
         row_executors[spec.index] = executor_cache[cache_key]
 
-    async def _invoke_one(spec: BatchInputSpec) -> tuple[Any, int]:
+    async def _invoke_one(spec: BatchInputSpec) -> tuple[object, int]:
         async with semaphore:
-            started = time_module.time()
+            started = time.time()
             row_executor = row_executors[spec.index]
             invoke_kwargs = dict(base_invoke_kwargs)
             invoke_kwargs.update(spec.invocation or {})
@@ -349,22 +378,16 @@ async def _execute_batch_matrix_items(
                 invoke_kwargs["structured_output"] = structured_output_model
                 invoke_kwargs.pop("targeted_tools", None)
 
-            invoke_fn = getattr(row_executor, "invoke", None)
-            if not callable(invoke_fn):
-                raise RuntimeError(
-                    f"Batch row executor does not support invoke() (session={session.session_id})"
-                )
-
-            def _call_invoke() -> Any:
+            def _call_invoke() -> object:
                 delivery_token = current_sdk_delivery_mode.set(mode)
                 try:
-                    return invoke_fn(**invoke_kwargs)
+                    return row_executor.invoke(**invoke_kwargs)
                 finally:
                     current_sdk_delivery_mode.reset(delivery_token)
 
             item_ctx = ctx.copy()
             response = await asyncio.to_thread(item_ctx.run, _call_invoke)
-            duration_ms = int((time_module.time() - started) * 1000)
+            duration_ms = int((time.time() - started) * 1000)
             return response, duration_ms
 
     pairs = await asyncio.gather(*[_invoke_one(spec) for spec in batch_inputs])
@@ -377,20 +400,20 @@ async def _execute_batch_matrix_items(
 
 
 async def _execute_batch_turn(
-    manager: Any,
+    manager: ExecutionManagerLike,
     session: StudioSession,
     *,
-    executor: Any,
-    loaded: Any,
+    executor: Executor,
+    loaded: LoadedApp,
     batch_config: dict[str, Any],
     ctx: contextvars.Context,
-    logger: Any,
+    logger: LoggerLike,
 ) -> BatchTurnResult:
-    import time as time_module
+    from maivn._internal.utils.reporting.context import (
+        current_sdk_delivery_mode,
+    )
 
-    from maivn._internal.utils.reporting.context import current_sdk_delivery_mode
-
-    batch_start_time = time_module.time()
+    batch_start_time = time.time()
     batch_inputs = _build_batch_inputs(manager, session, batch_config)
     input_texts = [spec.message for spec in batch_inputs]
     pending_items = [_serialize_batch_pending_spec(spec) for spec in batch_inputs]
@@ -402,7 +425,7 @@ async def _execute_batch_turn(
     turn_number = len([m for m in session.messages if isinstance(m, HumanMessage)])
     batch_id = f"{session.session_id}:turn:{turn_number}"
 
-    await manager._emit_event(
+    await manager.emit_event(
         session,
         "batch_start",
         {
@@ -463,16 +486,11 @@ async def _execute_batch_turn(
             ctx=ctx,
             logger=logger,
         )
-        item_durations = cast(list[int | None], resolved_durations)
+        item_durations = list(resolved_durations)
     elif async_mode:
-        batch_fn = getattr(executor, "abatch", None)
-        if not callable(batch_fn):
-            raise RuntimeError(f"Executor does not support abatch() (session={session.session_id})")
-        typed_batch_fn = cast(Callable[..., Any], batch_fn)
-
         delivery_token = current_sdk_delivery_mode.set("abatch")
         try:
-            batch_result = typed_batch_fn(
+            batch_result = executor.abatch(
                 batch_message_inputs,
                 max_concurrency=max_concurrency,
                 **invoke_kwargs,
@@ -482,16 +500,13 @@ async def _execute_batch_turn(
                     "Executor abatch() returned a non-awaitable result "
                     f"(session={session.session_id})"
                 )
-            responses = list(await cast(Awaitable[Iterable[Any]], batch_result))
+            responses = list(await cast("Awaitable[Iterable[object]]", batch_result))
         finally:
             current_sdk_delivery_mode.reset(delivery_token)
     else:
-        batch_fn = getattr(executor, "batch", None)
-        if not callable(batch_fn):
-            raise RuntimeError(f"Executor does not support batch() (session={session.session_id})")
-        typed_batch_fn = cast(Callable[..., Iterable[Any]], batch_fn)
+        typed_batch_fn = cast("Callable[..., Iterable[object]]", executor.batch)
 
-        def _call_batch() -> list[Any]:
+        def _call_batch() -> list[object]:
             delivery_token = current_sdk_delivery_mode.set("batch")
             try:
                 return list(
@@ -519,11 +534,11 @@ async def _execute_batch_turn(
         )
         for index, response in enumerate(responses)
     ]
-    duration_ms = int((time_module.time() - batch_start_time) * 1000)
+    duration_ms = int((time.time() - batch_start_time) * 1000)
     token_usage = sum_token_usage(items)
 
     for item in items:
-        await manager._emit_event(
+        await manager.emit_event(
             session,
             "batch_item_complete",
             {
@@ -533,7 +548,7 @@ async def _execute_batch_turn(
             },
         )
 
-    batch_event_data = {
+    batch_event_data: dict[str, Any] = {
         "session_id": session.session_id,
         "batch_id": batch_id,
         "mode": mode,
@@ -545,7 +560,7 @@ async def _execute_batch_turn(
         "token_usage": token_usage,
         "items": items,
     }
-    await manager._emit_event(session, "batch_complete", batch_event_data)
+    await manager.emit_event(session, "batch_complete", batch_event_data)
     return BatchTurnResult(responses=responses, event_data=batch_event_data)
 
 
