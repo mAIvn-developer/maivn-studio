@@ -42,6 +42,7 @@ from ..models import STUDIO_EVENT_CATEGORIES, SessionStatus, StudioSession, late
 from .batch import BatchTurnResult, _execute_batch_turn
 from .capabilities import (
     LoggerLike,
+    auto_resolve_structured_output_model,
     build_stream_tool_contract_maps,
     flush_reporter_events,
     supports_structured_output_kwarg,
@@ -286,6 +287,14 @@ def _run_invoke_turn(
 
     invoke_kwargs.pop("verbose", None)
 
+    if loaded.executor_type == "swarm" and invoke_kwargs.get("targeted_tools"):
+        logger.warning(
+            "Session %s: ignoring targeted_tools because the executor is a swarm "
+            "(swarms do not support tool targeting)",
+            session.session_id,
+        )
+        invoke_kwargs.pop("targeted_tools", None)
+
     if structured_output_model and invoke_kwargs.get("targeted_tools"):
         logger.warning(
             "Session %s: ignoring targeted_tools because structured_output is enabled",
@@ -346,7 +355,12 @@ def _resolve_structured_output_model(
         return None
     tool_name: object = cast("dict[str, Any]", structured_output_config).get("tool_name")
     if not tool_name:
-        return None
+        # Structured output was enabled without an explicit schema source. Auto-resolve
+        # the app's final/sole model tool so flipping the toggle "just works", instead of
+        # silently falling through to the normal synthesizing path.
+        return auto_resolve_structured_output_model(
+            session=session, executor=executor, logger=logger
+        )
 
     from maivn._internal.core.entities import (
         ModelTool,

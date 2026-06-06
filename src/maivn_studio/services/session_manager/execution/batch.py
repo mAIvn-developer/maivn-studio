@@ -26,7 +26,11 @@ from pydantic import BaseModel
 from ...app_loader.models import Executor, LoadedApp
 from ..messages import resolve_structured_output_invocation_fallbacks
 from ..models import StudioSession, latest_response_text
-from .capabilities import LoggerLike, supports_structured_output_kwarg
+from .capabilities import (
+    LoggerLike,
+    auto_resolve_structured_output_model,
+    supports_structured_output_kwarg,
+)
 from .protocols import ExecutionManagerLike
 from .serialization import (
     serialize_structured_result,
@@ -130,6 +134,8 @@ def _build_batch_inputs(
     manager: ExecutionManagerLike,
     session: StudioSession,
     batch_config: dict[str, Any],
+    *,
+    is_swarm: bool = False,
 ) -> list[BatchInputSpec]:
     raw_messages = _as_object_list(batch_config.get("messages"))
     messages = [item.strip() for item in raw_messages if isinstance(item, str) and item.strip()]
@@ -178,8 +184,12 @@ def _build_batch_inputs(
             value = row.get(key)
             if isinstance(value, str) and value.strip():
                 invocation[key] = value.strip()
+        for key in ("force_final_tool", "stream_response"):
+            value = row.get(key)
+            if isinstance(value, bool):
+                invocation[key] = value
         targeted_tools = row.get("targeted_tools")
-        if isinstance(targeted_tools, list):
+        if not is_swarm and isinstance(targeted_tools, list):
             tools = [
                 item.strip()
                 for item in cast("list[object]", targeted_tools)
@@ -221,7 +231,11 @@ def _resolve_structured_output_model(
 
     tool_name: object = cast("dict[str, Any]", structured_output_config).get("tool_name")
     if not tool_name:
-        return None
+        # Enabled without an explicit schema source: auto-resolve the app's
+        # final/sole model tool (mirrors the single-turn path).
+        return auto_resolve_structured_output_model(
+            session=session, executor=executor, logger=logger
+        )
 
     from maivn._internal.core.entities import (
         ModelTool,
@@ -414,7 +428,8 @@ async def _execute_batch_turn(
     )
 
     batch_start_time = time.time()
-    batch_inputs = _build_batch_inputs(manager, session, batch_config)
+    is_swarm = loaded.executor_type == "swarm"
+    batch_inputs = _build_batch_inputs(manager, session, batch_config, is_swarm=is_swarm)
     input_texts = [spec.message for spec in batch_inputs]
     pending_items = [_serialize_batch_pending_spec(spec) for spec in batch_inputs]
     max_concurrency = batch_config.get("max_concurrency")
@@ -462,6 +477,14 @@ async def _execute_batch_turn(
                 f"structured_output=... (session={session.session_id})"
             )
         invoke_kwargs["structured_output"] = structured_output_model
+
+    if is_swarm and invoke_kwargs.get("targeted_tools"):
+        logger.warning(
+            "Session %s: ignoring targeted_tools because the executor is a swarm "
+            "(swarms do not support tool targeting)",
+            session.session_id,
+        )
+        invoke_kwargs.pop("targeted_tools", None)
 
     if structured_output_model and invoke_kwargs.get("targeted_tools"):
         logger.warning(

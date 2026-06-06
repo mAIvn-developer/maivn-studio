@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-06-06
+
+### Fixed
+
+- **Structured output now changes execution.** Enabling the composer's Structured Output toggle no longer silently runs the normal (synthesizing) path. The frontend sends the intent even when no schema source is hand-picked, and the backend auto-resolves the app's final model tool (warning instead of silently no-op'ing when the choice is ambiguous or absent).
+- **Batch matrix per-row overrides are honored.** Per-row **Force final tool** and **Stream response** selects were collected in the UI but dropped before reaching execution; they are now wired through end-to-end.
+- **Swarm `targeted_tools` guard.** Sending targeted tools to a swarm executor (which does not support tool targeting) is now dropped with a warning instead of erroring/silently misbehaving.
+
+### Removed
+
+- Dead structured-output controls: the "Custom JSON…" schema editor and the "Schema-fill model" dropdown were collected but never sent to or used by the backend. The schema-source selector now offers a functional **"Auto (use the app's final tool)"** default plus the app's tools.
+
 ## [0.4.0] - 2026-06-04
 
 ### Added

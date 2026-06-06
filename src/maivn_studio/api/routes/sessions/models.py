@@ -50,6 +50,8 @@ class BatchInvocationRowRequest(BaseModel):
     reasoning: str | None = None
     system_message: str | None = None
     targeted_tools: list[str] | None = None
+    force_final_tool: bool | None = None
+    stream_response: bool | None = None
 
     @field_validator("label", "variant", "model", "reasoning", "system_message", mode="before")
     @classmethod

@@ -386,6 +386,83 @@ async def test_execute_session_ignores_targeted_tools_with_structured_output(
 
 
 @pytest.mark.asyncio
+async def test_execute_session_auto_resolves_structured_output_without_tool_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Enabling structured output without a hand-picked schema source resolves the
+    app's sole model tool, instead of silently running the normal path."""
+    monkeypatch.setattr(core_entities, "ModelTool", _DummyModelTool)
+
+    model_tool = _DummyModelTool(name="schema_tool", model=_StructuredPayload)
+    executor = _DummyExecutor(model_tool=model_tool)
+
+    loaded_app = LoadedApp(
+        config=_build_app_config(),
+        module=ModuleType("test_app_module"),
+        agents=[cast(Agent, executor)],
+        swarms=[],
+    )
+
+    session = StudioSession(
+        session_id="session-structured-output-auto-resolve",
+        app_config=_build_app_config(),
+        thread_id="thread-auto-resolve",
+        status=SessionStatus.RUNNING,
+        messages=[HumanMessage(content="hello")],
+        metadata={"structured_output": {"tool_name": None}},
+        loaded_app=loaded_app,
+    )
+
+    manager = SessionManager()
+
+    async def _emit_event_noop(*_: Any, **__: Any) -> None:
+        return None
+
+    monkeypatch.setattr(manager, "emit_event", _emit_event_noop)
+
+    await manager.run_session(session)
+
+    assert session.status == SessionStatus.READY
+    invoke_kwargs = executor.event_invocable.last_invoke_kwargs
+    assert invoke_kwargs.get("structured_output") is _StructuredPayload
+    assert "structured_output_warning" not in session.metadata
+
+
+def test_auto_resolve_structured_output_model_warns_when_ambiguous(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Multiple model tools with no explicit pick is surfaced as a warning, not a
+    silent fall-through."""
+    monkeypatch.setattr(core_entities, "ModelTool", _DummyModelTool)
+
+    class _MultiToolExecutor:
+        name = "multi-tool-executor"
+
+        def list_tools(self) -> list[_DummyModelTool]:
+            return [
+                _DummyModelTool(name="first_schema", model=_StructuredPayload),
+                _DummyModelTool(name="second_schema", model=_StructuredPayload),
+            ]
+
+    session = StudioSession(
+        session_id="session-ambiguous",
+        app_config=_build_app_config(),
+        thread_id="thread-ambiguous",
+    )
+
+    resolved = session_execution_module.auto_resolve_structured_output_model(
+        session=session,
+        executor=cast(Any, _MultiToolExecutor()),
+        logger=_DummyLogger(),
+    )
+
+    assert resolved is None
+    warning = session.metadata.get("structured_output_warning")
+    assert isinstance(warning, str)
+    assert "first_schema" in warning and "second_schema" in warning
+
+
+@pytest.mark.asyncio
 async def test_execute_session_uses_default_invocation_metadata_for_structured_output(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

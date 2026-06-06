@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { TableProperties, ChevronDown, Check, Info } from "lucide-svelte";
-  import type { ModelTier, ModelToolOption, StructuredOutputConfig } from "$lib/types";
+  import { TableProperties, ChevronDown, Check } from "lucide-svelte";
+  import type { ModelToolOption, StructuredOutputConfig } from "$lib/types";
 
   interface Props {
     config: StructuredOutputConfig;
@@ -12,97 +12,42 @@
   let { config, availableTools = [], disabled = false, onConfigChange }: Props = $props();
 
   // Collapsed by default unless the user just enabled it. The body takes
-  // significant vertical space, so we don't pin it open.
+  // vertical space, so we don't pin it open.
   let isExpanded = $state(false);
-  let advancedOpen = $state(false);
-  let showSchemaEditor = $state(false);
-  let customSchemaText = $state("");
-  let schemaError = $state<string | null>(null);
-
-  // Schema-fill is a SEPARATE model pass that takes the agent's free-form
-  // response and re-prompts a model to convert it to the requested JSON
-  // schema. Empty string here means "use the agent's default tier".
-  const modelChoices: Array<{ value: ModelTier | ""; label: string }> = [
-    { value: "", label: "Use agent default" },
-    { value: "fast", label: "fast" },
-    { value: "balanced", label: "balanced" },
-    { value: "max", label: "max" },
-  ];
-
-  function setStructuredModel(value: string): void {
-    const next: ModelTier | undefined = value === "" ? undefined : (value as ModelTier);
-    onConfigChange({ ...config, model: next });
-  }
-
-  $effect(() => {
-    if (config.schema && !config.selectedTool) {
-      customSchemaText = JSON.stringify(config.schema.schema, null, 2);
-    }
-  });
 
   function toggleEnabled(): void {
     if (config.enabled) {
-      onConfigChange({
-        enabled: false,
-        selectedTool: undefined,
-        schema: undefined,
-      });
+      onConfigChange({ enabled: false, selectedTool: undefined, schema: undefined });
     } else {
       onConfigChange({ ...config, enabled: true });
       isExpanded = true;
     }
   }
 
-  function selectTool(toolName: string | null) {
-    if (toolName === null) {
-      onConfigChange({
-        ...config,
-        selectedTool: undefined,
-        schema: config.schema || {
-          name: "custom_output",
-          description: "Custom structured output",
-          schema: { type: "object", properties: {} },
-        },
-      });
-    } else {
-      const tool = availableTools.find((t) => t.name === toolName);
-      onConfigChange({
-        ...config,
-        selectedTool: toolName,
-        schema: tool
-          ? {
-              name: tool.name,
-              description: tool.description,
-              schema: tool.schema || {},
-            }
-          : undefined,
-      });
+  function selectTool(toolName: string | null): void {
+    if (!toolName) {
+      // "Auto": the backend resolves the app's final model tool.
+      onConfigChange({ ...config, selectedTool: undefined, schema: undefined });
+      return;
     }
+    const tool = availableTools.find((t) => t.name === toolName);
+    onConfigChange({
+      ...config,
+      selectedTool: toolName,
+      schema: tool
+        ? {
+            name: tool.name,
+            description: tool.description,
+            schema: tool.schema || {},
+          }
+        : undefined,
+    });
   }
 
-  function updateCustomSchema() {
-    schemaError = null;
-    try {
-      const parsed = JSON.parse(customSchemaText);
-      onConfigChange({
-        ...config,
-        selectedTool: undefined,
-        schema: {
-          name: "custom_output",
-          description: "Custom structured output",
-          schema: parsed,
-        },
-      });
-    } catch {
-      schemaError = "Invalid JSON schema";
-    }
-  }
-
-  const isCustomMode = $derived(!config.selectedTool && config.enabled);
   const summaryText = $derived.by(() => {
     if (!config.enabled) return "off";
     if (config.selectedTool) return config.selectedTool;
-    return "custom schema";
+    return "auto (final tool)";
   });
 </script>
 
@@ -148,90 +93,30 @@
             onchange={(e) => selectTool((e.target as HTMLSelectElement).value || null)}
             {disabled}
           >
-            <option value="">Custom JSON…</option>
+            <option value="">Auto (use the app's final tool)</option>
             {#each availableTools as tool}
               <option value={tool.name}>{tool.name}</option>
             {/each}
           </select>
         </label>
-      {/if}
 
-      {#if !isCustomMode && config.selectedTool}
-        <div class="selected-tool">
-          <Check size={12} class="selected-check" />
-          <div class="selected-text">
-            <span class="selected-name">{config.selectedTool}</span>
-            {#if config.schema?.description}
-              <span class="selected-desc">{config.schema.description}</span>
-            {/if}
-          </div>
-        </div>
-      {/if}
-
-      {#if isCustomMode || availableTools.length === 0}
-        <div class="field">
-          <div class="field-label-row">
-            <span class="field-label">JSON Schema</span>
-            <button
-              type="button"
-              class="link-btn"
-              onclick={() => (showSchemaEditor = !showSchemaEditor)}
-            >
-              {showSchemaEditor ? "Collapse" : "Edit"}
-            </button>
-          </div>
-
-          {#if showSchemaEditor}
-            <textarea
-              bind:value={customSchemaText}
-              aria-label="JSON Schema editor"
-              class="schema-editor"
-              placeholder={'{"type": "object", "properties": {...}}'}
-              onblur={updateCustomSchema}
-              {disabled}
-            ></textarea>
-            {#if schemaError}
-              <p class="schema-error">{schemaError}</p>
-            {/if}
-          {:else}
-            <div class="schema-preview">
-              {config.schema?.name || "No schema defined"}
+        {#if config.selectedTool}
+          <div class="selected-tool">
+            <Check size={12} class="selected-check" />
+            <div class="selected-text">
+              <span class="selected-name">{config.selectedTool}</span>
+              {#if config.schema?.description}
+                <span class="selected-desc">{config.schema.description}</span>
+              {/if}
             </div>
-          {/if}
-        </div>
+          </div>
+        {/if}
+      {:else}
+        <p class="so-empty">
+          This app exposes no tools to use as a schema. Structured output needs a
+          model tool (a final tool backed by a Pydantic model).
+        </p>
       {/if}
-
-      <details bind:open={advancedOpen} class="advanced">
-        <summary>
-          <span>Advanced</span>
-          <span class="advanced-hint">
-            fill model: {config.model ?? "agent default"}
-          </span>
-          <ChevronDown size={12} class="advanced-chevron" />
-        </summary>
-        <div class="advanced-body">
-          <label class="field">
-            <span class="field-label">
-              Schema-fill model
-              <span
-                class="info-icon"
-                title="A second model pass converts the agent's free-form response into the requested JSON schema. Pin `max` when the schema is deep or the agent's default tier struggles to fill it reliably."
-              >
-                <Info size={11} />
-              </span>
-            </span>
-            <select
-              value={config.model ?? ""}
-              onchange={(e) => setStructuredModel((e.target as HTMLSelectElement).value)}
-              {disabled}
-            >
-              {#each modelChoices as choice (choice.value)}
-                <option value={choice.value}>{choice.label}</option>
-              {/each}
-            </select>
-          </label>
-        </div>
-      </details>
     </div>
   {/if}
 </div>
@@ -359,6 +244,13 @@
     background: transparent;
   }
 
+  .so-empty {
+    margin: 0;
+    font-size: 0.7rem;
+    line-height: 1.4;
+    color: var(--color-text-tertiary);
+  }
+
   .field {
     display: flex;
     flex-direction: column;
@@ -374,14 +266,7 @@
     letter-spacing: 0.06em;
     color: var(--color-text-tertiary);
   }
-  .field-label-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .field select,
-  .schema-editor,
-  .schema-preview {
+  .field select {
     width: 100%;
     border: 1px solid var(--color-outline-variant);
     border-radius: var(--radius-sm);
@@ -390,38 +275,9 @@
     padding: 0.35rem 0.55rem;
     font-size: 0.78rem;
   }
-  .field select:focus,
-  .schema-editor:focus {
+  .field select:focus {
     outline: 1px solid color-mix(in srgb, var(--color-secondary) 60%, var(--color-outline));
     border-color: color-mix(in srgb, var(--color-secondary) 60%, var(--color-outline-variant));
-  }
-  .schema-editor {
-    height: 8rem;
-    font-family: "JetBrains Mono", "SF Mono", monospace;
-    font-size: 0.7rem;
-    resize: vertical;
-  }
-  .schema-preview {
-    color: var(--color-text-tertiary);
-    font-family: "JetBrains Mono", "SF Mono", monospace;
-    font-size: 0.7rem;
-  }
-  .schema-error {
-    margin: 0;
-    font-size: 0.66rem;
-    color: var(--color-error);
-  }
-
-  .link-btn {
-    border: 0;
-    background: transparent;
-    color: var(--color-secondary);
-    font-size: 0.66rem;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .link-btn:hover {
-    text-decoration: underline;
   }
 
   .selected-tool {
@@ -453,62 +309,5 @@
     font-size: 0.66rem;
     color: var(--color-text-tertiary);
     line-height: 1.35;
-  }
-
-  .info-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-text-tertiary);
-    cursor: help;
-  }
-  .info-icon:hover {
-    color: var(--color-text-secondary);
-  }
-
-  /* Advanced sub-disclosure */
-  .advanced {
-    border-top: 1px dashed var(--color-outline-variant);
-    margin-top: 0.15rem;
-    padding-top: 0.4rem;
-  }
-  .advanced summary {
-    list-style: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.7rem;
-    color: var(--color-text-secondary);
-    user-select: none;
-  }
-  .advanced summary::-webkit-details-marker {
-    display: none;
-  }
-  .advanced summary > span:first-child {
-    font-weight: 600;
-  }
-  .advanced-hint {
-    flex: 1;
-    text-align: right;
-    font-size: 0.65rem;
-    color: var(--color-text-tertiary);
-    font-family: "JetBrains Mono", "SF Mono", monospace;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  :global(.advanced-chevron) {
-    color: var(--color-text-tertiary);
-    transition: transform var(--transition-fast);
-  }
-  .advanced[open] > summary :global(.advanced-chevron) {
-    transform: rotate(180deg);
-  }
-  .advanced-body {
-    margin-top: 0.4rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
   }
 </style>
