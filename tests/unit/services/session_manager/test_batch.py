@@ -214,3 +214,83 @@ async def test_execute_session_batch_matrix_applies_row_overrides() -> None:
         "matrix: alpha",
         "matrix: beta",
     ]
+
+
+@pytest.mark.asyncio
+async def test_execute_session_batch_matrix_applies_force_final_and_stream_overrides() -> None:
+    executor = _MatrixExecutor()
+    loaded_app = LoadedApp(
+        config=_build_app_config(),
+        module=ModuleType("batch_matrix_overrides_module"),
+        agents=[cast(Agent, executor)],
+        swarms=[],
+    )
+    session = StudioSession(
+        session_id="session-matrix-overrides",
+        app_config=_build_app_config(),
+        thread_id="thread-matrix-overrides",
+        status=SessionStatus.RUNNING,
+        messages=[HumanMessage(content="1. alpha\n2. beta")],
+        metadata={
+            "batch_config": {
+                "messages": ["alpha", "beta"],
+                "rows": [
+                    {"message": "alpha", "force_final_tool": True, "stream_response": False},
+                    {"message": "beta", "force_final_tool": False, "stream_response": True},
+                ],
+                "max_concurrency": 2,
+                "async_mode": True,
+                "message_type": "human",
+            }
+        },
+        loaded_app=loaded_app,
+    )
+
+    manager = SessionManager()
+    bridge = event_bridge_module.create_event_bridge(session.session_id)
+    assert bridge is not None
+
+    await manager.run_session(session)
+
+    assert [call["kwargs"].get("force_final_tool") for call in executor.calls] == [True, False]
+    assert [call["kwargs"].get("stream_response") for call in executor.calls] == [False, True]
+
+
+@pytest.mark.asyncio
+async def test_execute_session_batch_drops_targeted_tools_for_swarm() -> None:
+    executor = _MatrixExecutor()
+    loaded_app = LoadedApp(
+        config=_build_app_config(),
+        module=ModuleType("batch_swarm_module"),
+        agents=[],
+        swarms=[cast(Any, executor)],
+    )
+    session = StudioSession(
+        session_id="session-swarm-batch",
+        app_config=_build_app_config(),
+        thread_id="thread-swarm-batch",
+        status=SessionStatus.RUNNING,
+        messages=[HumanMessage(content="1. alpha")],
+        metadata={
+            "batch_config": {
+                "messages": ["alpha"],
+                "rows": [
+                    {"message": "alpha", "model": "fast", "targeted_tools": ["lookup"]},
+                ],
+                "max_concurrency": 1,
+                "async_mode": True,
+                "message_type": "human",
+            }
+        },
+        loaded_app=loaded_app,
+    )
+
+    manager = SessionManager()
+    bridge = event_bridge_module.create_event_bridge(session.session_id)
+    assert bridge is not None
+
+    await manager.run_session(session)
+
+    # Swarms do not support tool targeting: the override is dropped, model still applies.
+    assert executor.calls[0]["targeted_tools"] is None
+    assert executor.calls[0]["model"] == "fast"

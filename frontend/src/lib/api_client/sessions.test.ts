@@ -110,6 +110,18 @@ describe("createSession", () => {
     });
   });
 
+  it("sends structured output intent when enabled without a hand-picked tool", async () => {
+    mockFetchOk({ id: "s1" });
+
+    await createSession("d1", "hello", {
+      structuredOutput: { enabled: true },
+    });
+
+    const call = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    const body = JSON.parse(call[1].body);
+    expect(body.structured_output).toEqual({ enabled: true });
+  });
+
   it("omits structured output when disabled", async () => {
     mockFetchOk({ id: "s1" });
 

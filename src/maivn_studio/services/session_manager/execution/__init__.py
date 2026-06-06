@@ -17,6 +17,7 @@ from __future__ import annotations
 from .batch import BatchInputSpec, BatchTurnResult
 from .capabilities import (
     FIRST_EVENT_SUBSCRIBER_WAIT_SECONDS,
+    auto_resolve_structured_output_model,
     build_stream_tool_contract_maps,
     flush_reporter_events,
     supports_structured_output_kwarg,
@@ -37,6 +38,7 @@ __all__ = [
     "REPORTER_REPLAY_EVENT_NAMES",
     "BatchInputSpec",
     "BatchTurnResult",
+    "auto_resolve_structured_output_model",
     "build_stream_tool_contract_maps",
     "execute_session",
     "flush_reporter_events",

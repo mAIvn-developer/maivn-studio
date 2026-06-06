@@ -396,6 +396,8 @@
                 row.targeted_tools && row.targeted_tools.length > 0
                   ? row.targeted_tools
                   : undefined,
+              force_final_tool: row.force_final_tool,
+              stream_response: row.stream_response,
             })),
             max_concurrency: batchMaxConcurrency,
             async_mode: batchAsyncMode,

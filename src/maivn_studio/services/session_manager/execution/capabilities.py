@@ -12,6 +12,8 @@ import inspect
 from collections.abc import Awaitable, Callable
 from typing import Protocol, cast
 
+from pydantic import BaseModel
+
 from ..models import StudioSession
 from ..protocols import Executor
 from .protocols import ExecutionManagerLike, ToolMetadataMap, ToolNameMap
@@ -56,6 +58,58 @@ def supports_structured_output_kwarg(executor: object) -> bool:
         return True
 
     return any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values())
+
+
+def auto_resolve_structured_output_model(
+    *,
+    session: StudioSession,
+    executor: Executor,
+    logger: LoggerLike,
+) -> type[BaseModel] | None:
+    """Resolve the model class to use when structured output is enabled without
+    an explicit ``tool_name``.
+
+    Studio's composer lets a user flip structured output on without hand-picking
+    a schema source. The common case is an app with a single ``final_tool`` model
+    tool (e.g. a ``LaptopHealthSummary`` report tool), and the intent is obvious:
+    use that tool's model. We prefer ``final_tool`` model tools, fall back to the
+    sole model tool when there is exactly one, and surface a warning (instead of
+    silently running the normal synthesizing path) when the choice is ambiguous
+    or no model tool exists.
+    """
+    from maivn._internal.core.entities import ModelTool
+
+    model_tools = [tool for tool in executor.list_tools() if isinstance(tool, ModelTool)]
+    candidates = [tool for tool in model_tools if getattr(tool, "final_tool", False)] or model_tools
+
+    if len(candidates) == 1:
+        tool = candidates[0]
+        logger.info(
+            "Session %s auto-selected structured_output model %s (from tool: %s)",
+            session.session_id,
+            tool.model.__name__,
+            tool.name,
+        )
+        return tool.model
+
+    if not candidates:
+        session.metadata["structured_output_warning"] = (
+            "Structured output is enabled but this app has no model tool to use as the "
+            "schema. Select a schema source or define a custom JSON schema."
+        )
+    else:
+        names = ", ".join(tool.name for tool in candidates)
+        session.metadata["structured_output_warning"] = (
+            f"Structured output is enabled but this app has multiple model tools "
+            f"({names}). Pick one in the Schema source selector."
+        )
+    logger.warning(
+        "Session %s: structured output enabled without a resolvable model tool "
+        "(candidates=%d); running the normal path",
+        session.session_id,
+        len(candidates),
+    )
+    return None
 
 
 async def flush_reporter_events(reporter: object, logger: LoggerLike) -> None:
@@ -161,6 +215,7 @@ def build_stream_tool_contract_maps(
 __all__ = [
     "FIRST_EVENT_SUBSCRIBER_WAIT_SECONDS",
     "LoggerLike",
+    "auto_resolve_structured_output_model",
     "build_stream_tool_contract_maps",
     "flush_reporter_events",
     "supports_structured_output_kwarg",
