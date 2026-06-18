@@ -45,7 +45,6 @@ from .capabilities import (
     auto_resolve_structured_output_model,
     build_stream_tool_contract_maps,
     flush_reporter_events,
-    supports_structured_output_kwarg,
     wait_for_event_subscriber,
 )
 from .protocols import ExecutionManagerLike
@@ -302,9 +301,10 @@ def _run_invoke_turn(
         )
         invoke_kwargs.pop("targeted_tools", None)
 
-    if structured_output_model and supports_structured_output_kwarg(executor):
-        invoke_kwargs["structured_output"] = structured_output_model
-        return _call_with_delivery_mode("invoke", event_invocable.invoke, **invoke_kwargs)
+    if structured_output_model:
+        # Pure structured_output() runs its own schema path; forcing normal final-tool
+        # selection can reject valid schema results when no runtime final tool completed.
+        invoke_kwargs["force_final_tool"] = False
 
     if structured_output_model:
         return _invoke_structured_output(

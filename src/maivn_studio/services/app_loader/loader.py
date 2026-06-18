@@ -17,6 +17,7 @@ from maivn import Agent, Swarm
 
 from maivn_studio.config.models import AppConfig
 
+from .errors import AppLoadError
 from .models import AppPrompt, LoadedApp
 
 logger = logging.getLogger(__name__)
@@ -123,7 +124,7 @@ class AppLoader:
                 module = importlib.reload(module)
         except ImportError as e:
             logger.error("Failed to import %s: %s", config.module, e)
-            raise
+            raise AppLoadError(config.module, e) from e
 
         # Allow modules to configure themselves for a variant (optional hook).
         self.apply_variant(module, variant)

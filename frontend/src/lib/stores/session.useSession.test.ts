@@ -1020,6 +1020,43 @@ describe("useSession - event handling", () => {
     expect(statusItems[0].data.content).toBe("Planning complete");
   });
 
+  it("streams status message chunks into one status card", async () => {
+    const { s, listeners } = await startWithEvents();
+
+    fireEvent(listeners, "status_message_chunk", {
+      status_id: "status-1",
+      assistant_id: "orchestrator_agent",
+      text: "Dispatching ",
+    });
+    fireEvent(listeners, "status_message_chunk", {
+      status_id: "status-1",
+      assistant_id: "orchestrator_agent",
+      text: "3 agents",
+    });
+
+    let statusItems = s.chatFlowItems.filter(
+      (item): item is MessageFlowItem =>
+        item.type === "message" && item.data.messageType === "status",
+    );
+    expect(statusItems).toHaveLength(1);
+    expect(statusItems[0].data.content).toBe("Dispatching 3 agents");
+    expect(statusItems[0].data.metadata?.isStreaming).toBe(true);
+
+    fireEvent(listeners, "status_message", {
+      status_id: "status-1",
+      assistant_id: "orchestrator_agent",
+      message: "Dispatching 3 agents",
+    });
+
+    statusItems = s.chatFlowItems.filter(
+      (item): item is MessageFlowItem =>
+        item.type === "message" && item.data.messageType === "status",
+    );
+    expect(statusItems).toHaveLength(1);
+    expect(statusItems[0].data.content).toBe("Dispatching 3 agents");
+    expect(statusItems[0].data.metadata?.isStreaming).toBe(false);
+  });
+
   it("deduplicates repeated SSE deliveries with the same event id", async () => {
     const { s, listeners, instance } = await startWithEvents();
 

@@ -13,6 +13,7 @@ from langchain_core.messages import HumanMessage
 from maivn import Agent, Swarm
 
 from maivn_studio.config.models import AppConfig
+from maivn_studio.services.app_loader.errors import AppLoadError
 from maivn_studio.services.app_loader.loader import AppLoader
 from maivn_studio.services.app_loader.models import LoadedApp
 
@@ -272,7 +273,7 @@ class TestLoad:
         loader = AppLoader()
 
         with patch("importlib.import_module", side_effect=ImportError("not found")):
-            with pytest.raises(ImportError, match="not found"):
+            with pytest.raises(AppLoadError, match="not found"):
                 loader.load(config)
 
     def test_load_variant_rebuilds_prompts_after_configure_variant(self) -> None:
@@ -376,6 +377,21 @@ class TestLoadedAppExecutor:
             agents=[agent],
             explicit_executor_name="target",
         )
+        assert loaded.executor is agent
+
+    def test_prefers_explicit_executor_by_module_variable_name(self) -> None:
+        agent = _mock_agent("Research Coordinator")
+        swarm = _mock_swarm("Research Swarm", agents=[agent])
+        config = _make_config()
+        mod = _make_module({"research_coordinator": agent, "swarm": swarm})
+        loaded = LoadedApp(
+            config=config,
+            module=mod,
+            agents=[agent],
+            swarms=[swarm],
+            explicit_executor_name="research_coordinator",
+        )
+
         assert loaded.executor is agent
 
     def test_falls_back_to_swarm(self) -> None:

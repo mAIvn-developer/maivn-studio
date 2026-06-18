@@ -77,6 +77,7 @@ let streamingAssistantItemId = $state<string | null>(null);
 const assistantIdToToolId = new Map<string, string>();
 const pendingAssistantChunks = new Map<string, string>();
 const assistantSnapshots = new Map<string, string>();
+const statusMessageItemIds = new Map<string, string>();
 
 // MARK: Enrichment Phase State
 
@@ -241,6 +242,7 @@ const ctx: SessionStoreContext = createSessionStoreContext({
     assistantIdToToolId,
     pendingAssistantChunks,
     assistantSnapshots,
+    statusMessageItemIds,
     getInvocationConfig: () => invocationConfig,
     setInvocationConfig: (v) => {
       invocationConfig = v;

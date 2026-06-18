@@ -40,7 +40,12 @@ REPORTER_REPLAY_EVENT_NAMES: frozenset[str] = frozenset(
 )
 # Event names whose stream-replay copies are forwarded back through the
 # EventBridge (instead of the reporter). Public for the same reason.
-BRIDGE_REPLAY_EVENT_NAMES: frozenset[str] = frozenset({"interrupt_required"})
+BRIDGE_REPLAY_EVENT_NAMES: frozenset[str] = frozenset(
+    {
+        "interrupt_required",
+        "status_message_chunk",
+    }
+)
 
 
 def should_replay_event_to_reporter(event_name: str) -> bool:

@@ -47,6 +47,33 @@ function extractAgentId(tool: ToolCardType): string | undefined {
   return normalized.length > 0 ? normalized : undefined;
 }
 
+function getSingleSwarmName(toolCards: ToolCardType[]): string | undefined {
+  const swarmNames = new Set<string>();
+  for (const tool of toolCards) {
+    const swarmName = normalizeScopePart(tool.swarmName);
+    if (swarmName) {
+      swarmNames.add(swarmName);
+    }
+  }
+  return swarmNames.size === 1 ? [...swarmNames][0] : undefined;
+}
+
+function resolveToolSwarmName(
+  tool: ToolCardType,
+  inferredSwarmName: string | undefined,
+): string | undefined {
+  const explicitSwarmName = normalizeScopePart(tool.swarmName);
+  if (explicitSwarmName) {
+    return explicitSwarmName;
+  }
+
+  if (tool.agentName && inferredSwarmName) {
+    return inferredSwarmName;
+  }
+
+  return undefined;
+}
+
 function scopeKeyFor(
   scopeType: "agent" | "swarm",
   scopeId: string | undefined,
@@ -176,6 +203,8 @@ export function buildScopeGroups(toolCards: ToolCardType[]): ScopeGroup[] {
     return [];
   }
 
+  const inferredSwarmName = getSingleSwarmName(toolCards);
+
   // Per-swarm: ordered list of agent invocations seen, plus swarm-root tools
   // (e.g., the swarm's own progress tools that aren't tied to any agent).
   const swarmRootTools = new Map<string, ToolCardType[]>();
@@ -190,13 +219,38 @@ export function buildScopeGroups(toolCards: ToolCardType[]): ScopeGroup[] {
   const invocationKeyFor = (swarmName: string | undefined, agentName: string): string =>
     `${swarmName ?? ""}::${agentName}`;
 
+  const createSyntheticScope = (
+    agentName: string,
+    swarmName: string | undefined,
+    tool: ToolCardType,
+  ): InvocationScope => ({
+    invocationId: swarmName ? `swarm:${swarmName}:agent:${agentName}` : `agent:${agentName}`,
+    agentName,
+    swarmName,
+    tools: [tool],
+  });
+
+  const hasAgentAnchor = (scope: InvocationScope): boolean =>
+    scope.tools.some((candidate) => candidate.toolType === "agent");
+
   for (const tool of toolCards) {
-    const swarmName = tool.swarmName;
+    const swarmName = resolveToolSwarmName(tool, inferredSwarmName);
     const agentName = tool.agentName;
 
     if (tool.toolType === "agent" && agentName) {
-      // A new invocation card. Always open a fresh scope — each agent tool
-      // card is its own invocation, even if the agent name repeats.
+      const key = invocationKeyFor(swarmName, agentName);
+      const existingScope = openInvocationByKey.get(key);
+      if (existingScope && !hasAgentAnchor(existingScope)) {
+        existingScope.invocationId = tool.toolId;
+        existingScope.agentId = extractAgentId(tool);
+        existingScope.swarmName = swarmName;
+        existingScope.tools.push(tool);
+        continue;
+      }
+
+      // A new invocation card. If the matching open scope already has an
+      // agent anchor, this is a second session/invocation and must render as
+      // a second card even when the agent name repeats.
       const scope: InvocationScope = {
         invocationId: tool.toolId,
         agentName,
@@ -215,7 +269,7 @@ export function buildScopeGroups(toolCards: ToolCardType[]): ScopeGroup[] {
       } else {
         standaloneInvocations.push(scope);
       }
-      openInvocationByKey.set(invocationKeyFor(swarmName, agentName), scope);
+      openInvocationByKey.set(key, scope);
       continue;
     }
 
@@ -225,27 +279,26 @@ export function buildScopeGroups(toolCards: ToolCardType[]): ScopeGroup[] {
         scope.tools.push(tool);
         continue;
       }
-      // No anchor card for this agent yet. For a standalone agent run (no
-      // swarm) the server doesn't emit a `toolType="agent"` tool_event —
-      // those only fire for swarm dispatches. To keep the agent's tool
-      // cards visible we synthesize an InvocationScope keyed by agent name
-      // and attach the tool to it. Subsequent tools for the same agent
-      // will hit `openInvocationByKey` above and merge into this scope.
-      if (!swarmName) {
-        const syntheticInvocationId = `agent:${agentName}`;
-        const synthetic: InvocationScope = {
-          invocationId: syntheticInvocationId,
-          agentName,
-          // No anchor card means no agent_id arg to extract — leave undefined.
-          swarmName: undefined,
-          tools: [tool],
-        };
+      // No anchor card for this agent yet. Some execution paths emit
+      // agent-owned tool events without a toolType="agent" anchor. Keep
+      // those tools visible by synthesizing an InvocationScope keyed by
+      // agent name, either within the current swarm or as a standalone agent.
+      if (swarmName) {
+        const synthetic = createSyntheticScope(agentName, swarmName, tool);
+        let invocations = swarmInvocations.get(swarmName);
+        if (!invocations) {
+          invocations = [];
+          swarmInvocations.set(swarmName, invocations);
+        }
+        invocations.push(synthetic);
+        openInvocationByKey.set(invocationKeyFor(swarmName, agentName), synthetic);
+        continue;
+      } else {
+        const synthetic = createSyntheticScope(agentName, undefined, tool);
         standaloneInvocations.push(synthetic);
         openInvocationByKey.set(invocationKeyFor(undefined, agentName), synthetic);
         continue;
       }
-      // Inside a swarm but no anchor card matched. Fall through to swarm
-      // root tools so the tool is preserved at the swarm level.
     }
 
     if (swarmName) {
@@ -284,7 +337,7 @@ export function buildScopeGroups(toolCards: ToolCardType[]): ScopeGroup[] {
   const emittedInvocationIds = new Set<string>();
 
   for (const tool of toolCards) {
-    const swarmName = tool.swarmName;
+    const swarmName = resolveToolSwarmName(tool, inferredSwarmName);
 
     if (swarmName && !seenSwarms.has(swarmName)) {
       const invocations = swarmInvocations.get(swarmName) ?? [];

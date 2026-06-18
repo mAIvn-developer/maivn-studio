@@ -5,12 +5,13 @@
 from __future__ import annotations
 
 import logging
-from typing import cast
+from typing import Literal, cast
 
 from fastapi import APIRouter, HTTPException
 
 from maivn_studio.config.models import AppConfig, PrivateDataField
 from maivn_studio.discovery.registry import get_registry
+from maivn_studio.services.app_loader.errors import AppLoadError
 from maivn_studio.services.app_loader.loader import get_app_loader
 
 from .introspection import build_agent_info, build_app_summary, build_swarm_info, build_tool_info
@@ -122,6 +123,33 @@ def merge_private_data_schema(
     return merged
 
 
+def _build_unloadable_app_details(
+    app: AppConfig,
+    *,
+    source: Literal["configured", "discovered"],
+    resolved_variant: str | None,
+    load_error: AppLoadError,
+) -> AppFullDetailsResponse:
+    """Return registry metadata when the app module cannot be imported."""
+    private_data_defaults = _build_private_data_defaults(app, resolved_variant)
+    missing_modules = [load_error.missing_module] if load_error.missing_module else []
+    return AppFullDetailsResponse(
+        id=app.id,
+        name=app.name,
+        description=app.description,
+        module=app.module,
+        category=app.category,
+        tags=app.tags,
+        variants=app.variants,
+        source=source,
+        privateDataSchema=merge_private_data_schema([], private_data_defaults),
+        privateDataDefaults=private_data_defaults,
+        loadable=False,
+        load_error=str(load_error),
+        missing_modules=missing_modules,
+    )
+
+
 # MARK: Read Routes
 
 
@@ -210,7 +238,15 @@ async def get_app_full_details(app_id: str, variant: str | None = None) -> AppFu
     # Load the app to get full details
     loader = get_app_loader()
     resolved_variant = _resolve_app_variant(app, variant)
-    loaded = loader.load(app, variant=resolved_variant)
+    try:
+        loaded = loader.load(app, variant=resolved_variant)
+    except AppLoadError as exc:
+        return _build_unloadable_app_details(
+            app,
+            source=registry.get_source(app_id),
+            resolved_variant=resolved_variant,
+            load_error=exc,
+        )
 
     # Build agents list
     agents: list[AgentInfo] = []
@@ -401,7 +437,10 @@ async def update_agent(
         raise HTTPException(status_code=404, detail=f"App not found: {app_id}")
 
     loader = get_app_loader()
-    loaded = loader.load(app)
+    try:
+        loaded = loader.load(app)
+    except AppLoadError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     agent = loaded.get_agent(agent_name)
 
     if agent is None:
@@ -476,7 +515,10 @@ async def update_swarm(
         raise HTTPException(status_code=404, detail=f"App not found: {app_id}")
 
     loader = get_app_loader()
-    loaded = loader.load(app)
+    try:
+        loaded = loader.load(app)
+    except AppLoadError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     swarm = loaded.get_swarm(swarm_name)
 
     if swarm is None:

@@ -48,6 +48,7 @@ function createCtx() {
     assistantIdToToolId: new Map<string, string>(),
     pendingAssistantChunks: new Map<string, string>(),
     assistantSnapshots: new Map<string, string>(),
+    statusMessageItemIds: new Map<string, string>(),
   };
 
   return { ctx, getEvents: () => events };

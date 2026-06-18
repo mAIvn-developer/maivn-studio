@@ -351,6 +351,7 @@
 
   // Determine if the current input can be sent
   const canSubmitMessage = $derived(() => {
+    if (app?.loadable === false) return false;
     if (batchMode && !hasActiveSession && effectiveBatchRows().length === 0) return false;
     if (!batchMode && !inputValue.trim() && pendingAttachments.length === 0) return false;
     if (loading && !(hasActiveSession && !canSend && canStageNext)) return false;

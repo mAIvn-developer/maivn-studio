@@ -23,9 +23,14 @@ from .models import QueuedMessage, StudioSession
 # MARK: Turn Configuration
 
 _STRUCTURED_OUTPUT_DEFAULT_INVOCATION_KEYS = (
+    "model",
+    "reasoning",
+    "force_final_tool",
     "metadata",
+    "memory_config",
     "system_tools_config",
     "orchestration_config",
+    "allow_private_in_system_tools",
 )
 
 

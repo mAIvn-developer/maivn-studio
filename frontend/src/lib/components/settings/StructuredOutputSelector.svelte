@@ -113,8 +113,8 @@
         {/if}
       {:else}
         <p class="so-empty">
-          This app exposes no tools to use as a schema. Structured output needs a
-          model tool (a final tool backed by a Pydantic model).
+          This app exposes no tools to use as a schema. Structured output needs a model tool (a
+          final tool backed by a Pydantic model).
         </p>
       {/if}
     </div>

@@ -160,6 +160,7 @@ export function connectToEvents(
     "assistant_chunk",
     "progress_update",
     "status_message",
+    "status_message_chunk",
     "agent_assignment",
     "batch_start",
     "batch_item_complete",
