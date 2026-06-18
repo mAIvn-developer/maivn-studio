@@ -98,6 +98,7 @@ export interface SessionStoreContext {
   assistantIdToToolId: Map<string, string>;
   pendingAssistantChunks: Map<string, string>;
   assistantSnapshots: Map<string, string>;
+  statusMessageItemIds: Map<string, string>;
 
   // Invocation state
   getInvocationConfig: () => InvocationConfig;

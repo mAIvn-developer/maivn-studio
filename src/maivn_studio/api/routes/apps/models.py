@@ -153,6 +153,9 @@ class AppFullDetailsResponse(BaseModel):
     privateDataDefaults: dict[str, str | int | bool] = Field(default_factory=dict)
     defaultInvocation: dict[str, Any] | None = None
     runtime_tool_count: int = 0
+    loadable: bool = True
+    load_error: str | None = None
+    missing_modules: list[str] = Field(default_factory=list)
 
 
 # MARK: Request Models

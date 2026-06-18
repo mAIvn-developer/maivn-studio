@@ -72,6 +72,7 @@ export function clearSessionRuntimeState(
   ctx.assistantIdToToolId.clear();
   ctx.pendingAssistantChunks.clear();
   ctx.assistantSnapshots.clear();
+  ctx.statusMessageItemIds.clear();
 }
 
 export function appendUserMessageToChatFlow(

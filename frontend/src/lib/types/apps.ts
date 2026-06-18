@@ -36,6 +36,9 @@ export interface AppDetails extends App {
   privateDataDefaults?: Record<string, string | number | boolean>;
   defaultInvocation?: Partial<InvocationConfig>;
   runtime_tool_count?: number;
+  loadable?: boolean;
+  load_error?: string | null;
+  missing_modules?: string[];
 }
 
 // MARK: Dependency Info

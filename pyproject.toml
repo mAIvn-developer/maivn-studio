@@ -26,8 +26,8 @@ classifiers = [
 ]
 dependencies = [
     # Workspace packages
-    "maivn>=0.4.0,<0.5.0",
-    "maivn-shared>=0.4.0,<0.5.0",
+    "maivn>=0.4.1,<0.5.0",
+    "maivn-shared>=0.4.1,<0.5.0",
     # Studio API runtime
     "fastapi>=0.136.1",
     "pydantic>=2.13.3",

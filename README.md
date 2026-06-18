@@ -113,3 +113,7 @@ npm run lint
 npm run build
 npm run format:check
 ```
+
+## License
+
+mAIvn Studio is **source-available** under the Business Source License 1.1 (BSL 1.1), not an OSI-approved open-source license. You may use it for any purpose, including production, except offering it as a commercial hosted service or redistributing it as a standalone product (see the Additional Use Grant in the license). On the Change Date (2030-03-11) it converts to the Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE) for the full terms.

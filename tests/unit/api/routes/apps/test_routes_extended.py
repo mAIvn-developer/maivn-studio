@@ -186,6 +186,25 @@ class _MixedLoader:
         pass
 
 
+class _FailingLoader:
+    def load(
+        self,
+        _app: Any,
+        force_reload: bool = False,
+        variant: str | None = None,
+    ) -> _Loaded:
+        _ = force_reload, variant
+        from maivn_studio.services.app_loader.errors import AppLoadError
+
+        raise AppLoadError(
+            "demos.toolsets.maivn_tools_gmail_demo",
+            ModuleNotFoundError("No module named 'maivn_tools'"),
+        )
+
+    def unload(self, _app_id: str) -> None:
+        pass
+
+
 # MARK: Fixtures
 
 
@@ -290,6 +309,25 @@ def test_get_app_full_details_not_found(monkeypatch: pytest.MonkeyPatch, tmp_pat
         resp = client.get("/api/apps/nonexistent/details")
         assert resp.status_code == 404
         assert "not found" in resp.json()["detail"].lower()
+
+
+def test_get_app_full_details_returns_unloadable_response_for_missing_dependency(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    app, _ = _make_app(tmp_path)
+    import maivn_studio.api.routes.apps.routes as apps_routes
+
+    monkeypatch.setattr(apps_routes, "get_app_loader", lambda: _FailingLoader())
+
+    with TestClient(app) as client:
+        resp = client.get("/api/apps/app-1/details")
+        assert resp.status_code == 200
+        detail = resp.json()
+        assert detail["loadable"] is False
+        assert detail["missing_modules"] == ["maivn_tools"]
+        assert "maivn_tools" in detail["load_error"]
+        assert detail["agents"] == []
+        assert detail["tools"] == []
 
 
 # MARK: Update App Endpoint

@@ -250,4 +250,98 @@ describe("buildScopeGroups", () => {
     expect(groups[0].type).toBe("swarm");
     expect(groups[0].tools.map((t) => t.toolId)).toContain("swarm_root_progress");
   });
+
+  it("nests agent-owned tools under the only swarm when tool events omit swarmName", () => {
+    const cards: ToolCardType[] = [
+      makeCard({
+        toolId: "report",
+        toolName: "generate_research_report",
+        toolType: "model",
+        agentName: "Research Coordinator",
+        swarmName: "Research Swarm",
+      }),
+      makeCard({
+        toolId: "fetch",
+        toolName: "fetch_data",
+        toolType: "func",
+        agentName: "Research Coordinator",
+      }),
+      makeCard({
+        toolId: "analyze",
+        toolName: "analyze_dataset",
+        toolType: "func",
+        agentName: "Data Analyzer",
+      }),
+    ];
+
+    const groups = buildScopeGroups(cards);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].type).toBe("swarm");
+    expect(groups[0].name).toBe("Research Swarm");
+    expect(groups[0].tools).toEqual([]);
+    expect(
+      groups[0].nestedAgents.map((agent) => ({
+        agentName: agent.agentName,
+        toolNames: agent.tools.map((tool) => tool.toolName),
+      })),
+    ).toEqual([
+      {
+        agentName: "Research Coordinator",
+        toolNames: ["generate_research_report", "fetch_data"],
+      },
+      {
+        agentName: "Data Analyzer",
+        toolNames: ["analyze_dataset"],
+      },
+    ]);
+  });
+
+  it("merges an inferred swarm agent scope when its real agent card arrives later", () => {
+    const cards: ToolCardType[] = [
+      makeCard({
+        toolId: "fetch",
+        toolName: "fetch_data",
+        toolType: "func",
+        agentName: "Research Coordinator",
+      }),
+      makeCard({
+        toolId: "research-coordinator-agent",
+        toolName: "Research Coordinator",
+        toolType: "agent",
+        agentName: "Research Coordinator",
+        swarmName: "Research Swarm",
+      }),
+      makeCard({
+        toolId: "report",
+        toolName: "generate_research_report",
+        toolType: "model",
+        agentName: "Research Coordinator",
+        swarmName: "Research Swarm",
+      }),
+      makeCard({
+        toolId: "analyze",
+        toolName: "analyze_dataset",
+        toolType: "func",
+        agentName: "Data Analyzer",
+      }),
+    ];
+
+    const groups = buildScopeGroups(cards);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].nestedAgents.map((agent) => agent.agentName)).toEqual([
+      "Research Coordinator",
+      "Data Analyzer",
+    ]);
+
+    const researchCoordinator = groups[0].nestedAgents.find(
+      (agent) => agent.agentName === "Research Coordinator",
+    );
+    expect(researchCoordinator?.tools.map((tool) => tool.toolName)).toEqual([
+      "fetch_data",
+      "Research Coordinator",
+      "generate_research_report",
+    ]);
+  });
 });

@@ -116,12 +116,18 @@ class _DummyExecutor:
     ) -> None:
         self._model_tool = model_tool
         self.event_invocable = event_invocable or _DummyEventInvocable()
+        self.structured_invocable = _DummyEventInvocable()
+        self.last_structured_model: type[BaseModel] | None = None
 
     def list_tools(self) -> list[_DummyModelTool]:
         return [self._model_tool]
 
     def events(self, **_: Any) -> _DummyEventInvocable:
         return self.event_invocable
+
+    def structured_output(self, model: type[BaseModel]) -> _DummyEventInvocable:
+        self.last_structured_model = model
+        return self.structured_invocable
 
     def stream(self, **kwargs: Any) -> list[_DummyStreamEvent]:
         return self.event_invocable.stream(**kwargs)
@@ -379,8 +385,8 @@ async def test_execute_session_ignores_targeted_tools_with_structured_output(
     await manager.run_session(session)
 
     assert session.status == SessionStatus.READY
-    invoke_kwargs = executor.event_invocable.last_invoke_kwargs
-    assert invoke_kwargs.get("structured_output") is _StructuredPayload
+    invoke_kwargs = executor.structured_invocable.last_invoke_kwargs
+    assert executor.last_structured_model is _StructuredPayload
     assert "targeted_tools" not in invoke_kwargs
     assert invoke_kwargs.get("model") == "balanced"
 
@@ -423,8 +429,7 @@ async def test_execute_session_auto_resolves_structured_output_without_tool_name
     await manager.run_session(session)
 
     assert session.status == SessionStatus.READY
-    invoke_kwargs = executor.event_invocable.last_invoke_kwargs
-    assert invoke_kwargs.get("structured_output") is _StructuredPayload
+    assert executor.last_structured_model is _StructuredPayload
     assert "structured_output_warning" not in session.metadata
 
 
@@ -507,10 +512,64 @@ async def test_execute_session_uses_default_invocation_metadata_for_structured_o
     await manager.run_session(session)
 
     assert session.status == SessionStatus.READY
-    invoke_kwargs = executor.event_invocable.last_invoke_kwargs
-    assert invoke_kwargs.get("structured_output") is _StructuredPayload
+    invoke_kwargs = executor.structured_invocable.last_invoke_kwargs
+    assert executor.last_structured_model is _StructuredPayload
     assert invoke_kwargs.get("system_tools_config") == {"allowed_tools": []}
-    assert invoke_kwargs.get("force_final_tool") is True
+    assert invoke_kwargs.get("force_final_tool") is False
+
+
+@pytest.mark.asyncio
+async def test_execute_session_uses_default_model_for_structured_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(core_entities, "ModelTool", _DummyModelTool)
+
+    model_tool = _DummyModelTool(name="schema_tool", model=_StructuredPayload)
+    executor = _DummyExecutor(model_tool=model_tool)
+
+    loaded_app = LoadedApp(
+        config=_build_app_config(),
+        module=ModuleType("test_app_module"),
+        agents=[cast(Agent, executor)],
+        swarms=[],
+        default_invocation={
+            "model": "fast",
+            "reasoning": "minimal",
+            "force_final_tool": True,
+            "targeted_tools": ["ignored_when_structured"],
+            "memory_config": {"enabled": False},
+            "allow_private_in_system_tools": True,
+        },
+    )
+
+    session = StudioSession(
+        session_id="session-structured-output-default-model",
+        app_config=_build_app_config(),
+        thread_id="thread-default-model",
+        status=SessionStatus.RUNNING,
+        messages=[HumanMessage(content="hello")],
+        metadata={"structured_output": {"tool_name": "schema_tool"}},
+        loaded_app=loaded_app,
+    )
+
+    manager = SessionManager()
+
+    async def _emit_event_noop(*_: Any, **__: Any) -> None:
+        return None
+
+    monkeypatch.setattr(manager, "emit_event", _emit_event_noop)
+
+    await manager.run_session(session)
+
+    assert session.status == SessionStatus.READY
+    invoke_kwargs = executor.structured_invocable.last_invoke_kwargs
+    assert executor.last_structured_model is _StructuredPayload
+    assert invoke_kwargs.get("model") == "fast"
+    assert invoke_kwargs.get("reasoning") == "minimal"
+    assert invoke_kwargs.get("force_final_tool") is False
+    assert invoke_kwargs.get("memory_config") == {"enabled": False}
+    assert invoke_kwargs.get("allow_private_in_system_tools") is True
+    assert "targeted_tools" not in invoke_kwargs
 
 
 @pytest.mark.asyncio
@@ -558,7 +617,7 @@ async def test_execute_session_preserves_metadata_on_legacy_structured_output_pa
 
     assert session.status == SessionStatus.READY
     invoke_kwargs = executor.structured_invocable.last_invoke_kwargs
-    assert invoke_kwargs.get("force_final_tool") is True
+    assert invoke_kwargs.get("force_final_tool") is False
     assert invoke_kwargs.get("system_tools_config") == {"allowed_tools": []}
     assert invoke_kwargs.get("allow_private_in_system_tools") is True
     assert "targeted_tools" not in invoke_kwargs
@@ -904,6 +963,7 @@ def test_studio_contract_stream_replay_ownership_is_explicit() -> None:
     assert session_execution_module.should_replay_event_to_reporter("status_message") is False
     assert session_execution_module.should_replay_event_to_reporter("tool_event") is False
     assert session_execution_module.should_replay_event_to_bridge("interrupt_required") is True
+    assert session_execution_module.should_replay_event_to_bridge("status_message_chunk") is True
     assert session_execution_module.should_replay_event_to_bridge("status_message") is False
 
 

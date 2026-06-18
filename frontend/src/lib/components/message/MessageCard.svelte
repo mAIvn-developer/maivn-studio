@@ -41,6 +41,7 @@
   const isUser = $derived(message.role === "user");
   const isAssistant = $derived(message.role === "assistant");
   const isStatus = $derived(message.messageType === "status");
+  const isStreaming = $derived(message.metadata?.isStreaming === true);
 
   const hasStructuredContent = $derived(() => {
     if (!isAssistant) return false;
@@ -214,7 +215,7 @@
           <pre
             class="whitespace-pre-wrap text-sm font-mono overflow-x-auto text-[var(--color-text-secondary)]">{message.content}</pre>
         {:else}
-          <MarkdownContent content={message.content} />
+          <MarkdownContent content={message.content} streaming={isStreaming} />
         {/if}
       {:else if containsPrivateDataPlaceholders(message.content)}
         <!-- eslint-disable svelte/no-at-html-tags -->

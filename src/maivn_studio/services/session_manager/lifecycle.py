@@ -12,6 +12,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from maivn_studio.config.models import AppConfig
 
+from ..app_loader.errors import AppLoadError
 from ..app_loader.loader import get_app_loader
 from ..app_loader.models import LoadedApp
 from ..event_bridge import remove_event_bridge
@@ -169,7 +170,12 @@ async def start_session_execution(
         raise ValueError(f"Session {session.session_id} already started")
 
     loader = get_app_loader()
-    loaded = loader.load(session.app_config, force_reload=True, variant=session.variant)
+    try:
+        loaded = loader.load(session.app_config, force_reload=True, variant=session.variant)
+    except AppLoadError as exc:
+        session.status = SessionStatus.FAILED
+        session.error = str(exc)
+        return
     session.loaded_app = loaded
 
     user_private_data = session.metadata.get("user_private_data", {})

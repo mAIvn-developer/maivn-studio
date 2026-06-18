@@ -68,7 +68,12 @@ class LoadedApp:
             else ""
         )
         if explicit_name:
-            resolved = self.get_agent(explicit_name) or self.get_swarm(explicit_name)
+            module_value = getattr(self.module, explicit_name, None)
+            resolved = (
+                module_value
+                if isinstance(module_value, (Agent, Swarm))
+                else self.get_agent(explicit_name) or self.get_swarm(explicit_name)
+            )
             if resolved is not None:
                 return resolved
             logger.warning(

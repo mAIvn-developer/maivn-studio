@@ -11,7 +11,12 @@ import { handleEnrichment } from "./enrichment-events";
 import { handleHookFired } from "./hook-events";
 import { handleInterruptRequired } from "./interrupt-events";
 import { handleSessionStart } from "./session-lifecycle-events";
-import { commitStatusMessage, readStatusMessageText } from "./status-events";
+import {
+  commitStatusMessage,
+  completeStreamingStatusMessage,
+  handleStatusMessageChunk,
+  readStatusMessageText,
+} from "./status-events";
 import {
   handleSystemToolChunk,
   handleSystemToolComplete,
@@ -99,10 +104,18 @@ function processNormalizedEvent(
     }
 
     case "status_message": {
+      if (completeStreamingStatusMessage(ctx, eventData)) {
+        break;
+      }
       const msg = readStatusMessageText(eventData);
       if (msg) {
         commitStatusMessage(ctx, msg);
       }
+      break;
+    }
+
+    case "status_message_chunk": {
+      handleStatusMessageChunk(ctx, eventData);
       break;
     }
 

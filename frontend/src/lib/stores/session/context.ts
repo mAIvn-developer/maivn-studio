@@ -64,6 +64,7 @@ interface CreateSessionStoreContextParams {
   assistantIdToToolId: SessionStoreContext["assistantIdToToolId"];
   pendingAssistantChunks: SessionStoreContext["pendingAssistantChunks"];
   assistantSnapshots: SessionStoreContext["assistantSnapshots"];
+  statusMessageItemIds: SessionStoreContext["statusMessageItemIds"];
   getInvocationConfig: () => InvocationConfig;
   setInvocationConfig: (v: InvocationConfig) => void;
   getMemoryConfig: () => MemoryConfig;
@@ -120,6 +121,7 @@ export function createSessionStoreContext(
     assistantIdToToolId: params.assistantIdToToolId,
     pendingAssistantChunks: params.pendingAssistantChunks,
     assistantSnapshots: params.assistantSnapshots,
+    statusMessageItemIds: params.statusMessageItemIds,
     getInvocationConfig: params.getInvocationConfig,
     setInvocationConfig: params.setInvocationConfig,
     getMemoryConfig: params.getMemoryConfig,

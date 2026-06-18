@@ -4,9 +4,7 @@ export const API_BASE = "/api";
 
 export function buildStructuredOutputPayload(
   config: StructuredOutputConfig | undefined,
-):
-  | { enabled: true; tool_name?: string; schema_name?: string; json_schema?: unknown }
-  | undefined {
+): { enabled: true; tool_name?: string; schema_name?: string; json_schema?: unknown } | undefined {
   // Send the intent whenever the toggle is on. Previously this returned
   // undefined unless a schema source was hand-picked, so flipping the switch
   // without opening the selector silently ran the normal (synthesizing) path.

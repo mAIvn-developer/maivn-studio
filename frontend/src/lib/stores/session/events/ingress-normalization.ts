@@ -54,6 +54,7 @@ function buildAssistantChunkEvent(
 function buildStatusMessageEvent(
   assistantId: string,
   message: string,
+  statusId?: string,
 ): NormalizedIncomingEvent | null {
   const normalizedMessage = message.trim();
   if (!normalizedMessage) {
@@ -64,11 +65,13 @@ function buildStatusMessageEvent(
     type: "status_message",
     data: {
       assistant_id: assistantId,
+      status_id: statusId,
       message,
       assistant: {
         id: assistantId,
       },
       status: {
+        id: statusId,
         message,
       },
     },
@@ -329,7 +332,54 @@ function normalizeStatusMessageEvent(
     "assistant";
   const message =
     readNonEmptyText(eventData.message) ?? readNonEmptyText(statusData?.message) ?? "";
-  return buildStatusMessageEvent(assistantId, message);
+  const statusId = readTrimmedString(eventData.status_id) ?? readTrimmedString(statusData?.id);
+  return buildStatusMessageEvent(assistantId, message, statusId);
+}
+
+function normalizeStatusMessageChunkEvent(
+  eventData: Record<string, unknown>,
+): NormalizedIncomingEvent | null {
+  const statusData = asRecord(eventData.status);
+  const assistantData = asRecord(eventData.assistant);
+  const assistantId =
+    readTrimmedString(eventData.assistant_id) ??
+    readTrimmedString(assistantData?.id) ??
+    "assistant";
+  const statusId =
+    readTrimmedString(eventData.status_id) ??
+    readTrimmedString(statusData?.id) ??
+    `status:${assistantId}`;
+  const text = readNonEmptyText(eventData.text) ?? readNonEmptyText(statusData?.delta) ?? "";
+  const final =
+    eventData.final === true ||
+    eventData.is_final === true ||
+    eventData.done === true ||
+    statusData?.final === true ||
+    statusData?.is_final === true ||
+    statusData?.done === true;
+
+  if (!text && !final) {
+    return null;
+  }
+
+  return {
+    type: "status_message_chunk",
+    data: {
+      assistant_id: assistantId,
+      status_id: statusId,
+      text,
+      replace_content: eventData.replace_content === true || statusData?.replace_content === true,
+      final,
+      assistant: {
+        id: assistantId,
+      },
+      status: {
+        id: statusId,
+        delta: text,
+        final,
+      },
+    },
+  };
 }
 
 // MARK: Ingress Normalization
@@ -377,6 +427,11 @@ export function normalizeIncomingEvents(
 
     case "status_message": {
       const normalized = normalizeStatusMessageEvent(eventData);
+      return normalized ? [normalized] : [];
+    }
+
+    case "status_message_chunk": {
+      const normalized = normalizeStatusMessageChunkEvent(eventData);
       return normalized ? [normalized] : [];
     }
 
