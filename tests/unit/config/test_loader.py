@@ -38,6 +38,16 @@ def test_load_config_from_file(tmp_path: Path) -> None:
     assert config.studio.port == 9001
 
 
+def test_load_config_empty_file_uses_defaults(tmp_path: Path) -> None:
+    config_path = tmp_path / "maivn_studio.json"
+    config_path.write_text("", encoding="utf-8")
+
+    config = load_config(config_path)
+
+    assert config.studio.host == "127.0.0.1"
+    assert config.studio.port == 8080
+
+
 def test_load_config_variant_private_data(tmp_path: Path) -> None:
     config_path = tmp_path / "maivn_studio.json"
     config_path.write_text(

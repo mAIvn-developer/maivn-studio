@@ -15,7 +15,9 @@ import logging
 from abc import ABC
 from collections.abc import Coroutine
 from concurrent.futures import Future
-from typing import Any, override
+from typing import Any
+
+from typing_extensions import override
 
 from .state import ReporterState
 

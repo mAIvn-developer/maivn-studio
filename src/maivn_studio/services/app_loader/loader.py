@@ -10,10 +10,11 @@ import logging
 import sys
 from pathlib import Path
 from types import ModuleType
-from typing import cast, override
+from typing import cast
 
 from langchain_core.messages import HumanMessage
 from maivn import Agent, Swarm
+from typing_extensions import override
 
 from maivn_studio.config.models import AppConfig
 

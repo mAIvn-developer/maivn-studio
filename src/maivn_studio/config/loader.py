@@ -82,8 +82,12 @@ def load_config(config_path: Path | None = None) -> StudioConfig:
 
     logger.info(f"Loading config from {config_path}")
 
-    with open(config_path, encoding="utf-8") as f:
-        data: dict[str, Any] = json.load(f)
+    raw_config = config_path.read_text(encoding="utf-8")
+    if not raw_config.strip():
+        logger.warning("Config file %s is empty, using defaults", config_path)
+        return StudioConfig()
+
+    data: dict[str, Any] = json.loads(raw_config)
 
     # Remove $schema key if present (JSON Schema reference)
     data.pop("$schema", None)
