@@ -123,8 +123,8 @@ class AppLoader:
             module = importlib.import_module(config.module)
             if force_reload:
                 module = importlib.reload(module)
-        except ImportError as e:
-            logger.error("Failed to import %s: %s", config.module, e)
+        except Exception as e:
+            logger.error("Failed to load %s: %s", config.module, e)
             raise AppLoadError(config.module, e) from e
 
         # Allow modules to configure themselves for a variant (optional hook).

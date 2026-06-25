@@ -6,7 +6,9 @@ from pathlib import Path
 
 import pytest
 
+from maivn_studio import __version__
 from maivn_studio.config.loader import find_config_file, load_config
+from maivn_studio.config.models import StudioConfig
 
 
 def test_find_config_file_uses_start_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -36,6 +38,12 @@ def test_load_config_from_file(tmp_path: Path) -> None:
     config = load_config(config_path)
 
     assert config.studio.port == 9001
+
+
+def test_default_studio_version_matches_package_version() -> None:
+    config = StudioConfig()
+
+    assert config.studio.version == __version__
 
 
 def test_load_config_empty_file_uses_defaults(tmp_path: Path) -> None:

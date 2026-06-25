@@ -276,6 +276,14 @@ class TestLoad:
             with pytest.raises(AppLoadError, match="not found"):
                 loader.load(config)
 
+    def test_load_wraps_runtime_errors_during_import(self) -> None:
+        config = _make_config(module="main")
+        loader = AppLoader()
+
+        with patch("importlib.import_module", side_effect=RuntimeError("agent invoke failed")):
+            with pytest.raises(AppLoadError, match="agent invoke failed"):
+                loader.load(config)
+
     def test_load_variant_rebuilds_prompts_after_configure_variant(self) -> None:
         module = _make_module(
             {
