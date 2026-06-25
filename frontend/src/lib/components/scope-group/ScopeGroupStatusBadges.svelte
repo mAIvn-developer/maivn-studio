@@ -23,6 +23,10 @@
     currentStatus,
     aggregateStatus,
   }: Props = $props();
+
+  const scopeLabel = $derived(
+    scopeType === "swarm" ? "Swarm" : scopeType === "system" ? "Tools" : "Agent",
+  );
 </script>
 
 <span
@@ -38,7 +42,7 @@
     ? 'var(--color-primary)'
     : 'var(--color-secondary)'}"
 >
-  {scopeType === "swarm" ? "Swarm" : "Agent"}
+  {scopeLabel}
 </span>
 
 {#if scopeType === "swarm" && nestedAgentsCount > 0}

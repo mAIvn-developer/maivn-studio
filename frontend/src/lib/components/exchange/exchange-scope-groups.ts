@@ -16,7 +16,7 @@ export type NestedAgent = {
 };
 
 export type ScopeGroup = {
-  type: "swarm" | "agent";
+  type: "swarm" | "agent" | "system";
   name: string;
   id?: string;
   // For swarm groups: tools that belong to the swarm root (not to any specific
@@ -184,8 +184,12 @@ type InvocationScope = {
   agentName: string;
   agentId?: string;
   swarmName?: string;
+  scopeType?: "agent" | "system";
   tools: ToolCardType[];
 };
+
+const ROOT_SYSTEM_TOOLS_SCOPE_NAME = "System tools";
+const ROOT_SYSTEM_TOOLS_INVOCATION_ID = "system:tools";
 
 /**
  * Build scope groups by walking tool cards in chronological order so each
@@ -270,6 +274,31 @@ export function buildScopeGroups(toolCards: ToolCardType[]): ScopeGroup[] {
         standaloneInvocations.push(scope);
       }
       openInvocationByKey.set(key, scope);
+      continue;
+    }
+
+    if (!swarmName && tool.isSystemTool) {
+      if (agentName) {
+        const existingScope = openInvocationByKey.get(invocationKeyFor(undefined, agentName));
+        if (existingScope) {
+          existingScope.tools.push(tool);
+          continue;
+        }
+      }
+
+      const key = invocationKeyFor(undefined, ROOT_SYSTEM_TOOLS_SCOPE_NAME);
+      let systemScope = openInvocationByKey.get(key);
+      if (!systemScope) {
+        systemScope = {
+          invocationId: ROOT_SYSTEM_TOOLS_INVOCATION_ID,
+          agentName: ROOT_SYSTEM_TOOLS_SCOPE_NAME,
+          scopeType: "system",
+          tools: [],
+        };
+        standaloneInvocations.push(systemScope);
+        openInvocationByKey.set(key, systemScope);
+      }
+      systemScope.tools.push(tool);
       continue;
     }
 
@@ -370,7 +399,7 @@ export function buildScopeGroups(toolCards: ToolCardType[]): ScopeGroup[] {
       continue;
     }
     result.push({
-      type: "agent",
+      type: ownerScope.scopeType ?? "agent",
       name: ownerScope.agentName,
       id: ownerScope.agentId,
       invocationId: ownerScope.invocationId,
@@ -391,6 +420,10 @@ export function resolveScopePhaseChips(
 ): PhaseChipData[] {
   const latestRootPhaseChip = getLatestRootPhaseChip(phaseChips);
   const chipsByScope = buildLatestScopedPhaseChipByScopeKey(phaseChips);
+
+  if (group.type === "system") {
+    return latestRootPhaseChip ? [latestRootPhaseChip] : [];
+  }
 
   if (group.type === "agent") {
     const scopedChip = getLatestScopedPhaseChip(chipsByScope, "agent", group.id, group.name);

@@ -2,7 +2,7 @@
 
 **Package**: maivn-studio
 **Distribution**: Public PyPI developer tool
-**Report Date**: 2026-06-18
+**Report Date**: 2026-06-25
 **Report Version**: 2.1
 
 ---
@@ -16,7 +16,7 @@ First-party `maivn-*` packages are excluded from the third-party inventory.
 
 | Scope | Packages | Permissive | Weak Copyleft | Strong Copyleft | Non-OSI | Unknown |
 |-------|----------|------------|----------------|------------------|---------|---------|
-| Runtime | 49 | 47 | 2 | 0 | 0 | 0 |
+| Runtime | 51 | 49 | 2 | 0 | 0 | 0 |
 | Dev-only | 9 | 9 | 0 | 0 | 0 | 0 |
 
 ---
@@ -38,6 +38,7 @@ First-party `maivn-*` packages are excluded from the third-party inventory.
 | charset-normalizer | 3.4.6 | MIT | Permissive |   |
 | click | 8.3.1 | BSD-3-Clause | Permissive |   |
 | croniter | 6.2.2 | MIT | Permissive |   |
+| distro | 1.9.0 | Apache Software License | Permissive |   |
 | docstring-parser | 0.17.0 | MIT License | Permissive |   |
 | fastapi | 0.136.3 | MIT | Permissive |   |
 | h11 | 0.16.0 | MIT License | Permissive |   |
@@ -48,8 +49,8 @@ First-party `maivn-*` packages are excluded from the third-party inventory.
 | jsonpatch | 1.33 | BSD License | Permissive |   |
 | jsonpointer | 3.1.0 | BSD License | Permissive |   |
 | langchain-core | 1.4.7 | MIT License | Permissive |   |
-| langchain-protocol | 0.0.15 | MIT License | Permissive |   |
-| langsmith | 0.8.8 | MIT | Permissive |   |
+| langchain-protocol | 0.0.18 | MIT License | Permissive |   |
+| langsmith | 0.9.1 | MIT | Permissive |   |
 | markdown-it-py | 4.0.0 | MIT License | Permissive |   |
 | mdurl | 0.1.2 | MIT License | Permissive |   |
 | orjson | 3.11.9 | MPL-2.0 AND (Apache-2.0 OR MIT) | Weak Copyleft |   |
@@ -65,6 +66,7 @@ First-party `maivn-*` packages are excluded from the third-party inventory.
 | requests-toolbelt | 1.0.0 | Apache Software License | Permissive |   |
 | rich | 14.3.4 | MIT License | Permissive |   |
 | six | 1.17.0 | MIT License | Permissive |   |
+| sniffio | 1.3.1 | MIT License OR Apache Software License | Permissive |   |
 | sse-starlette | 2.1.3 | BSD License | Permissive |   |
 | starlette | 1.3.1 | BSD-3-Clause | Permissive |   |
 | tenacity | 9.1.4 | Apache Software License | Permissive |   |

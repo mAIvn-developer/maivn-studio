@@ -533,6 +533,14 @@ def _invoke_stream(
         raise RuntimeError(
             f"SDK stream completed without a final payload event (session={session.session_id})"
         )
+    if (
+        final_payload.get("result") is None
+        and normalized_stream_state.last_model_tool_result is not None
+    ):
+        final_payload = {
+            **final_payload,
+            "result": normalized_stream_state.last_model_tool_result,
+        }
     return SDKSessionResponse.model_validate(final_payload)
 
 

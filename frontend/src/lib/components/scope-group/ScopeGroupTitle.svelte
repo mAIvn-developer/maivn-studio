@@ -14,7 +14,7 @@
   class="font-medium text-[var(--color-text)]"
   class:text-base={scopeType === "swarm" && !compact}
   class:font-semibold={scopeType === "swarm"}
-  class:text-sm={scopeType === "agent" || compact}
+  class:text-sm={scopeType !== "swarm" || compact}
 >
   {scopeName}
 </span>

@@ -59,7 +59,7 @@
   class:bg-gradient-to-r={scopeType === "swarm"}
   class:from-[var(--color-bg-secondary)]={scopeType === "swarm"}
   class:to-[var(--color-bg-tertiary)]={scopeType === "swarm"}
-  class:bg-[var(--color-bg-secondary)]={scopeType === "agent"}
+  class:bg-[var(--color-bg-secondary)]={scopeType !== "swarm"}
   class:hover:bg-[var(--color-bg-tertiary)]={true}
   onclick={onToggleExpanded}
 >

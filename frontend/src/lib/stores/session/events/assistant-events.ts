@@ -3,6 +3,12 @@ import type { Message, ToolCard } from "$lib/types";
 import { asRecord } from "./event-utils";
 import type { SessionStoreContext } from "../types";
 
+// Assistant ids under which a nested agent's *synthesized final response*
+// streams (mirrors the SDK's nested final-response allow-list). A
+// use_as_final_output agent's answer arrives under one of these, never under
+// the agent's own id, so it must be recognized as root-bound text.
+const FINAL_OUTPUT_SYNTHESIZER_ASSISTANT_IDS = new Set(["chat_agent", "orchestrator_agent"]);
+
 function resolveAgentToolIdByAssistantId(
   ctx: SessionStoreContext,
   assistantId: string,
@@ -229,15 +235,39 @@ function shouldAppendToRootAssistant(
   assistantId: string,
   hasExplicitAssistantId: boolean,
 ): boolean {
+  const hasExecutingAgentCards = Array.from(ctx.getToolCards().values()).some(
+    (card) => card.toolType === "agent" && card.status !== "completed" && card.status !== "failed",
+  );
+  const hasFinalOutputAgentCard = Array.from(ctx.getToolCards().values()).some((card) =>
+    isFinalOutputAgentCard(card),
+  );
+
+  // A ``use_as_final_output`` agent's synthesized text IS the turn's final
+  // answer. It streams under a synthesizer assistant id
+  // (``chat_agent`` / ``orchestrator_agent``), not the agent's own id, so it
+  // never maps to that agent's tool card. If it were held pending until the
+  // card completes (the gate below), the whole response would land in one burst
+  // at turn end — the "all at once" bug. Stream it straight to the root bubble
+  // whenever a final-output agent card is present.
+  if (FINAL_OUTPUT_SYNTHESIZER_ASSISTANT_IDS.has(assistantId)) {
+    if (
+      hasFinalOutputAgentCard ||
+      (!hasExecutingAgentCards && ctx.getCurrentPhase() === "synthesizing")
+    ) {
+      if (!ctx.getRootAssistantId()) {
+        ctx.setRootAssistantId(assistantId);
+      }
+      return true;
+    }
+
+    return false;
+  }
+
   // When a nested agent is executing inside a swarm, its assistant text
   // should NOT be promoted to a root message — hold as pending until the
   // agent completes or the mapping is established.  This check must happen
   // BEFORE the rootAssistantId match to prevent session_start from
   // pre-setting a root ID that bypasses the gate.
-  const hasExecutingAgentCards = Array.from(ctx.getToolCards().values()).some(
-    (card) => card.toolType === "agent" && card.status !== "completed" && card.status !== "failed",
-  );
-
   if (hasExecutingAgentCards) {
     return false;
   }

@@ -173,7 +173,7 @@
 <div
   class="nested-content space-y-1.5"
   class:p-3={scopeType === "swarm"}
-  class:p-2={scopeType === "agent"}
+  class:p-2={scopeType !== "swarm"}
   style="background: {scopeType === 'swarm'
     ? 'color-mix(in srgb, var(--color-bg) 50%, transparent)'
     : 'rgba(0, 0, 0, 0.05)'}"

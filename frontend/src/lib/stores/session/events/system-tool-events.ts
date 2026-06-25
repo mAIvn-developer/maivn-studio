@@ -23,7 +23,7 @@ export function handleSystemToolStart(
     (eventData.tool_type as string | undefined) ??
     "system"
   ).trim();
-  const agentName = eventData.agent_name as string | undefined;
+  const incomingAgentName = eventData.agent_name as string | undefined;
   const swarmName = eventData.swarm_name as string | undefined;
   const incomingArgs = (asRecord(toolData?.args) as Record<string, unknown> | undefined) ?? {};
 
@@ -33,6 +33,15 @@ export function handleSystemToolStart(
   }
 
   const toolCards = ctx.getToolCards();
+  const hasVisibleAgentScope =
+    !!incomingAgentName &&
+    Array.from(toolCards.values()).some(
+      (card) =>
+        card.toolType === "agent" &&
+        card.agentName === incomingAgentName &&
+        (swarmName ? card.swarmName === swarmName : !card.swarmName),
+    );
+  const agentName = swarmName || hasVisibleAgentScope ? incomingAgentName : undefined;
   const existingCard = toolCards.get(toolId);
   if (existingCard) {
     const mergedArgs =
