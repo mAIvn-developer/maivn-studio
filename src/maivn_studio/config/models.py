@@ -6,6 +6,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from maivn_studio.__version__ import __version__
+
 # MARK: App Configuration
 
 
@@ -82,6 +84,22 @@ class SavedPrompt(BaseModel):
     created_at: str | None = None
 
 
+def _empty_app_configs() -> list[AppConfig]:
+    return []
+
+
+def _empty_agent_configs() -> list[AgentConfig]:
+    return []
+
+
+def _empty_swarm_configs() -> list[SwarmConfig]:
+    return []
+
+
+def _empty_saved_prompts() -> list[SavedPrompt]:
+    return []
+
+
 # MARK: Discovery Configuration
 
 
@@ -109,7 +127,7 @@ class StudioSettings(BaseModel):
     """Core studio server settings."""
 
     name: str = "MAIVN Studio"
-    version: str = "0.1.0"
+    version: str = __version__
     host: str = "127.0.0.1"
     port: int = 8080
     debug: bool = False
@@ -124,7 +142,7 @@ class StudioConfig(BaseModel):
     studio: StudioSettings = Field(default_factory=StudioSettings)
     env: EnvConfig = Field(default_factory=EnvConfig)
     discovery: DiscoveryConfig = Field(default_factory=DiscoveryConfig)
-    apps: list[AppConfig] = Field(default_factory=list)
-    agents: list[AgentConfig] = Field(default_factory=list)
-    swarms: list[SwarmConfig] = Field(default_factory=list)
-    saved_prompts: list[SavedPrompt] = Field(default_factory=list)
+    apps: list[AppConfig] = Field(default_factory=_empty_app_configs)
+    agents: list[AgentConfig] = Field(default_factory=_empty_agent_configs)
+    swarms: list[SwarmConfig] = Field(default_factory=_empty_swarm_configs)
+    saved_prompts: list[SavedPrompt] = Field(default_factory=_empty_saved_prompts)
