@@ -6,11 +6,12 @@ from __future__ import annotations
 import asyncio
 import threading
 import uuid
-from typing import final, override
+from typing import final
 
 from maivn._internal.utils.reporting.terminal_reporter import (
     BaseReporter,
 )
+from typing_extensions import override
 
 from ...event_bridge import EventBridge
 from .display_stubs import DisplayStubsMixin
