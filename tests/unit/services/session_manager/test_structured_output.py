@@ -23,6 +23,7 @@ from maivn.events import (
 from maivn_shared import (
     FINAL_EVENT_NAME,
     INTERRUPT_REQUIRED_EVENT_NAME,
+    MODEL_TOOL_COMPLETE_EVENT_NAME,
     STATUS_MESSAGE_EVENT_NAME,
     TOOL_EVENT_NAME,
     UPDATE_EVENT_NAME,
@@ -666,6 +667,72 @@ async def test_execute_session_uses_stream_path_by_default(
     assert executor.event_invocable.last_stream_kwargs.get("model") == "balanced"
     assert executor.event_invocable.last_stream_delivery_mode == "stream"
     assert executor.event_invocable.last_invoke_kwargs == {}
+
+
+@pytest.mark.asyncio
+async def test_execute_session_uses_model_tool_result_when_stream_final_result_is_null(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(core_entities, "ModelTool", _DummyModelTool)
+
+    structured_result = {
+        "placeholder_keys": ["EMAIL", "PHONE", "ACCOUNT_ID"],
+        "placeholder_values": [
+            "maria.cortez@example.com",
+            "+1 (312) 555-0198",
+            "ACCT-4421-XY",
+        ],
+    }
+    final_payload = SharedSessionResponse(responses=["Submitted"], result=None).model_dump()
+    executor = _DummyExecutor(
+        model_tool=_DummyModelTool(name="submit_placeholder_values", model=_StructuredPayload),
+        event_invocable=_DummyEventInvocable(
+            stream_events=[
+                _DummyStreamEvent(
+                    name=MODEL_TOOL_COMPLETE_EVENT_NAME,
+                    payload={
+                        "tool_name": "submit_placeholder_values",
+                        "event_id": "tool-final-1",
+                        "result": structured_result,
+                    },
+                ),
+                _DummyStreamEvent(name=FINAL_EVENT_NAME, payload=final_payload),
+            ],
+        ),
+    )
+    loaded_app = LoadedApp(
+        config=_build_app_config(),
+        module=ModuleType("test_app_module"),
+        agents=[cast(Agent, executor)],
+        swarms=[],
+    )
+
+    session = StudioSession(
+        session_id="session-stream-final-tool-result",
+        app_config=_build_app_config(),
+        thread_id="thread-stream-final-tool-result",
+        status=SessionStatus.RUNNING,
+        messages=[HumanMessage(content="hello")],
+        loaded_app=loaded_app,
+    )
+
+    manager = SessionManager()
+    emitted_events: list[tuple[str, dict[str, Any]]] = []
+
+    async def _capture_event(
+        _session: StudioSession,
+        event_type: str,
+        data: dict[str, Any],
+    ) -> None:
+        emitted_events.append((event_type, data))
+
+    monkeypatch.setattr(manager, "emit_event", _capture_event)
+
+    await manager.run_session(session)
+
+    turn_complete = [data for event_type, data in emitted_events if event_type == "turn_complete"]
+    assert turn_complete
+    assert turn_complete[-1]["result"] == structured_result
 
 
 @pytest.mark.asyncio

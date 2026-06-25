@@ -232,6 +232,26 @@ describe("buildScopeGroups", () => {
     expect(toolIds).toEqual(["tool_check_firmware", "tool_hardware_scan", "tool_run_diagnostics"]);
   });
 
+  it("groups root standalone system tools without exposing the root agent name", () => {
+    const cards: ToolCardType[] = [
+      makeCard({
+        toolId: "system-tool-repl",
+        toolName: "repl",
+        toolType: "system",
+        agentName: "REPL Demo Agent",
+        isSystemTool: true,
+      }),
+    ];
+
+    const groups = buildScopeGroups(cards);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].type).toBe("system");
+    expect(groups[0].name).toBe("System tools");
+    expect(groups[0].invocationId).toBe("system:tools");
+    expect(groups[0].tools.map((tool) => tool.toolId)).toEqual(["system-tool-repl"]);
+  });
+
   it("returns an empty array for no tool cards", () => {
     expect(buildScopeGroups([])).toEqual([]);
   });

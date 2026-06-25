@@ -97,6 +97,10 @@ export function handleAgentAssignment(
       ? resultRecord.assistant_id
       : null;
 
+  if (!card && !swarmName && !nestedAssistantId) {
+    return;
+  }
+
   if (!card) {
     card = {
       toolId: assignmentId,

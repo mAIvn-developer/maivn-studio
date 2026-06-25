@@ -18,6 +18,15 @@ const scopeGroupStatusColors: Record<
     completed: { color: "var(--color-success)", bg: "rgba(52, 211, 153, 0.1)" },
     failed: { color: "var(--color-error)", bg: "rgba(255, 180, 171, 0.1)" },
   },
+  system: {
+    pending: { color: "var(--color-warning)", bg: "rgba(245, 158, 11, 0.1)" },
+    executing: {
+      color: "var(--color-secondary)",
+      bg: "color-mix(in srgb, var(--color-secondary) 10%, transparent)",
+    },
+    completed: { color: "var(--color-success)", bg: "rgba(52, 211, 153, 0.1)" },
+    failed: { color: "var(--color-error)", bg: "rgba(255, 180, 171, 0.1)" },
+  },
   swarm: {
     pending: { color: "var(--color-warning)", bg: "rgba(245, 158, 11, 0.1)" },
     executing: {

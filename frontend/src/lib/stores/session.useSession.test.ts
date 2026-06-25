@@ -685,6 +685,22 @@ describe("useSession - event handling", () => {
     expect(s.toolCards.get("compose-artifact-1")?.toolName).toBe("compose_artifact");
   });
 
+  it("does not persist the root agent name on standalone system tool cards", async () => {
+    const { s, listeners } = await startWithEvents();
+
+    fireEvent(listeners, "system_tool_start", {
+      tool_id: "repl-1",
+      tool_type: "repl",
+      agent_name: "REPL Demo Agent",
+      params: { prompt: "Write Python code" },
+    });
+
+    const toolCard = s.toolCards.get("repl-1");
+    expect(toolCard?.toolName).toBe("repl");
+    expect(toolCard?.isSystemTool).toBe(true);
+    expect(toolCard?.agentName).toBeUndefined();
+  });
+
   it("normalizes legacy system_tool_start payloads that only provide assignment_id", async () => {
     const { s, listeners } = await startWithEvents();
 
@@ -1160,6 +1176,122 @@ describe("useSession - event handling", () => {
     );
     expect(dataAnalyzerCard?.streamContent).toBe("Nested analysis");
     expect(s.toolCards.get("final-agent-tool")?.streamContent).toBeUndefined();
+  });
+
+  it("streams a final-output agent's synthesized response to the root bubble while its card is still executing", async () => {
+    const { s, listeners } = await startWithEvents();
+
+    // A use_as_final_output agent card is executing ("Synthesizing response...").
+    fireEvent(listeners, "tool_event", {
+      tool_id: "final-agent-tool",
+      tool_name: "investment_director",
+      tool_type: "agent",
+      status: "executing",
+      agent_name: "Investment Director",
+      args: {
+        agent_id: "final-agent",
+        use_as_final_output: true,
+      },
+    });
+
+    // Its synthesized answer streams under the synthesizer id (chat_agent),
+    // NOT the agent's own id, so it never maps to the agent card. It must
+    // stream into the root assistant bubble live rather than buffering until
+    // the card completes (the "all at once" regression).
+    fireEvent(listeners, "progress_update", { assistant_id: "chat_agent", text: "# Investment " });
+    fireEvent(listeners, "progress_update", { assistant_id: "chat_agent", text: "Memo" });
+
+    const assistantMessages = s.messages.filter((m) => m.role === "assistant");
+    expect(assistantMessages).toHaveLength(1);
+    expect(assistantMessages[0]?.content).toBe("# Investment Memo");
+  });
+
+  it("streams standalone root assistant chunks while root agent assignment is active", async () => {
+    const { s, listeners } = await startWithEvents();
+
+    fireEvent(listeners, "agent_assignment", {
+      assignment_id: "root-repl-agent",
+      agent_name: "REPL Demo Agent",
+      status: "in_progress",
+    });
+    fireEvent(listeners, "enrichment", {
+      phase: "synthesizing",
+      message: "Synthesizing response...",
+    });
+
+    fireEvent(listeners, "progress_update", {
+      assistant_id: "chat_agent",
+      text: "Python code ",
+    });
+    fireEvent(listeners, "progress_update", {
+      assistant_id: "chat_agent",
+      text: "streamed.",
+    });
+
+    const assistantMessages = s.messages.filter((m) => m.role === "assistant");
+    expect(assistantMessages).toHaveLength(1);
+    expect(assistantMessages[0]?.content).toBe("Python code streamed.");
+    expect(assistantMessages[0]?.metadata?.isStreaming).toBe(true);
+    expect(
+      Array.from(s.toolCards.values()).some(
+        (card) => card.toolType === "agent" && card.agentName === "REPL Demo Agent",
+      ),
+    ).toBe(false);
+  });
+
+  it("hides pre-tool orchestrator chunks and streams the synthesized chat response", async () => {
+    const { s, listeners } = await startWithEvents();
+
+    fireEvent(listeners, "enrichment", {
+      phase: "executing_actions",
+      message: "Executing actions...",
+    });
+    fireEvent(listeners, "assistant_chunk", {
+      assistant_id: "orchestrator_agent",
+      text: "Python code created",
+    });
+    fireEvent(listeners, "assistant_chunk", {
+      assistant_id: "orchestrator_agent",
+      text: " list [1..10] and computed sum, average, max, and min.",
+    });
+
+    expect(s.messages.filter((m) => m.role === "assistant")).toHaveLength(0);
+
+    fireEvent(listeners, "system_tool_start", {
+      tool_id: "repl-1",
+      tool_type: "repl",
+      agent_name: "REPL Demo Agent",
+      params: { prompt: "Write Python code" },
+    });
+    fireEvent(listeners, "system_tool_complete", {
+      tool_id: "repl-1",
+      result: { stdout: "Sum: 55" },
+    });
+    fireEvent(listeners, "tool_event", {
+      tool_id: "code-execution-report",
+      tool_name: "code_execution_report",
+      tool_type: "model",
+      status: "completed",
+      agent_name: "REPL Demo Agent",
+    });
+    fireEvent(listeners, "enrichment", {
+      phase: "synthesizing",
+      message: "Synthesizing response...",
+    });
+
+    fireEvent(listeners, "assistant_chunk", {
+      assistant_id: "chat_agent",
+      text: "# Execution ",
+    });
+    fireEvent(listeners, "assistant_chunk", {
+      assistant_id: "chat_agent",
+      text: "Summary",
+    });
+
+    const assistantMessages = s.messages.filter((m) => m.role === "assistant");
+    expect(assistantMessages).toHaveLength(1);
+    expect(assistantMessages[0]?.content).toBe("# Execution Summary");
+    expect(assistantMessages[0]?.metadata?.isStreaming).toBe(true);
   });
 
   it("buffers explicit nested assistant chunks instead of rendering them as top-level assistant messages", async () => {

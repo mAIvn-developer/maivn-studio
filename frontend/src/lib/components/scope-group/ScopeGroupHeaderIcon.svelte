@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Bot, Check, Loader2, Network, X } from "lucide-svelte";
+  import { Bot, Check, Loader2, Network, Wrench, X } from "lucide-svelte";
   import type { ScopeType } from "./scope-group-helpers";
   import type { ScopeGroupStatusColors } from "./scope-group-status-ui";
 
@@ -30,6 +30,8 @@
     <!-- MARK: Base Identity Icon -->
     {#if scopeType === "swarm"}
       <Network size={innerIconSizePx} style="color: {currentStatus.color}" />
+    {:else if scopeType === "system"}
+      <Wrench size={innerIconSizePx} style="color: {currentStatus.color}" />
     {:else}
       <Bot size={innerIconSizePx} style="color: {currentStatus.color}" />
     {/if}

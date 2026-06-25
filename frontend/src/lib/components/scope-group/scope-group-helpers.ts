@@ -1,6 +1,6 @@
 import type { PhaseChipData, ToolCard as ToolCardType } from "$lib/types";
 
-export type ScopeType = "agent" | "swarm";
+export type ScopeType = "agent" | "swarm" | "system";
 
 /**
  * One agent invocation. `invocationId` is the agent tool card's unique
@@ -40,6 +40,8 @@ export function resolveDirectPhaseChip(
   for (const chip of phaseChips) {
     if (scopeType === "swarm") {
       if (chip.scopeType !== "swarm") continue;
+    } else if (scopeType === "system") {
+      if (chip.scopeType) continue;
     } else {
       if (chip.scopeType === "swarm") continue;
       if (!chip.scopeType) {
@@ -171,7 +173,7 @@ export function getStatusTools(
 ): ToolCardType[] {
   const displayTools = getDisplayTools(tools);
 
-  if (scopeType === "agent") {
+  if (scopeType === "agent" || scopeType === "system") {
     return displayTools.length > 0 ? displayTools : tools;
   }
 
